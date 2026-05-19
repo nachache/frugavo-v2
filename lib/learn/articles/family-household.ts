@@ -38,12 +38,6 @@ Modern app store settings allow parents to require authentication for every purc
 
 For accidental charges that do occur: app stores typically refund kid-initiated in-app charges if contacted within a reasonable window. The FTC's settlement records support these refunds.
 
-## Featured photo (selection pending)
-
-- **Search:** https://unsplash.com/s/photos/locked-padlock-door
-- **Criteria:** A padlock, a locked diary, a door latch — symbolizes access control. No people, no children. Object-focused.
-- **License:** Unsplash License.
-
 ## References
 
 - U.S. FTC. (2014). *In the Matter of Apple Inc.* (Settlement).
@@ -86,12 +80,6 @@ The intervention with experimental support, drawn from the financial well-being 
 
 A working rule that comes out of the audit process: services that only one family member uses, and only occasionally, are better handled as personal expenses or short-term rotations rather than year-round household subscriptions.
 
-## Featured photo (selection pending)
-
-- **Search:** https://unsplash.com/s/photos/family-dining-table
-- **Criteria:** An empty dining table with chairs around it. NO people, NO children visible. Symbolizes the household without depicting it.
-- **License:** Unsplash License.
-
 ## References
 
 - Deloitte. (2023). *Digital Media Trends.*
@@ -133,12 +121,6 @@ A five-minute lesson on the lifetime cost of a small recurring charge (covered i
 ## What the research supports including
 
 Lusardi & Mitchell's review identifies three competencies as most consequential: understanding compound interest, understanding inflation, and understanding risk diversification. To this list, a modern updating would add: understanding how recurring charges accumulate, and understanding the structural difference between one-time and ongoing decisions.
-
-## Featured photo (selection pending)
-
-- **Search:** https://unsplash.com/s/photos/piggy-bank-coin
-- **Criteria:** A piggy bank, a coin jar. Object-focused. NO children, no people. Generic financial-education imagery.
-- **License:** Unsplash License.
 
 ## References
 
@@ -183,12 +165,6 @@ Both organizations emphasize that screen *content* and *context* matter as much 
 
 For households evaluating streaming subscriptions: the AAP and CPS recommendations are easier to follow with fewer services. The structural fact follows from the research on choice and option count (Iyengar & Lepper, 2000, *JPSP*) — more services produce more sessions, less intentional content selection, and more friction in honoring limits.
 
-## Featured photo (selection pending)
-
-- **Search:** https://unsplash.com/s/photos/playground-outdoor
-- **Criteria:** An empty playground, an outdoor swing, a park bench. NO children in the frame. Symbolizes displacement activity.
-- **License:** Unsplash License.
-
 ## References
 
 - Council on Communications and Media, American Academy of Pediatrics. (2016). *Pediatrics*, 138(5), e20162591.
@@ -232,12 +208,6 @@ The structure follows from three findings:
 **Step four: cancel in batches.** Baumeister's ego-depletion research (Baumeister et al., 1998, *JPSP*) suggests doing the cancellations in a single session rather than spread across the year — the regulatory cost is the same per cancellation but the cumulative drag is lower when consolidated.
 
 **Step five: schedule the next audit.** A semi-annual cadence is consistent with the research on financial well-being (Netemeyer et al., 2018, *JCR*): ambient uncertainty is the cost, not the spend itself. Resolving the uncertainty regularly keeps the ambient cost low.
-
-## Featured photo (selection pending)
-
-- **Search:** https://unsplash.com/s/photos/clipboard-checklist
-- **Criteria:** A clipboard, a printed list, a planner page. Object-focused. No people.
-- **License:** Unsplash License.
 
 ## References
 

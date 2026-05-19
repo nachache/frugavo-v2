@@ -41,12 +41,6 @@ Auto-billing minimizes both Soman mechanisms. Combined with the high catalog cou
 
 The rotation pattern that some cost-conscious households adopt — subscribing for a specific show window and cancelling afterward — works because it reintroduces an explicit decision point. The decision is what activates the spending awareness auto-billing erases.
 
-## Featured photo (selection pending)
-
-- **Search:** https://unsplash.com/s/photos/television-remote-control
-- **Criteria:** A remote control on a couch, a TV in an empty room. Object-focused. No people.
-- **License:** Unsplash License.
-
 ## References
 
 - Deloitte. (2023). *Digital Media Trends.*
@@ -88,12 +82,6 @@ Third, the structural economics of two-sided markets. Rochet & Tirole's foundati
 
 For the consumer: the price-increase pattern is structurally embedded in the business model. Treating each renewal email as a fresh decision — not as a passive event — is the only forward-looking response the research supports.
 
-## Featured photo (selection pending)
-
-- **Search:** https://unsplash.com/s/photos/upward-arrow-graph
-- **Criteria:** An abstract chart, an arrow trending upward, geometric pricing imagery. No people, no money piles.
-- **License:** Unsplash License.
-
 ## References
 
 - Rochet, J.-C., & Tirole, J. (2003). *J. Eur. Econ. Assoc.*, 1(4), 990–1029.
@@ -132,12 +120,6 @@ Ad-tier subscribers are subject to substantially more behavioral data collection
 
 The decision framework the literature supports: weigh the dollar savings against (a) the time cost of ads at your personal hourly rate, and (b) the data trade. For light viewers (under ~20 hours/month), the dollar savings typically dominate. For heavy viewers, the ad-free tier is the better deal both for attention and for data exposure.
 
-## Featured photo (selection pending)
-
-- **Search:** https://unsplash.com/s/photos/billboard-blank
-- **Criteria:** An empty billboard, a closed sign. Symbol of advertising context. No people, no actual ad content.
-- **License:** Unsplash License.
-
 ## References
 
 - Acquisti, A., Taylor, C., & Wagman, L. (2016). *J. Econ. Lit.*, 54(2), 442–492.
@@ -173,12 +155,6 @@ The behavioral implication for the consumer is the **endowment effect** working 
 > — Kahneman, D., Knetsch, J. L., & Thaler, R. H. (1990). *Journal of Political Economy*, 98(6), 1325–1348.
 
 The corrective is to apply forward-looking evaluation. The catalog at renewal time is not the catalog you signed up for. Per Arkes & Blumer's sunk-cost framework, the question to ask is whether you would sign up today for the current catalog — not whether the past subscription "made sense."
-
-## Featured photo (selection pending)
-
-- **Search:** https://unsplash.com/s/photos/empty-shelves-library
-- **Criteria:** Empty bookshelves, a sparse library, a closed cabinet. Symbol of absence. No people.
-- **License:** Unsplash License.
 
 ## References
 
@@ -219,12 +195,6 @@ What's still better about streaming is the experience — on-demand, no contract
 
 For households choosing between platforms today, the cost comparison should be done on actual usage rather than headline price. The household that subscribes to four streaming services but watches one heavily would pay less by keeping that one and dropping the others, regardless of how the cable comparison comes out.
 
-## Featured photo (selection pending)
-
-- **Search:** https://unsplash.com/s/photos/antenna-roof-sky
-- **Criteria:** An old TV antenna, a satellite dish on a roof. Object-focused. No people.
-- **License:** Unsplash License.
-
 ## References
 
 - Rochet, J.-C., & Tirole, J. (2003). *J. Eur. Econ. Assoc.*, 1(4), 990–1029.
@@ -260,12 +230,6 @@ The behavioral mechanism that limits consumer response is **status quo bias** (S
 > — Samuelson, W., & Zeckhauser, R. (1988). *J. Risk Uncertain.*, 1(1), 7–59.
 
 For the household that paid an extra-member fee silently: the question worth asking is whether each "shared" user actually uses the service often enough to justify the fee. The audit (covered in [How to audit subscriptions](/learn/how-to-audit-subscriptions)) is the intervention.
-
-## Featured photo (selection pending)
-
-- **Search:** https://unsplash.com/s/photos/house-key-on-table
-- **Criteria:** A house key on a table, a keychain. Symbol of access. No people.
-- **License:** Unsplash License.
 
 ## References
 
@@ -304,12 +268,6 @@ The combined effect: rotation requires explicit decision points which the auto-b
 The structural intervention is to reintroduce a decision point per subscription, on a fixed schedule. The decision itself is what activates the cognitive accounting; without it, status quo wins. Calendar reminders, semi-annual audits, or automated tools that surface decision points all serve the same behavioral function.
 
 The savings from rotation tend to be substantial in industry survey data, but the savings are not the primary research finding. The primary finding is that rotation requires defeating well-documented cognitive biases — and it's predictable that most subscribers, left to their own devices, won't do it.
-
-## Featured photo (selection pending)
-
-- **Search:** https://unsplash.com/s/photos/rotating-carousel-arrow
-- **Criteria:** A circular arrow, a rotation symbol, a wheel. Abstract. No people.
-- **License:** Unsplash License.
 
 ## References
 

@@ -39,12 +39,6 @@ The second is **ego depletion / regulatory fatigue**, the line of research origi
 
 The practical consequence: subscription audits work better when batched onto a single calendar date than when handled one-at-a-time across the year. Batching consolidates the regulatory cost and keeps the choice-overload framing on a single, finite list.
 
-## Featured photo (selection pending)
-
-- **Search:** https://unsplash.com/s/photos/desk-calendar-coffee
-- **Criteria:** Object-focused (calendar, planner, coffee on a desk). No people, no body parts, no money piles. Neutral light. Object-only imagery passes both Meta and Google Ads policy without issue.
-- **License:** Unsplash License — free commercial use.
-
 ## References
 
 - Iyengar, S. S., & Lepper, M. R. (2000). *J. Pers. Soc. Psychol.*, 79(6), 995–1006.
@@ -84,12 +78,6 @@ The effect has been replicated in domains as varied as retirement plan participa
 The mechanism Iyengar & Lepper proposed is the rising **cost of evaluation**: as option count grows, the perceived difficulty of comparing alternatives outpaces the value gained from having more alternatives. Above a relatively low option count, satisfaction declines even when the objective choice set has improved.
 
 The intervention with the most evidence: pre-commit to a small candidate set before opening the app. Three to five titles you've decided in advance to consider. The choice is small enough to make.
-
-## Featured photo (selection pending)
-
-- **Search:** https://unsplash.com/s/photos/library-bookshelf
-- **Criteria:** Library shelf, organized rows of objects, or empty cinema seats. Symbolizes choice without using a screenshot of any branded platform. No people. No isolated body parts.
-- **License:** Unsplash License.
 
 ## References
 
@@ -134,12 +122,6 @@ Subscriptions are a near-optimal trigger. Past payments accumulate visibly on a 
 
 The Arkes & Blumer literature is consistent on the intervention: explicitly reframe the decision as forward-looking. "Would a stranger pay $14 a month for what I'm using?" reliably overrides the sunk-cost bias in experimental work.
 
-## Featured photo (selection pending)
-
-- **Search:** https://unsplash.com/s/photos/receipts-paper
-- **Criteria:** A pile of receipts, an open ledger, or a planner with paid-marked items. No people. No before/after framing.
-- **License:** Unsplash License.
-
 ## References
 
 - Arkes, H. R., & Blumer, C. (1985). *Org. Behav. Hum. Decis. Process.*, 35(1), 124–140.
@@ -180,12 +162,6 @@ Loss aversion is the empirical finding, formalized in prospect theory by Kahnema
 Cancellation flows are engineered around this finding. "You'll lose your watch history." "You'll lose your member discount." The framing converts a forward-looking decision ("stop paying $14.99/month") into a loss frame ("give up something that's already yours"). The loss frame triggers the asymmetric weighting Kahneman & Tversky identified, and reliably reduces cancellation.
 
 Two interventions, both grounded in the same literature, work in experimental settings. First, reframe the question as forward-looking: "Would I sign up today for this service?" This removes the loss frame. Second, recognize that almost all of the "lost" assets in cancellation warnings are reversible — playlists, history, profiles typically return on re-subscription. The "loss" is a reversible inconvenience the loss frame mis-classifies as permanent.
-
-## Featured photo (selection pending)
-
-- **Search:** https://unsplash.com/s/photos/balance-scale
-- **Criteria:** A balance scale, a tipping seesaw, abstract symbol of weighing. Object-focused. No people.
-- **License:** Unsplash License.
 
 ## References
 
@@ -234,12 +210,6 @@ Related: [Endowment effect](/learn/endowment-effect-subscriptions) · [Dark patt
 
 The intervention that survives experimental testing: pre-commitment. Set the calendar reminder the moment you start the trial; default to cancelling unless you have a specific reason to keep. The pre-commitment defeats both status quo bias and present-focused preference at the moment of decision.
 
-## Featured photo (selection pending)
-
-- **Search:** https://unsplash.com/s/photos/calendar-reminder
-- **Criteria:** A planner with a marked date, a clock, an alarm. Symbolizes time and pre-commitment. No people.
-- **License:** Unsplash License.
-
 ## References
 
 - Kahneman, D., Knetsch, J. L., & Thaler, R. H. (1990). *J. Polit. Econ.*, 98(6), 1325–1348.
@@ -280,12 +250,6 @@ Subscriptions trigger endowment cleanly. Once an account exists — with a profi
 This connects to Thaler's earlier *Journal of Economic Behavior & Organization* analysis: the gap between what economic theory predicts about consumer choice and what consumers actually do is consistently explained by reference-dependent preferences — choices are evaluated relative to a status quo, not in absolute terms (Thaler, 1980).
 
 The intervention with experimental support: ask whether the lost asset is genuinely lost or just temporarily unavailable. For most subscription services, account state is retained server-side for months. The "loss" the endowment effect makes salient is, in most cases, a reversible inconvenience.
-
-## Featured photo (selection pending)
-
-- **Search:** https://unsplash.com/s/photos/coffee-mug-desk
-- **Criteria:** A coffee mug on a desk (a nod to the original Kahneman experiment), or an object that conveys "ownership without people." No people, no isolated body parts.
-- **License:** Unsplash License.
 
 ## References
 
@@ -328,12 +292,6 @@ A modern streaming homepage is engineered, deliberately or emergently, to produc
 The autoplay-into-next-episode pattern adds a second layer: it removes the natural decision point at the end of a session. The cumulative effect is high in-moment engagement, often reported as lower retrospective satisfaction.
 
 The intervention that has experimental support: introduce a deliberate decision point. Disable autoplay. Pick titles before opening the homepage. Both changes interrupt the reward-uncertainty loop and restore the post-session evaluation step.
-
-## Featured photo (selection pending)
-
-- **Search:** https://unsplash.com/s/photos/playing-cards-table
-- **Criteria:** Playing cards on a table, dice, a roulette wheel — symbols of variable reward without depicting gambling addiction or distress. Object-focused.
-- **License:** Unsplash License.
 
 ## References
 

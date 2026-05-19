@@ -38,12 +38,6 @@ The academic privacy literature provides framework. Solove's "taxonomy of privac
 
 For the consumer, three practical points follow from the literature: (1) self-reported concern is high but behavior change is rare ("privacy paradox" documented across Pew surveys), (2) data collection in subscription services is core to the service, not an add-on, (3) ad-supported tiers consistently collect more than ad-free tiers.
 
-## Featured photo (selection pending)
-
-- **Search:** https://unsplash.com/s/photos/laptop-privacy-camera
-- **Criteria:** A laptop with a camera cover, a closed notebook, a folder. Symbol of data control. No people.
-- **License:** Unsplash License.
-
 ## References
 
 - Pew Research Center. (2019). "Americans and Privacy: Concerned, Confused and Feeling Lack of Control."
@@ -87,12 +81,6 @@ The two-sided market economics literature — Rochet & Tirole's *Journal of the 
 
 For the subscription consumer, the practical reading: lock-in mechanisms (account state, watch history, sunk cost) reduce exit pressure. The longer the tenure, the more the service's incentives shift from retaining you through value to retaining you through friction.
 
-## Featured photo (selection pending)
-
-- **Search:** https://unsplash.com/s/photos/decaying-rust-metal
-- **Criteria:** Abstract decay imagery — rust, weathered surfaces. No people, no distressing scenes. Texture-focused.
-- **License:** Unsplash License.
-
 ## References
 
 - Doctorow, C. (2023). *The Internet Con: How to Seize the Means of Computation.* Verso Books.
@@ -132,12 +120,6 @@ Acquisti and colleagues' research on the economics of privacy is the most cited 
 Industry trade data documents that ad-tier subscribers are subject to more extensive data collection than ad-free subscribers — because the ads must be targeted to be commercially viable. Antenna analytics and other measurement firms have published this finding repeatedly in trade press.
 
 For the consumer, the practical decision: the dollar discount of an ad-supported tier represents a real saving, but the implicit cost is greater data collection plus the attention cost of ad load. The Acquisti et al. framework treats this as a real trade-off, not a hidden harm, but emphasizes that consumers systematically under-estimate the long-run value of the data they're trading.
-
-## Featured photo (selection pending)
-
-- **Search:** https://unsplash.com/s/photos/billboard-empty-sign
-- **Criteria:** An empty billboard, a blank advertising panel. Symbol of advertising without depicting it. No people.
-- **License:** Unsplash License.
 
 ## References
 

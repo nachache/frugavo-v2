@@ -42,12 +42,6 @@ Automatic recurring charges minimize both Soman's mechanisms. The result, predic
 
 Pull the actual total from your statements. The number is the intervention; the academic literature on financial well-being (Netemeyer et al., 2018, *JCR*) consistently shows that ambient uncertainty is itself a major stressor, and resolving it has measurable benefits independent of any change in spending.
 
-## Featured photo (selection pending)
-
-- **Search:** https://unsplash.com/s/photos/grocery-cart-aisle
-- **Criteria:** A grocery cart, a market shelf, an empty shopping aisle. Object-focused. No people.
-- **License:** Unsplash License.
-
 ## References
 
 - Soman, D. (2001). *J. Consum. Res.*, 27(4), 460–474.
@@ -92,12 +86,6 @@ Prelec & Loewenstein's 1998 *Marketing Science* paper extended the framework, sh
 > — Prelec, D., & Loewenstein, G. (1998). *Marketing Science*, 17(1), 4–28.
 
 The intervention with experimental support: introduce rehearsal manually. Log every subscription you have, with current price, on a schedule (a calendar reminder is sufficient). The act of writing the number is exactly the rehearsal Soman identified as restoring accurate spending awareness.
-
-## Featured photo (selection pending)
-
-- **Search:** https://unsplash.com/s/photos/notebook-pen-ledger
-- **Criteria:** A notebook with handwritten lists, a ledger book. Symbol of manual record-keeping. No people.
-- **License:** Unsplash License.
 
 ## References
 
@@ -144,12 +132,6 @@ Subscriptions occupy the worst-case point on both axes: zero rehearsal at the mo
 
 The rehearsal mechanism Soman identified can be restored manually. Once a quarter, list every recurring merchant on your statements with the current amount. The list itself is the intervention; it activates the spending awareness that auto-billing systematically erases.
 
-## Featured photo (selection pending)
-
-- **Search:** https://unsplash.com/s/photos/old-paper-receipts
-- **Criteria:** A bundle of paper receipts, a printed bank statement. Object-focused. No people.
-- **License:** Unsplash License.
-
 ## References
 
 - Soman, D. (2001). *J. Consum. Res.*, 27(4), 460–474.
@@ -190,12 +172,6 @@ Thaler's *Marketing Science* work on mental accounting:
 Each individual $9.99 charge lands below the threshold of "decisions to evaluate." The aggregate, framed as a single decision, would clear the threshold easily — but the aggregate framing never appears on a statement.
 
 The intervention that follows the research: aggregate the math yourself. The lifetime number is small enough to compute and large enough to change decisions. The Thaler mental-accounting framework predicts that the same total, framed as a single number, will produce a stronger response than the same total spread across 120 small charges.
-
-## Featured photo (selection pending)
-
-- **Search:** https://unsplash.com/s/photos/calculator-desk
-- **Criteria:** A calculator, a spreadsheet on paper, a ledger. Object-focused. No people, no money piles.
-- **License:** Unsplash License.
 
 ## References
 
@@ -238,12 +214,6 @@ For a provider, annual billing combines these into one lock-in. The customer has
 
 For the consumer, the annual discount makes sense only when the probability of using the service throughout the year is genuinely high. The conservative rule that follows the research: keep paying monthly for at least three months. Only switch to annual once usage is established and stable. This costs you the discount on the first three months and protects you from prepaying for eleven months of a service you stop using by month four.
 
-## Featured photo (selection pending)
-
-- **Search:** https://unsplash.com/s/photos/calendar-12-months
-- **Criteria:** A wall calendar, an annual planner. Object-focused. No people.
-- **License:** Unsplash License.
-
 ## References
 
 - Laibson, D. (1997). *Q. J. Econ.*, 112(2), 443–477.
@@ -280,12 +250,6 @@ The intuitive comparison is "bundle price vs. sum of standalone prices." That co
 The correct comparison is "bundle price vs. cost of the services you would actually have subscribed to." For most consumers, that's one or two of the bundled services, not all of them. The bundle's "savings" disappear once the comparison is to actual revealed preference rather than to the inflated bundle-price anchor.
 
 A working rule: a bundle pays off if you would, in the absence of the bundle, independently subscribe to at least 70% of the bundled services at standalone prices. Below that threshold, the bundle has added services you don't use to the total you pay.
-
-## Featured photo (selection pending)
-
-- **Search:** https://unsplash.com/s/photos/wrapped-gift-boxes
-- **Criteria:** Wrapped boxes, a basket of items, a bundle of objects. Object-focused. No people.
-- **License:** Unsplash License.
 
 ## References
 
@@ -327,12 +291,6 @@ Soman's payment-friction work explains why the small charges don't aggregate cog
 The combination produces the pattern: five $5/month subscriptions persist longer and aggregate higher than one $25/month subscription, even though the total dollar amount is identical. Each $5 falls below the noticing threshold; none of them get the rehearsal that would aggregate them into a single mental account.
 
 The intervention that follows is **category-level budgeting** rather than per-subscription evaluation. Set a cap per spending category (streaming, music, productivity). Below the cap, run any mix. Above it, force trade-offs. Category-level evaluation operates above the individual-charge threshold and triggers the cognitive accounting Thaler described.
-
-## Featured photo (selection pending)
-
-- **Search:** https://unsplash.com/s/photos/spare-change-coins
-- **Criteria:** A handful of coins, a small jar of change. Object-focused, no money piles, no "wealth" framing. No people.
-- **License:** Unsplash License.
 
 ## References
 

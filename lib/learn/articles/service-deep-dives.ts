@@ -36,12 +36,6 @@ The framework applies to any subscription, but Netflix is a clarifying case beca
 
 A practical implementation: divide your monthly fee by your monthly hours-watched to get cost-per-hour. Compare to other forms of entertainment you value. The math may or may not pass; what matters is that you've made the comparison consciously rather than letting auto-billing make it for you.
 
-## Featured photo (selection pending)
-
-- **Search:** https://unsplash.com/s/photos/popcorn-bowl-couch
-- **Criteria:** A bowl of popcorn on a couch, a remote control on a coffee table. Object-focused. No people.
-- **License:** Unsplash License.
-
 ## References
 
 - Arkes, H. R., & Blumer, C. (1985). *Org. Behav. Hum. Decis. Process.*, 35(1), 124–140.
@@ -80,12 +74,6 @@ The implication: most subscribers don't switch even when an alternative would be
 > — Kahneman, D., Knetsch, J. L., & Thaler, R. H. (1990). *Journal of Political Economy*, 98(6), 1325–1348.
 
 In practice, this means three things. One: don't subscribe to two music services simultaneously (a common pattern in households where members signed up separately). Two: if you'd benefit from a bundle (Apple One, YouTube Premium), the music subscription often pays for itself by replacing other services. Three: if you're considering switching, library-transfer tools exist; the loss of "ownership" the endowment effect makes salient is mostly reversible.
-
-## Featured photo (selection pending)
-
-- **Search:** https://unsplash.com/s/photos/headphones-desk
-- **Criteria:** Headphones on a desk, a music speaker. Object-focused. No people, no body parts.
-- **License:** Unsplash License.
 
 ## References
 
@@ -127,12 +115,6 @@ The second is data. The academic privacy literature (Acquisti, Taylor & Wagman, 
 
 For an honest evaluation, the membership fee is only part of the cost. The full cost includes the incremental purchases the membership induces (Thaler) and the long-run value of the behavioral data generated (Acquisti et al.). For households that primarily use Prime for shipping on a small number of necessary purchases, the membership likely passes. For households that have noticed their purchase frequency rising in step with the membership, the math may not work even at the headline price.
 
-## Featured photo (selection pending)
-
-- **Search:** https://unsplash.com/s/photos/cardboard-box-doorstep
-- **Criteria:** A cardboard package on a doorstep, an empty shipping box. Object-focused. No people.
-- **License:** Unsplash License.
-
 ## References
 
 - Thaler, R. H. (1985). *Marketing Sci.*, 4(3), 199–214.
@@ -171,12 +153,6 @@ The lifetime-cost math (covered in [Lifetime cost of subscriptions](/learn/lifet
 The corrective is the forward-looking question: at today's price, for the way I currently use these tools, would I sign up? Casual users typically wouldn't. For them, the alternatives that offer one-time purchase (Affinity's suite, DaVinci Resolve for video, others) exist and are competitive for non-professional workflows.
 
 The broader principle the case illustrates: categories of software shift from one-time to subscription not because the new model is better for users but because it is better for the providers. The consumer's defensive move is to question whether the recurring model fits their usage, regardless of category default.
-
-## Featured photo (selection pending)
-
-- **Search:** https://unsplash.com/s/photos/paintbrushes-tools
-- **Criteria:** Paintbrushes, an artist's tools, a clean workbench. Object-focused. No people, no faces.
-- **License:** Unsplash License.
 
 ## References
 

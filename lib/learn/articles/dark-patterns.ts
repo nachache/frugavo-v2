@@ -43,12 +43,6 @@ The same staff report led to the FTC's 2023 proposed Click-to-Cancel rule, which
 
 The practical reading: the dark patterns in your cancellation flow are not isolated edge cases. They are documented industry-wide phenomena with their own academic and regulatory literature.
 
-## Featured photo (selection pending)
-
-- **Search:** https://unsplash.com/s/photos/maze-puzzle
-- **Criteria:** A maze, a puzzle, a labyrinth — abstract symbol of intentional obstruction. No people. No before/after.
-- **License:** Unsplash License.
-
 ## References
 
 - Mathur, A., Acar, G., Friedman, M. J., Lucherini, E., Mayer, J., Chetty, M., & Narayanan, A. (2019). *Proceedings of the ACM on Human-Computer Interaction*, 3(CSCW), Article 81.
@@ -98,12 +92,6 @@ Three caveats worth understanding. First, the rule covers negative-option featur
 
 For consumers: if a cancellation flow requires more steps than signup did, that flow is now plausibly out of compliance with federal law. Documentation (screenshots, timestamps) supports complaints to the FTC's reportfraud.ftc.gov portal and to state attorneys general.
 
-## Featured photo (selection pending)
-
-- **Search:** https://unsplash.com/s/photos/government-building-columns
-- **Criteria:** Neutral institutional building, courthouse columns, regulatory imagery. No flags, no political imagery, no people.
-- **License:** Unsplash License.
-
 ## References
 
 - U.S. Federal Trade Commission. (2024). *Final Rule: Negative Option Rule (16 CFR Part 425).*
@@ -146,12 +134,6 @@ In Canada, the strongest protections are in Quebec's Consumer Protection Act (CQ
 ## What this means for consumers
 
 If a subscription is auto-renewing in a jurisdiction with a strong ARL and the provider has not provided clear conspicuous disclosure, affirmative consent (separate from ToS), and an online cancellation path, that provider may be out of compliance. State attorneys general and provincial consumer affairs offices typically accept online complaints and pursue investigations where complaints accumulate.
-
-## Featured photo (selection pending)
-
-- **Search:** https://unsplash.com/s/photos/document-signature-pen
-- **Criteria:** A document with a pen, a contract on a desk. Object-focused. No people, no signatures of real names visible.
-- **License:** Unsplash License.
 
 ## References
 
@@ -206,12 +188,6 @@ The result is predictable and the FTC's enforcement record confirms it at scale:
 
 Pre-commitment is the intervention with experimental support: set a calendar reminder for two days before the trial converts, the moment you sign up. Default to cancelling unless you have a specific reason to keep. Where you've been charged after the trial, dispute the charge with your card issuer; chargebacks are an effective lever, and the FTC's enforcement record makes refund requests easier to substantiate.
 
-## Featured photo (selection pending)
-
-- **Search:** https://unsplash.com/s/photos/alarm-clock-table
-- **Criteria:** A small alarm clock, an hourglass, a calendar. Symbol of pre-commitment and timing. No people.
-- **License:** Unsplash License.
-
 ## References
 
 - U.S. FTC. (2024). *Negative Option Rule (16 CFR Part 425).*
@@ -256,12 +232,6 @@ Mathur and colleagues' 2019 audit operationalized this category by quantifying i
 The practical pattern is consistent across the audit: the retention CTA is rendered in the service's primary brand color at high contrast, while the cancellation option appears as a small low-contrast text link, often below the fold or to the side. Eye-tracking research broadly confirms that users follow visual hierarchy when scanning a page, which means the cancellation option is, in functional terms, harder to find regardless of whether it is technically present.
 
 The 2024 FTC Click-to-Cancel rule explicitly addresses this by requiring that cancellation paths be at least as accessible as signup paths. Visual prominence is part of that comparison in the Commission's reading.
-
-## Featured photo (selection pending)
-
-- **Search:** https://unsplash.com/s/photos/door-exit-sign
-- **Criteria:** An exit sign, a door, a corridor — symbolizes "way out." No people in the frame, no body parts.
-- **License:** Unsplash License.
 
 ## References
 
@@ -312,12 +282,6 @@ The European Union's Digital Services Act (Regulation (EU) 2022/2065) explicitly
 The convergent definition across these sources has three elements: (1) a UX choice that benefits the company at the user's expense, (2) the choice would not be made by a user given the same information presented neutrally, (3) the design exploits a known cognitive bias or constraint.
 
 If a UX choice meets all three, it is a dark pattern as the academic and regulatory literature defines it — actionable in many jurisdictions, increasingly enforced.
-
-## Featured photo (selection pending)
-
-- **Search:** https://unsplash.com/s/photos/optical-illusion
-- **Criteria:** An optical illusion, an Escher-style staircase, or other "your eyes deceive you" imagery. Abstract. No people.
-- **License:** Unsplash License.
 
 ## References
 

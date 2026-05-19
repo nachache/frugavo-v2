@@ -42,12 +42,6 @@ The honest summary: cross-sectional correlations are robust and well-replicated.
 
 Reducing pre-sleep screen exposure is the intervention with the strongest experimental evidence (see Chang et al., 2015, PNAS, discussed in [Streaming sleep effects](/learn/streaming-sleep-effects)). Co-viewing — watching with another person — has weaker but consistent evidence as a partial mitigant for the displacement effects.
 
-## Featured photo (selection pending)
-
-- **Search:** https://unsplash.com/s/photos/quiet-living-room-window
-- **Criteria:** Empty living room with natural light. No people, no children, no screens visible. Calm, neutral.
-- **License:** Unsplash License.
-
 ## References
 
 - Exelmans, L., & Van den Bulck, J. (2017). *Journal of Clinical Sleep Medicine*, 13(8), 1001–1008.
@@ -89,12 +83,6 @@ Exelmans & Van den Bulck's 2017 paper in the *Journal of Clinical Sleep Medicine
 ## What the evidence supports
 
 Three interventions have the most consistent support: (1) moving screen cutoff to at least 30–60 minutes before intended sleep onset, (2) disabling autoplay so the session ends at a natural decision point, (3) reducing the number of services with bedroom access (fewer "just one more" opportunities).
-
-## Featured photo (selection pending)
-
-- **Search:** https://unsplash.com/s/photos/bedroom-window-morning
-- **Criteria:** Empty bedroom, made bed, soft morning light. No people, no screens. Calm, restorative.
-- **License:** Unsplash License.
 
 ## References
 
@@ -139,12 +127,6 @@ The 2017 paper by Primack and colleagues in *American Journal of Preventive Medi
 
 The direction of causation remains debated. What is robust: heavy passive media use does not reliably reduce loneliness even in users seeking it as relief, and the available evidence is more consistent with displacement than with substitution.
 
-## Featured photo (selection pending)
-
-- **Search:** https://unsplash.com/s/photos/empty-cafe-table-window
-- **Criteria:** An empty café table by a window, an open notebook, soft daylight. Symbolizes reflection without sadness imagery. No people.
-- **License:** Unsplash License.
-
 ## References
 
 - Cacioppo, J. T., & Hawkley, L. C. (2009). *Trends in Cognitive Sciences*, 13(10), 447–454.
@@ -187,12 +169,6 @@ The intervention with the most consistent experimental support is **resolution o
 
 Spend twenty minutes pulling subscription totals from the last 90 days of card statements. The decision about what to keep can wait; the number itself is the intervention.
 
-## Featured photo (selection pending)
-
-- **Search:** https://unsplash.com/s/photos/notebook-pen-coffee
-- **Criteria:** A notebook, a pen, a cup of coffee — calm, organized, intentional. No people. No expressions of distress.
-- **License:** Unsplash License.
-
 ## References
 
 - Netemeyer, R. G., Warmath, D., Fernandes, D., & Lynch, J. G. Jr. (2018). *Journal of Consumer Research*, 45(1), 68–89.
@@ -231,12 +207,6 @@ The implication for content abundance follows directly. A single great film, onc
 Research in positive psychology has converged on **anticipation, attention, and afterthought** as the components of savoring most disrupted by abundance (see Bryant & Veroff, 2007, *Savoring: A New Model of Positive Experience*, Lawrence Erlbaum). All three components require some form of scarcity — temporal, spatial, or attentional — to operate.
 
 The most reliable intervention is structural: introduce artificial scarcity. Pick fewer titles per week. Wait between sessions. Both have experimental support in the savoring literature for restoring per-experience satisfaction.
-
-## Featured photo (selection pending)
-
-- **Search:** https://unsplash.com/s/photos/single-cup-tea
-- **Criteria:** A single cup of tea or coffee on a clean surface — symbolizes restraint and savoring. Object-focused. No people.
-- **License:** Unsplash License.
 
 ## References
 
@@ -278,12 +248,6 @@ What both behaviors share: they displace activities with measured positive effec
 ## What this implies
 
 For sleep and energy, the binge pattern is worth addressing first (cap evening watching, kill autoplay). For mood and anxiety, the scrolling pattern is the higher-leverage target (reduce time in feed-based apps, mute notifications). The shared intervention with the most evidence is reducing the structural pull of either behavior — which, in the subscription context, often means reducing the number of apps that can pull on your time at all.
-
-## Featured photo (selection pending)
-
-- **Search:** https://unsplash.com/s/photos/walking-park-path
-- **Criteria:** A park path, a forest trail, a quiet outdoor scene — symbolizes displacement activity. No people in the frame.
-- **License:** Unsplash License.
 
 ## References
 

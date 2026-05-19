@@ -35,12 +35,6 @@ A modern streaming homepage exhibits this structure. Surfaced titles vary in qua
 
 The corresponding intervention has experimental support in the broader self-regulation literature: introduce a deliberate decision point that resets expectations. Disable autoplay. Pre-select a small candidate list of titles. Both interrupt the prediction-error loop and restore conscious choice.
 
-## Featured photo (selection pending)
-
-- **Search:** https://unsplash.com/s/photos/electric-circuit-board
-- **Criteria:** A circuit board, neuron-like patterns, abstract neuroscience imagery. No people, no medical depictions, no scary close-ups.
-- **License:** Unsplash License.
-
 ## References
 
 - Schultz, W., Dayan, P., & Montague, P. R. (1997). *Science*, 275(5306), 1593–1599.
@@ -82,12 +76,6 @@ The earlier theoretical foundation is Monsell's review of task-switching costs i
 For subscription apps specifically, each app is a separate task context: distinct UI, notification stream, mental category. The Mark et al. finding generalizes — each switch between subscription apps carries a return-time cost proportional to the task's difficulty.
 
 The intervention with the most consistent support: **batching**. Group app usage into deliberate windows rather than letting switches happen continuously. Reducing the total number of subscription apps with persistent permissions reduces the surface area of potential switches.
-
-## Featured photo (selection pending)
-
-- **Search:** https://unsplash.com/s/photos/clean-desk-workspace
-- **Criteria:** A clean, minimalist desk. No people. Object-focused.
-- **License:** Unsplash License.
 
 ## References
 
@@ -132,12 +120,6 @@ Subscription apps are heavy notification senders. The default behavior on instal
 
 The intervention follows: audit notification permissions per app. Anything not in the small set of apps you actively want to be interrupted by should be silenced. Most subscription apps don't make the cut.
 
-## Featured photo (selection pending)
-
-- **Search:** https://unsplash.com/s/photos/silent-phone-table
-- **Criteria:** A phone face-down on a table, or a phone in airplane mode. Object-focused. No people.
-- **License:** Unsplash License.
-
 ## References
 
 - Pielot, M., Church, K., & de Oliveira, R. (2014). *MobileHCI 2014*, 233–242.
@@ -177,12 +159,6 @@ What the modern subscription economy has done is layer subscription revenue on t
 
 For the consumer, the implication is two costs per subscription, not one: the dollar cost on the statement and the attention cost of the time inside the app. Evaluating a subscription on dollar cost alone systematically underestimates what it actually takes from you.
 
-## Featured photo (selection pending)
-
-- **Search:** https://unsplash.com/s/photos/hourglass-sand
-- **Criteria:** An hourglass, a clock face, or sand running through fingers (object only). Symbol of finite time. No people.
-- **License:** Unsplash License.
-
 ## References
 
 - Goldhaber, M. H. (1997). *First Monday*, 2(4).
@@ -220,12 +196,6 @@ A related strand of research, originating in Brehm's "psychological reactance" f
 For streaming-style abundance, both effects work against per-session engagement. The choice set is too large to evaluate; the lack of scarcity removes reactance-driven motivation. The result is the well-documented "scroll without watching" pattern.
 
 The intervention with experimental support: structural scarcity. Pre-select a small set of titles for a session. Use weekly-release content where available. Both restore the conditions under which abundance reverses to engagement.
-
-## Featured photo (selection pending)
-
-- **Search:** https://unsplash.com/s/photos/single-book-table
-- **Criteria:** A single book on a clean table, or a deliberately curated small selection. Object-focused. No people.
-- **License:** Unsplash License.
 
 ## References
 
