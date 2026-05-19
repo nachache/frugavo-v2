@@ -349,63 +349,62 @@ function Dashboard({
         </button>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 p-4">
+      <div className="grid grid-cols-2 gap-2.5 p-3">
         {inboxSubs.map((s) => {
           const state = cards[s.id];
           const cancelled = state === "cancelled";
+          const annual = s.amount * 12;
           return (
             <article
               key={s.id}
               className={cn(
-                "relative flex flex-col gap-3 rounded-2xl border bg-white p-4 transition duration-300",
+                "relative flex items-center gap-3 rounded-2xl border bg-white p-3 transition duration-300",
                 cancelled
                   ? "border-hairline/60 opacity-60"
                   : "border-hairline/60 shadow-soft hover:shadow-float hover:-translate-y-0.5"
               )}
             >
-              <div className="flex items-start justify-between">
-                <BrandIcon
-                  id={s.id}
-                  size="md"
-                  fallback={<Monogram label={s.mono} color={s.color} size="md" />}
-                />
-                {cancelled && (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-brand-light px-2 py-0.5 text-[10.5px] font-medium text-brand">
-                    <Check size={10} strokeWidth={3} />
-                    Cancelled
-                  </span>
-                )}
-              </div>
+              <BrandIcon
+                id={s.id}
+                size="md"
+                fallback={<Monogram label={s.mono} color={s.color} size="md" />}
+              />
 
-              <div>
-                <div className="text-[13px] font-medium text-ink truncate">
-                  {s.brand}
-                </div>
-                <div
-                  className={cn(
-                    "mt-0.5 text-[22px] font-display font-semibold tracking-[-0.02em] tnum",
-                    cancelled ? "text-ink-muted line-through" : "text-ink"
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[13px] font-medium text-ink truncate">
+                    {s.brand}
+                  </span>
+                  {cancelled && (
+                    <Check size={11} className="text-brand shrink-0" strokeWidth={3} />
                   )}
-                >
-                  {formatCurrency(s.amount)}
-                  <span className="text-[12px] font-medium text-ink-muted ml-1 no-underline inline-block">
-                    /mo
+                </div>
+                <div className="flex items-baseline gap-1.5 mt-0.5">
+                  <span
+                    className={cn(
+                      "text-[17px] font-display font-semibold tracking-[-0.015em] tnum",
+                      cancelled ? "text-ink-muted line-through" : "text-ink"
+                    )}
+                  >
+                    {formatCurrency(s.amount)}
+                  </span>
+                  <span className="text-[11.5px] text-ink-muted tnum">
+                    /mo · {formatCurrency(annual, false)}/yr
                   </span>
                 </div>
               </div>
 
               {cancelled ? (
-                <button
-                  disabled
-                  className="inline-flex h-9 items-center justify-center gap-1.5 rounded-full bg-brand-light text-brand text-[12.5px] font-medium"
+                <span
+                  aria-label="Cancelled"
+                  className="shrink-0 inline-flex h-8 items-center justify-center rounded-full bg-brand-light px-3 text-[11.5px] font-medium text-brand"
                 >
-                  <Check size={12} strokeWidth={3} />
                   Cancelled
-                </button>
+                </span>
               ) : (
                 <button
                   onClick={() => onCancel(s)}
-                  className="group/btn inline-flex h-9 items-center justify-center gap-1 rounded-full border border-hairline bg-white px-4 text-[12.5px] font-medium text-ink transition hover:border-accent hover:bg-accent hover:text-white"
+                  className="shrink-0 inline-flex h-8 items-center justify-center rounded-full border border-hairline bg-white px-3.5 text-[12px] font-medium text-ink transition hover:border-accent hover:bg-accent hover:text-white"
                 >
                   Cancel
                 </button>
