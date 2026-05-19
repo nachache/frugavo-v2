@@ -36,8 +36,12 @@ export function FinalCta() {
 
     setSubmitting(true);
     try {
-      // Submit to Netlify Forms (captured at the site root).
-      await fetch("/", {
+      // Submit to Netlify Forms. We POST to /__forms.html (the static file
+      // Netlify registered at deploy time) rather than to /. On Next.js +
+      // @netlify/plugin-nextjs, the Next handler claims / and answers the
+      // POST itself before Netlify's form middleware can intercept. Posting
+      // to /__forms.html bypasses the Next handler and lets Netlify capture.
+      await fetch("/__forms.html", {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
         body: encode({

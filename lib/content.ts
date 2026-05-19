@@ -336,8 +336,8 @@ export const faqs = [
     a: "Yes — Frugavo is built for North America. We support CAD subscriptions and Canadian banks at launch. UK and EU coming after.",
   },
   {
-    q: "How is this different from Rocket Money or Trim?",
-    a: "Rocket Money and Trim detect subscriptions and then hand you a script to call the provider yourself. Frugavo's AI agent does the cancellation end-to-end. Detection is the easy part — actually killing the charge is the hard part. That's our wedge.",
+    q: "How is this different from Rocket Money?",
+    a: "Rocket Money detects subscriptions and then hands you a script to call the provider yourself. Frugavo's AI agent does the cancellation end-to-end. Detection is the easy part — actually killing the charge is the hard part. That's our wedge.",
   },
   {
     q: "What happens if a cancellation fails?",

@@ -40,7 +40,7 @@ export default function AboutPage() {
               services they don&rsquo;t use, and the amounts add up.
             </p>
             <p>
-              The existing market — Rocket Money, Trim, and others — detects
+              The existing market — Rocket Money and others — detects
               forgotten subscriptions and then hands you a phone number or a
               chat link. The work of actually cancelling is left to you.
               That&rsquo;s where most users give up.

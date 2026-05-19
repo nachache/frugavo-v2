@@ -3,6 +3,7 @@
 // file and the rest follows.
 
 import type { Article, Cluster } from "./types";
+import { howToCancelArticles } from "./articles/how-to-cancel";
 import { financialCreepArticles } from "./articles/financial-creep";
 import { streamingEconomicsArticles } from "./articles/streaming-economics";
 import { behavioralScienceArticles } from "./articles/behavioral-science";
@@ -13,7 +14,11 @@ import { familyHouseholdArticles } from "./articles/family-household";
 import { privacyDataArticles } from "./articles/privacy-data";
 import { serviceDeepDivesArticles } from "./articles/service-deep-dives";
 
+// Order here is the order the clusters appear on the Library hub. "How to
+// cancel" goes first because it's the highest-intent set — visitors searching
+// "cancel X" are closest to converting on the waitlist.
 export const ALL_ARTICLES: Article[] = [
+  ...howToCancelArticles,
   ...financialCreepArticles,
   ...streamingEconomicsArticles,
   ...behavioralScienceArticles,

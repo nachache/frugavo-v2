@@ -2,6 +2,7 @@
 // react-markdown with remark-gfm at the dynamic route.
 
 export type Cluster =
+  | "how-to-cancel"
   | "financial-creep"
   | "streaming-economics"
   | "behavioral-science"
@@ -26,6 +27,7 @@ export type Article = {
 };
 
 export const CLUSTER_LABEL: Record<Cluster, string> = {
+  "how-to-cancel": "How to cancel — step-by-step guides",
   "financial-creep": "Financial creep & hidden costs",
   "streaming-economics": "Streaming economics",
   "behavioral-science": "Behavioral science & decisions",
@@ -38,6 +40,8 @@ export const CLUSTER_LABEL: Record<Cluster, string> = {
 };
 
 export const CLUSTER_BLURB: Record<Cluster, string> = {
+  "how-to-cancel":
+    "The 10 most-searched cancellation flows, walked through end to end.",
   "financial-creep":
     "How small recurring charges quietly turn into one of your largest line items.",
   "streaming-economics":
