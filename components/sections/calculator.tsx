@@ -74,7 +74,7 @@ export function Calculator() {
               />
               <div className="relative flex flex-col h-full">
                 <div className="text-[12.5px] uppercase tracking-[0.14em] text-emerald-900/70 font-semibold">
-                  You're wasting
+                  Estimated yearly waste
                 </div>
                 <div className="mt-3 flex items-baseline gap-1.5">
                   <CountUp
@@ -86,21 +86,19 @@ export function Calculator() {
                   <span className="text-[18px] font-medium text-brand/80">/yr</span>
                 </div>
                 <p className="mt-5 text-[15px] leading-relaxed text-emerald-900/85 max-w-[400px]">
-                  wasted per year on subscriptions you don't use.
+                  on subscriptions you don&apos;t use, based on the inputs you
+                  entered.
                 </p>
-                <p className="mt-3 text-[15px] leading-relaxed text-emerald-900/70 max-w-[400px]">
-                  Frugavo would have saved you{" "}
-                  <span className="font-semibold text-brand tnum">
-                    <CountUp to={wastedYearly} duration={600} prefix="$" />
-                  </span>{" "}
-                  this year alone.
+                <p className="mt-3 text-[12.5px] leading-relaxed text-emerald-900/60 max-w-[400px]">
+                  Estimate based on your inputs. Individual results will vary;
+                  not a guarantee of savings.
                 </p>
                 <div className="mt-auto pt-8">
                   <a
                     href="#cta"
                     className="inline-flex items-center gap-1.5 rounded-full bg-ink px-5 h-11 text-[14px] font-medium text-white hover:bg-ink/85 transition"
                   >
-                    Find my hidden subscriptions →
+                    Join the waitlist →
                   </a>
                 </div>
               </div>

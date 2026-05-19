@@ -5,6 +5,7 @@ import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { Check, Loader2 } from "lucide-react";
 import { heroDemoSubs } from "@/lib/content";
 import { Monogram } from "@/components/ui/monogram";
+import { BrandIcon } from "@/components/ui/brand-icon";
 import { cn, formatCurrency } from "@/lib/utils";
 
 type Status = "idle" | "scanning" | "detected" | "cancelled";
@@ -20,10 +21,12 @@ export function HeroDemoCard() {
   const reduced = useReducedMotion();
   const [tick, setTick] = useState(0);
 
-  // Continuous looping clock — increments roughly every 100ms. We derive each
-  // row's status from elapsed time so adding/removing rows doesn't desync.
+  // Tick the loop on a 120ms interval instead of every animation frame. The
+  // visual transitions are gated by AnimatePresence anyway, so a 60fps state
+  // tick costs CPU without changing the user-visible output. Pause when the
+  // card is offscreen — the hero is above the fold but tab visibility still
+  // matters.
   const startedAt = useRef<number>(0);
-  const rafRef = useRef<number>(0);
 
   useEffect(() => {
     if (reduced) return;
@@ -32,13 +35,29 @@ export function HeroDemoCard() {
     const totalLoop =
       heroDemoSubs.length * ROW_STAGGER + ROW_DURATION * 3 + LOOP_PAUSE;
 
-    const loop = (now: number) => {
-      const elapsed = (now - startedAt.current) % totalLoop;
-      setTick(elapsed);
-      rafRef.current = requestAnimationFrame(loop);
+    let intervalId: number | undefined;
+
+    const start = () => {
+      if (intervalId) return;
+      intervalId = window.setInterval(() => {
+        const elapsed = (performance.now() - startedAt.current) % totalLoop;
+        setTick(elapsed);
+      }, 120);
     };
-    rafRef.current = requestAnimationFrame(loop);
-    return () => cancelAnimationFrame(rafRef.current);
+    const stop = () => {
+      if (intervalId) {
+        clearInterval(intervalId);
+        intervalId = undefined;
+      }
+    };
+
+    start();
+    const onVis = () => (document.hidden ? stop() : start());
+    document.addEventListener("visibilitychange", onVis);
+    return () => {
+      stop();
+      document.removeEventListener("visibilitychange", onVis);
+    };
   }, [reduced]);
 
   const statusFor = (i: number): Status => {
@@ -92,12 +111,13 @@ export function HeroDemoCard() {
           </div>
 
           {/* rows */}
-          <div className="px-3 py-3">
+          <div className="px-2.5 py-2">
             {heroDemoSubs.map((sub, i) => {
               const s = statusFor(i);
               return (
                 <Row
                   key={sub.name}
+                  id={sub.id}
                   name={sub.name}
                   mono={sub.mono}
                   color={sub.color}
@@ -128,37 +148,20 @@ export function HeroDemoCard() {
           </div>
         </motion.div>
 
-        {/* floating notification card stacked behind */}
-        <motion.div
-          initial={{ opacity: 0, y: 20, scale: 0.95 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          transition={{ duration: 0.8, delay: 0.6, ease: [0.16, 1, 0.3, 1] }}
-          className="absolute -bottom-6 -left-6 hidden sm:flex items-center gap-3 rounded-2xl bg-white px-4 py-3 shadow-float border border-hairline/60"
-        >
-          <span className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-light">
-            <Check size={16} className="text-brand" strokeWidth={2.5} />
-          </span>
-          <div>
-            <div className="text-[13px] font-medium text-ink">
-              You'll save $1,847 this year
-            </div>
-            <div className="text-[12px] text-ink-muted">
-              7 subscriptions cancelled
-            </div>
-          </div>
-        </motion.div>
       </div>
     </div>
   );
 }
 
 function Row({
+  id,
   name,
   mono,
   color,
   amount,
   status,
 }: {
+  id: string;
   name: string;
   mono: string;
   color: string;
@@ -168,11 +171,15 @@ function Row({
   return (
     <div
       className={cn(
-        "flex items-center gap-3 rounded-xl px-3 py-2.5 transition-colors duration-300",
+        "flex items-center gap-3 rounded-xl px-3 py-2 transition-colors duration-300",
         status === "cancelled" && "bg-emerald-50/40"
       )}
     >
-      <Monogram label={mono} color={color} size="sm" />
+      <BrandIcon
+        id={id}
+        size="sm"
+        fallback={<Monogram label={mono} color={color} size="sm" />}
+      />
       <div className="min-w-0 flex-1">
         <div className="text-[13.5px] font-medium text-ink truncate">{name}</div>
         <div className="text-[11.5px] text-ink-muted">Monthly · recurring</div>

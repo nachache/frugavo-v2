@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { ArrowRight, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -9,31 +9,62 @@ import { Confetti } from "@/components/shared/confetti";
 import { FadeIn } from "@/components/motion/fade-in";
 import { finalCta } from "@/lib/content";
 
-const STORAGE_KEY = "frugavo:spotsRemaining";
+// Encode the submission as application/x-www-form-urlencoded so Netlify Forms
+// can pick it up. The static <form name="waitlist" data-netlify="true">
+// declaration in app/layout.tsx lets Netlify register the form at build time;
+// every POST to "/" carrying `form-name=waitlist` is captured server-side.
+function encode(data: Record<string, string>) {
+  return Object.keys(data)
+    .map((k) => encodeURIComponent(k) + "=" + encodeURIComponent(data[k]))
+    .join("&");
+}
 
 export function FinalCta() {
   const [email, setEmail] = useState("");
+  const [botField, setBotField] = useState(""); // honeypot
   const [submitted, setSubmitted] = useState(false);
-  const [spots, setSpots] = useState(247);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  // Persist a per-visitor "spots remaining" counter. We seed from server-side
-  // default 247 so SSR/CSR markup matches, then sync from localStorage after
-  // hydration to avoid a flash.
-  useEffect(() => {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) setSpots(parseInt(stored, 10));
-  }, []);
-
-  const onSubmit = (e: FormEvent) => {
+  const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (!email || !/^\S+@\S+\.\S+$/.test(email)) return;
-    // TODO: persist signup to Vercel KV when wiring up auth.  For now we log.
-    // eslint-disable-next-line no-console
-    console.log("[frugavo] waitlist signup:", email);
-    setSubmitted(true);
-    const next = Math.max(1, spots - 1);
-    setSpots(next);
-    localStorage.setItem(STORAGE_KEY, String(next));
+    setError(null);
+    if (!email || !/^\S+@\S+\.\S+$/.test(email)) {
+      setError("Please enter a valid email.");
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      // Submit to Netlify Forms (captured at the site root).
+      await fetch("/", {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: encode({
+          "form-name": "waitlist",
+          "bot-field": botField,
+          email,
+        }),
+      });
+
+      // Also write to Supabase if configured. Failures here are non-fatal —
+      // Netlify keeps the canonical record.
+      try {
+        await fetch("/api/waitlist", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email }),
+        });
+      } catch {
+        // ignore
+      }
+
+      setSubmitted(true);
+    } catch {
+      setError("Network error. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -58,20 +89,45 @@ export function FinalCta() {
                   exit={{ opacity: 0, scale: 0.98 }}
                   transition={{ duration: 0.3 }}
                   onSubmit={onSubmit}
+                  name="waitlist"
+                  method="POST"
+                  data-netlify="true"
+                  data-netlify-honeypot="bot-field"
                   className="flex flex-col sm:flex-row items-stretch gap-2 rounded-full sm:bg-white sm:p-1.5 sm:shadow-float sm:border sm:border-hairline/60"
                 >
+                  {/* Hidden form-name input lets Netlify identify the
+                      submission server-side. */}
+                  <input type="hidden" name="form-name" value="waitlist" />
+                  {/* Honeypot field — visible only to bots. */}
+                  <input
+                    type="text"
+                    name="bot-field"
+                    value={botField}
+                    onChange={(e) => setBotField(e.target.value)}
+                    tabIndex={-1}
+                    autoComplete="off"
+                    className="hidden"
+                    aria-hidden="true"
+                  />
                   <Input
                     type="email"
+                    name="email"
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="you@example.com"
                     aria-label="Email"
+                    disabled={submitting}
                     className="sm:border-0 sm:bg-transparent sm:shadow-none sm:h-12"
                   />
-                  <Button type="submit" size="lg" className="sm:h-12 sm:px-6">
-                    {finalCta.button}
-                    <ArrowRight size={16} />
+                  <Button
+                    type="submit"
+                    size="lg"
+                    disabled={submitting}
+                    className="sm:h-12 sm:px-6"
+                  >
+                    {submitting ? "Adding…" : finalCta.button}
+                    {!submitting && <ArrowRight size={16} />}
                   </Button>
                 </motion.form>
               ) : (
@@ -89,23 +145,36 @@ export function FinalCta() {
                     </span>
                   </div>
                   <h3 className="mt-4 text-[18px] font-display font-semibold text-ink">
-                    You're in.
+                    You&apos;re in.
                   </h3>
                   <p className="mt-1 text-[14px] text-ink-body">
-                    We'll email you the moment your invite is ready.
+                    We&apos;ll email you the moment your invite is ready.
                   </p>
                 </motion.div>
               )}
             </AnimatePresence>
-          </div>
-        </FadeIn>
+            {error && (
+              <p className="mt-3 text-[13px] text-danger" role="alert">
+                {error}
+              </p>
+            )}
 
-        <FadeIn delay={0.15}>
-          <p className="mt-6 text-[13px] text-ink-muted tnum">
-            Spots remaining:{" "}
-            <span className="font-semibold text-ink">{spots}</span> /{" "}
-            {finalCta.initialSpots}
-          </p>
+            {/* Data-use disclosure required by Meta Ads policy for lead-
+                capture forms. Visible directly under the form, not buried
+                in the footer. */}
+            {!submitted && (
+              <p className="mt-4 text-[12px] text-ink-muted leading-relaxed">
+                {finalCta.privacyNote}{" "}
+                <a
+                  href="/privacy"
+                  className="underline decoration-ink-muted/40 underline-offset-2 hover:text-ink hover:decoration-ink"
+                >
+                  Privacy policy
+                </a>
+                .
+              </p>
+            )}
+          </div>
         </FadeIn>
       </div>
     </section>

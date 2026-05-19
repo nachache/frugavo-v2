@@ -30,6 +30,11 @@ const config: Config = {
       fontFamily: {
         sans: ["var(--font-inter)", "system-ui", "sans-serif"],
         display: ["var(--font-inter-tight)", "var(--font-inter)", "system-ui", "sans-serif"],
+        // Editorial pair used in /learn articles. Fraunces is a variable
+        // serif with strong display character; Newsreader is optimized for
+        // long-form on-screen reading.
+        editorial: ["var(--font-fraunces)", "Georgia", "serif"],
+        editorialBody: ["var(--font-newsreader)", "Georgia", "serif"],
       },
       fontSize: {
         hero: ["clamp(48px, 7vw, 96px)", { lineHeight: "0.95", letterSpacing: "-0.04em" }],

@@ -3,27 +3,27 @@
 
 export const nav = {
   links: [
-    { label: "Pricing", href: "#pricing" },
-    { label: "How it works", href: "#how-it-works" },
-    { label: "FAQ", href: "#faq" },
+    { label: "Pricing", href: "/#pricing" },
+    { label: "How it works", href: "/#how-it-works" },
+    { label: "Library", href: "/learn" },
+    { label: "FAQ", href: "/#faq" },
   ],
   signIn: { label: "Sign in", href: "/signin" },
-  cta: { label: "Get early access", href: "#cta" },
+  cta: { label: "Get early access", href: "/#cta" },
 };
 
 export const hero = {
-  eyebrow: "Early access · Limited to 500 users",
+  eyebrow: "Pre-launch preview · Early access · Sample data shown",
   headline: "Cancel the subscriptions you forgot you had.",
   subhead:
-    "Frugavo finds every recurring charge hiding in your inbox and bank account, then cancels the ones you don't want. No phone calls. No 'are you sure?' loops. No regrets.",
-  primaryCta: { label: "Find my hidden subscriptions", href: "#cta" },
+    "Frugavo finds recurring charges in your inbox and bank account, and cancels the ones you tell it to. No phone calls. No “are you sure?” loops.",
+  primaryCta: { label: "Join the waitlist", href: "#cta" },
   secondaryCta: { label: "See how it works", href: "#demo" },
-  trust: "Bank-grade encryption · We never sell data · Read-only access",
-  counterStart: 847293,
-  counterLabel: "saved by Frugavo users this month",
+  trust: "Read-only access · We don’t store bank credentials · We don’t sell data",
 };
 
 export type DemoSub = {
+  id: string;
   name: string;
   mono: string;
   color: string;
@@ -31,21 +31,18 @@ export type DemoSub = {
 };
 
 export const heroDemoSubs: DemoSub[] = [
-  { name: "Netflix", mono: "N", color: "#E50914", amount: 22.99 },
-  { name: "Spotify", mono: "S", color: "#1DB954", amount: 11.99 },
-  { name: "Adobe CC", mono: "A", color: "#FA0F00", amount: 59.99 },
-  { name: "NYT", mono: "T", color: "#000000", amount: 25.0 },
-  { name: "Peloton", mono: "P", color: "#181A1D", amount: 44.0 },
-  { name: "LinkedIn Premium", mono: "in", color: "#0A66C2", amount: 39.99 },
+  { id: "netflix", name: "Netflix", mono: "N", color: "#E50914", amount: 22.99 },
+  { id: "spotify", name: "Spotify", mono: "S", color: "#1DB954", amount: 11.99 },
+  { id: "adobe", name: "Adobe CC", mono: "A", color: "#FA0F00", amount: 59.99 },
+  { id: "nyt", name: "NYT", mono: "T", color: "#000000", amount: 25.0 },
+  { id: "peloton", name: "Peloton", mono: "P", color: "#181A1D", amount: 44.0 },
+  { id: "linkedin", name: "LinkedIn Premium", mono: "in", color: "#0A66C2", amount: 39.99 },
 ];
 
-export const pressLogos = [
-  "TechCrunch",
-  "The Verge",
-  "Fast Company",
-  "Lifehacker",
-  "Product Hunt",
-];
+// The previous `pressLogos` export (TechCrunch, The Verge, etc.) was removed
+// because those publications had not actually covered Frugavo. The Social
+// Proof section now displays the real infrastructure stack instead — see
+// components/sections/social-proof.tsx.
 
 export const howItWorks = {
   heading: "Three steps. Then never think about it again.",
@@ -165,53 +162,94 @@ export const inboxSubs: InboxSub[] = [
   },
 ];
 
+export type ProviderItem = { id?: string; name: string };
+
 export const providers = {
   heading: "We handle 2,000+ subscription providers.",
   subhead: "If it bills monthly, we can probably cancel it.",
   categories: [
     {
       title: "Streaming",
-      items: ["Netflix", "Disney+", "Max", "Hulu", "Paramount+"],
+      moreCount: 86,
+      items: [
+        { id: "netflix", name: "Netflix" },
+        { name: "Disney+" },
+        { id: "max", name: "Max" },
+        { name: "Hulu" },
+      ] as ProviderItem[],
     },
     {
       title: "Music & audio",
-      items: ["Spotify", "Apple Music", "Tidal", "SiriusXM", "Audible"],
+      moreCount: 42,
+      items: [
+        { id: "spotify", name: "Spotify" },
+        { id: "apple-music", name: "Apple Music" },
+        { id: "audible", name: "Audible" },
+        { id: "tidal", name: "Tidal" },
+      ] as ProviderItem[],
     },
     {
       title: "Productivity",
-      items: ["Adobe", "Microsoft 365", "Notion", "Dropbox", "Canva"],
+      moreCount: 184,
+      items: [
+        { id: "adobe", name: "Adobe" },
+        { id: "microsoft", name: "Microsoft 365" },
+        { id: "notion", name: "Notion" },
+        { id: "dropbox", name: "Dropbox" },
+      ] as ProviderItem[],
     },
     {
       title: "News",
-      items: ["NYT", "WSJ", "WaPo", "The Athletic", "Substack"],
+      moreCount: 312,
+      items: [
+        { id: "nyt", name: "NYT" },
+        { name: "WSJ" },
+        { id: "wapo", name: "WaPo" },
+        { id: "substack", name: "Substack" },
+      ] as ProviderItem[],
     },
     {
-      title: "Fitness",
-      items: ["Peloton", "ClassPass", "Strava", "Calm", "Headspace"],
+      title: "Fitness & wellness",
+      moreCount: 128,
+      items: [
+        { id: "peloton", name: "Peloton" },
+        { id: "strava", name: "Strava" },
+        { id: "headspace", name: "Headspace" },
+        { name: "Calm" },
+      ] as ProviderItem[],
     },
     {
-      title: "Food",
-      items: ["HelloFresh", "Blue Apron", "DoorDash", "Uber One", "Instacart+"],
+      title: "Food & delivery",
+      moreCount: 96,
+      items: [
+        { id: "hellofresh", name: "HelloFresh" },
+        { id: "doordash", name: "DoorDash" },
+        { id: "uber-one", name: "Uber One" },
+        { id: "instacart", name: "Instacart+" },
+      ] as ProviderItem[],
     },
   ],
 };
 
+// Sample cancellation feed. These entries are illustrative — Frugavo is
+// pre-launch and has no real cancellation activity yet. The ticker is
+// labeled "Sample activity" in the UI so visitors aren't misled.
 export const ticker = [
-  "M. ended Netflix · $22.99/mo saved · 2 min ago",
-  "J. ended Adobe CC · $59.99/mo saved · 4 min ago",
-  "S. ended Peloton · $44.00/mo saved · 6 min ago",
-  "R. ended LinkedIn Premium · $39.99/mo saved · 8 min ago",
-  "K. ended Spotify · $11.99/mo saved · 11 min ago",
-  "A. ended HelloFresh · $89.94/mo saved · 13 min ago",
-  "D. ended NYT · $25.00/mo saved · 16 min ago",
-  "P. ended Audible · $14.95/mo saved · 18 min ago",
-  "L. ended Disney+ · $13.99/mo saved · 21 min ago",
-  "C. ended Hulu · $17.99/mo saved · 24 min ago",
-  "T. ended ClassPass · $79.00/mo saved · 27 min ago",
-  "B. ended Headspace · $12.99/mo saved · 29 min ago",
-  "F. ended Calm · $14.99/mo saved · 32 min ago",
-  "E. ended Microsoft 365 · $9.99/mo saved · 35 min ago",
-  "G. ended Canva · $14.99/mo saved · 38 min ago",
+  "Netflix would save $22.99/mo · typical cancellation",
+  "Adobe Creative Cloud would save $59.99/mo · typical cancellation",
+  "Peloton would save $44.00/mo · typical cancellation",
+  "LinkedIn Premium would save $39.99/mo · typical cancellation",
+  "Spotify Premium would save $11.99/mo · typical cancellation",
+  "HelloFresh would save $89.94/mo · typical cancellation",
+  "NYT would save $25.00/mo · typical cancellation",
+  "Audible would save $14.95/mo · typical cancellation",
+  "Disney+ would save $13.99/mo · typical cancellation",
+  "Hulu would save $17.99/mo · typical cancellation",
+  "ClassPass would save $79.00/mo · typical cancellation",
+  "Headspace would save $12.99/mo · typical cancellation",
+  "Calm would save $14.99/mo · typical cancellation",
+  "Microsoft 365 would save $9.99/mo · typical cancellation",
+  "Canva Pro would save $14.99/mo · typical cancellation",
 ];
 
 export const pricing = {
@@ -257,17 +295,17 @@ export const trust = {
     {
       icon: "Eye",
       title: "Read-only access",
-      body: "We can read your receipts. We can't send emails or move money.",
+      body: "We use read-only scopes to identify recurring charges. We can’t send email or move money on your behalf.",
     },
     {
       icon: "Lock",
-      title: "Bank-grade encryption",
-      body: "256-bit encryption at rest. TLS 1.3 in transit. SOC 2 in progress.",
+      title: "Bank credentials never stored",
+      body: "Bank connections will be brokered through Plaid when the product launches. We never see or store your bank password.",
     },
     {
       icon: "ShieldCheck",
-      title: "We never sell data",
-      body: "Your subscriptions are yours. We don't sell, share, or train models on them.",
+      title: "We don’t sell your data",
+      body: "Your subscription information is yours. We don’t sell, share, or train models on it. See our privacy policy.",
     },
   ],
 };
@@ -313,13 +351,24 @@ export const faqs = [
 
 export const finalCta = {
   headline: "Stop paying for subscriptions you forgot about.",
-  subhead: "It takes 60 seconds to find out how much you're losing.",
-  button: "Get early access",
-  initialSpots: 500,
+  subhead:
+    "Join the early-access waitlist. We’ll email you when your invite is ready.",
+  button: "Join the waitlist",
+  // We previously displayed a decrementing "spots remaining" counter. It was
+  // cosmetic (localStorage-driven, not server-backed) which counts as
+  // manufactured scarcity under Meta Ads policy. Removed pending real
+  // server-tracked early-access caps.
+  privacyNote:
+    "We’ll only email you about your Frugavo invite. Unsubscribe anytime.",
 };
 
 export const footer = {
   tagline: "The subscription killer.",
+  // TODO: replace with your real registered business address before launch.
+  // Both Google Ads and Meta Ads require a reachable business address on
+  // the landing page for financial-adjacent advertisers.
+  address: "Frugavo Inc. · 1234 Placeholder Ave, Montréal, QC · Canada",
+  contactEmail: "hello@frugavo.com",
   cols: [
     {
       title: "Product",
@@ -342,10 +391,8 @@ export const footer = {
     {
       title: "Legal",
       links: [
-        { label: "Privacy", href: "/privacy" },
-        { label: "Terms", href: "/terms" },
-        { label: "Security", href: "/security" },
-        { label: "DPA", href: "/dpa" },
+        { label: "Privacy Policy", href: "/privacy" },
+        { label: "Terms of Service", href: "/terms" },
       ],
     },
     {

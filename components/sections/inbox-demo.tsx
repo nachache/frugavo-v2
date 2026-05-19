@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { inboxSubs, type InboxSub } from "@/lib/content";
 import { Monogram } from "@/components/ui/monogram";
+import { BrandIcon } from "@/components/ui/brand-icon";
 import { Button } from "@/components/ui/button";
 import { Confetti } from "@/components/shared/confetti";
 import { useToast } from "@/components/shared/toast";
@@ -95,12 +96,24 @@ export function InboxDemo() {
     >
       <div className="container-page">
         <div className="max-w-[720px]">
-          <span className="text-[13px] font-medium text-brand">Live demo</span>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-[13px] font-medium text-brand">Live demo</span>
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-hairline bg-white px-2.5 py-1 text-[11px] font-medium text-ink-body">
+              <span className="h-1.5 w-1.5 rounded-full bg-accent" />
+              Sample data · Pre-launch preview
+            </span>
+          </div>
           <h2 className="mt-2 text-[40px] md:text-[56px] font-display font-bold tracking-[-0.03em] leading-[1.05] text-ink">
             Watch Frugavo work.
           </h2>
           <p className="mt-4 text-[18px] text-ink-body">
-            This is a live simulation. Click any subscription to cancel it.
+            An interactive preview of how Frugavo will cancel subscriptions when
+            you connect your own inbox. The data and brands below are samples —
+            we're launching soon.{" "}
+            <a href="#cta" className="text-ink underline underline-offset-4 hover:text-brand transition">
+              Join the waitlist
+            </a>{" "}
+            to be first.
           </p>
         </div>
 
@@ -182,7 +195,11 @@ function Inbox({
                 key={s.id}
                 className="group flex items-center gap-3 border-b border-hairline/40 px-4 py-3.5 last:border-b-0"
               >
-                <Monogram label={s.mono} color={s.color} size="sm" />
+                <BrandIcon
+                  id={s.id}
+                  size="sm"
+                  fallback={<Monogram label={s.mono} color={s.color} size="sm" />}
+                />
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
                     <span className="text-[13.5px] font-medium text-ink truncate">
@@ -299,8 +316,13 @@ function Dashboard({
       {/* header */}
       <div className="flex items-center justify-between border-b border-hairline/60 px-5 py-4">
         <div>
-          <div className="text-[12px] uppercase tracking-[0.14em] text-ink-muted">
-            Frugavo dashboard
+          <div className="flex items-center gap-2">
+            <div className="text-[12px] uppercase tracking-[0.14em] text-ink-muted">
+              Frugavo dashboard
+            </div>
+            <span className="inline-flex items-center rounded-full bg-ink/[0.06] px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-ink-muted">
+              Demo
+            </span>
           </div>
           <div className="mt-0.5 flex items-baseline gap-2">
             <motion.span
@@ -342,7 +364,11 @@ function Dashboard({
               )}
             >
               <div className="flex items-start justify-between">
-                <Monogram label={s.mono} color={s.color} size="md" />
+                <BrandIcon
+                  id={s.id}
+                  size="md"
+                  fallback={<Monogram label={s.mono} color={s.color} size="md" />}
+                />
                 {cancelled && (
                   <span className="inline-flex items-center gap-1 rounded-full bg-brand-light px-2 py-0.5 text-[10.5px] font-medium text-brand">
                     <Check size={10} strokeWidth={3} />
@@ -377,14 +403,12 @@ function Dashboard({
                   Cancelled
                 </button>
               ) : (
-                <Button
-                  size="sm"
-                  variant="primary"
+                <button
                   onClick={() => onCancel(s)}
-                  className="h-9"
+                  className="group/btn inline-flex h-9 items-center justify-center gap-1 rounded-full border border-hairline bg-white px-4 text-[12.5px] font-medium text-ink transition hover:border-accent hover:bg-accent hover:text-white"
                 >
                   Cancel
-                </Button>
+                </button>
               )}
             </article>
           );
@@ -484,7 +508,11 @@ function CancelModal({
             className="relative w-full max-w-[460px] rounded-3xl bg-white p-7 shadow-lift"
           >
             <div className="flex items-center gap-3">
-              <Monogram label={sub.mono} color={sub.color} size="md" />
+              <BrandIcon
+                id={sub.id}
+                size="md"
+                fallback={<Monogram label={sub.mono} color={sub.color} size="md" />}
+              />
               <div>
                 <div className="text-[15px] font-semibold text-ink">
                   {sub.brand}

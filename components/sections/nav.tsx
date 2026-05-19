@@ -22,10 +22,10 @@ export function Nav() {
   return (
     <header
       className={cn(
-        "fixed inset-x-0 top-0 z-50 transition-all duration-300 ease-out",
+        "sticky top-0 z-50 transition-all duration-300 ease-out",
         scrolled
-          ? "bg-canvas/85 backdrop-blur-xl shadow-[0_1px_0_rgba(10,10,10,0.06)]"
-          : "bg-transparent"
+          ? "bg-canvas/95 backdrop-blur-md shadow-[0_1px_0_rgba(10,10,10,0.06)]"
+          : "bg-canvas/70"
       )}
     >
       <div className="container-page flex h-[68px] items-center justify-between">

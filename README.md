@@ -100,3 +100,32 @@ Then in the Vercel dashboard:
 - Swap the in-memory waitlist counter for a server-driven number so two visitors see the same count.
 - Add `next/image` once you have real logo assets.
 - Wire `react-confetti` or `canvas-confetti` if the SVG burst feels light in production — current implementation keeps the bundle small.
+
+## The Library (`/learn`)
+
+A 50-article SEO reference section lives at `/learn`. Articles are written in plain Markdown bodies inside TypeScript files in `lib/learn/articles/`, one file per cluster. Each article has full frontmatter (title, description, keywords, related, cluster, reading time) and renders at `/learn/[slug]` with:
+
+- Pre-generated static params for every slug (full SSG, fast Google indexing)
+- Per-article Article JSON-LD schema
+- Per-article dynamic OG image via `@vercel/og` (no third-party logos used; safe for Meta + Google Ads policy)
+- Canonical URLs
+- Sitemap entries (see `app/sitemap.ts`)
+
+### Adding a new article
+
+1. Open the relevant cluster file in `lib/learn/articles/`.
+2. Append an Article object. Use kebab-case for `slug`. Keep description under 160 chars.
+3. Add the slug to the `related[]` array of any 2–3 sibling articles.
+4. That's it. Sitemap, OG, JSON-LD, listings, and routing all update automatically.
+
+### Editing an article
+
+Edit the `body` Markdown of the article object. Hot reload picks it up; the build picks it up.
+
+### Statistics caveat
+
+The article bodies use illustrative ranges and rounded industry-typical numbers. Before launch, replace specific stats with cited sources you've verified, and add citation links inline. The structure of each article is built to take citations naturally.
+
+### Image policy
+
+Don't put third-party logos, real people's faces, or guaranteed financial outcomes in any image that might end up in paid creative. Full policy and rationale in [`docs/image-policy.md`](docs/image-policy.md). The dynamic OG images already comply; static images you add should follow the same rules.

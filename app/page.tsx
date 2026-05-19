@@ -1,6 +1,10 @@
 import dynamic from "next/dynamic";
 import { ScrollProgress } from "@/components/shared/scroll-progress";
 import { EasterEgg } from "@/components/shared/easter-egg";
+// LaunchBanner removed — the global black band was loud and broke the visual
+// hierarchy. The pre-launch disclosure now lives in the hero eyebrow ("Pre-
+// launch preview · Sample data shown") and inside each demo section.
+// import { LaunchBanner } from "@/components/shared/launch-banner";
 import { ToastProvider } from "@/components/shared/toast";
 import { Nav } from "@/components/sections/nav";
 import { Hero } from "@/components/sections/hero";

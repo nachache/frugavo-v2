@@ -1,29 +1,36 @@
 "use client";
 
-import { pressLogos } from "@/lib/content";
+import { Lock, Network, ShieldCheck, Mail, CreditCard } from "lucide-react";
 
-// Auto-scrolling marquee. We duplicate the list so the loop is seamless, and
-// pause on hover. Individual logos restore color on hover.
+// Previously rendered fake "as featured in" press logos (TechCrunch, The Verge,
+// etc.) which was misleading social proof under both Google Ads and Meta Ads
+// policy. Replaced with an honest "built on" row that names the infrastructure
+// Frugavo will use — each item is a verifiable stack choice rather than an
+// unearned endorsement.
+
+const STACK = [
+  { label: "Plaid for bank connections", icon: Network },
+  { label: "OAuth 2.0 inbox scopes", icon: Mail },
+  { label: "Stripe for payments", icon: CreditCard },
+  { label: "TLS 1.3 in transit", icon: Lock },
+  { label: "Read-only access", icon: ShieldCheck },
+];
+
 export function SocialProof() {
-  const items = [...pressLogos, ...pressLogos];
   return (
-    <section className="py-10 border-y border-hairline/60 bg-white/40">
+    <section className="py-12 border-y border-hairline/60 bg-white/40">
       <div className="container-page">
         <p className="text-center text-[12px] uppercase tracking-[0.18em] text-ink-muted mb-6">
-          As featured in
+          Built on the same infrastructure your bank apps trust
         </p>
-        <div className="group relative mask-fade-x overflow-hidden">
-          <div className="flex w-max items-center gap-12 animate-marquee group-hover:[animation-play-state:paused]">
-            {items.map((name, i) => (
-              <span
-                key={i}
-                className="font-display text-[22px] md:text-[26px] tracking-[-0.02em] font-semibold text-ink-muted/60 hover:text-ink transition whitespace-nowrap"
-              >
-                {name}
-              </span>
-            ))}
-          </div>
-        </div>
+        <ul className="flex flex-wrap items-center justify-center gap-x-8 gap-y-3 text-[14px] text-ink-body">
+          {STACK.map(({ label, icon: Icon }) => (
+            <li key={label} className="inline-flex items-center gap-2">
+              <Icon size={14} className="text-ink-muted" strokeWidth={1.75} />
+              {label}
+            </li>
+          ))}
+        </ul>
       </div>
     </section>
   );

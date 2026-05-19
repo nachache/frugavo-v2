@@ -6,11 +6,24 @@ export function Footer() {
     <footer className="border-t border-hairline/60 bg-canvas">
       <div className="container-page py-16">
         <div className="grid gap-12 lg:grid-cols-[1.2fr_2fr]">
-          <div className="max-w-[280px]">
+          <div className="max-w-[320px]">
             <Wordmark />
             <p className="mt-4 text-[14px] leading-relaxed text-ink-body">
               {footer.tagline}
             </p>
+            {/* Business address + contact email surfaced on the landing page.
+                Both Google Ads and Meta Ads require a reachable business
+                address for advertisers in financial-adjacent categories. */}
+            <address className="mt-4 not-italic text-[13px] text-ink-muted leading-relaxed">
+              {footer.address}
+              <br />
+              <a
+                href={`mailto:${footer.contactEmail}`}
+                className="hover:text-ink transition"
+              >
+                {footer.contactEmail}
+              </a>
+            </address>
           </div>
           <div className="grid grid-cols-2 gap-8 sm:grid-cols-4">
             {footer.cols.map((col) => (

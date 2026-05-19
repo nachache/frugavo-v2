@@ -1,33 +1,30 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { motion, useReducedMotion } from "framer-motion";
+import { motion } from "framer-motion";
 import { ArrowRight, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { CountUp } from "@/components/motion/count-up";
 import { HeroDemoCard } from "@/components/sections/hero-demo-card";
 import { hero } from "@/lib/content";
 
+// The hero previously displayed a live-incrementing dollar counter labeled
+// "saved by Frugavo users this month". Pre-launch, Frugavo has no real users
+// and no real savings, so that counter was a misleading social-proof claim
+// under both Google Ads (Personal Finance policy) and Meta Ads (financial
+// services policy). Removed pending a real server-tracked metric.
+//
+// In its place: three static value-prop chips. Each describes a structural
+// product feature, not a personalized financial outcome.
+
+const VALUE_PROPS = [
+  "Free to join the waitlist",
+  "No credit card required",
+  "Cancel any time",
+];
+
 export function Hero() {
-  const reduced = useReducedMotion();
-  const [total, setTotal] = useState(hero.counterStart);
-
-  // Living counter: small random increments every 2-4s after the initial
-  // count-up has settled. Feels less like a static number on the page.
-  useEffect(() => {
-    if (reduced) return;
-    let timer: number;
-    const tick = () => {
-      setTotal((v) => v + Math.floor(Math.random() * 14) + 1);
-      timer = window.setTimeout(tick, 2000 + Math.random() * 2000);
-    };
-    timer = window.setTimeout(tick, 2200);
-    return () => clearTimeout(timer);
-  }, [reduced]);
-
   return (
-    <section className="relative pt-32 md:pt-40 pb-20 md:pb-28 overflow-hidden">
+    <section className="relative pt-12 md:pt-20 pb-20 md:pb-28 overflow-hidden">
       {/* Drifting blob backdrop — emerald onto cream, very low opacity. */}
       <div
         aria-hidden
@@ -110,26 +107,21 @@ export function Hero() {
             {hero.trust}
           </motion.p>
 
-          <motion.div
+          <motion.ul
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.4 }}
-            className="mt-10 flex items-center gap-3 text-[14px] text-ink-body"
+            className="mt-8 flex flex-wrap gap-x-5 gap-y-2 text-[13.5px] text-ink-body"
           >
-            <span className="flex h-7 w-7 items-center justify-center rounded-full bg-brand-light">
-              <Check size={14} className="text-brand" />
-            </span>
-            <span className="tnum">
-              <CountUp
-                to={total}
-                duration={1200}
-                prefix="$"
-                triggerOnInView
-                className="font-semibold text-ink"
-              />{" "}
-              <span className="text-ink-muted">{hero.counterLabel}</span>
-            </span>
-          </motion.div>
+            {VALUE_PROPS.map((v) => (
+              <li key={v} className="inline-flex items-center gap-1.5">
+                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-brand-light">
+                  <Check size={11} className="text-brand" strokeWidth={3} />
+                </span>
+                {v}
+              </li>
+            ))}
+          </motion.ul>
         </div>
 
         {/* RIGHT — animated demo card */}
@@ -140,4 +132,3 @@ export function Hero() {
     </section>
   );
 }
-
