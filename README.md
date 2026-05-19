@@ -53,30 +53,30 @@ The page ships with text-based monograms (no licensed brand assets). The `Monogr
 
 The Providers grid (`components/sections/providers.tsx`) hashes the brand name to a stable HSL — feel free to swap to a curated palette.
 
-## Wiring the waitlist
+## Waitlist form
 
-`components/sections/final-cta.tsx` currently logs signups to the console with a `TODO` marker. To persist properly:
+The waitlist form has two parallel capture paths:
 
-```ts
-// Replace console.log inside onSubmit with:
-await fetch("/api/waitlist", {
-  method: "POST",
-  body: JSON.stringify({ email }),
-});
-```
+1. **Netlify Forms** (primary). The static declaration in `public/__forms.html` registers the form at deploy time. The React form in `components/sections/final-cta.tsx` POSTs URL-encoded data to `/` with `form-name=waitlist` and a bot-field honeypot. Submissions appear in the Netlify dashboard under Site → Forms.
+2. **Supabase** (backup record). The same submission is also sent to `/api/waitlist`, which writes to the `waitlist` table via the service-role client. Set `NEXT_PUBLIC_SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` in your Netlify environment variables for this to fire; the build still succeeds without them.
 
-Then create `app/api/waitlist/route.ts` and persist to Vercel KV / Postgres / your CRM of choice.
+## Deploying to Netlify
 
-## Deploying to Vercel
+This project is configured for Netlify deployment because the waitlist form uses native Netlify Forms. Deploying to Vercel would break form capture (Vercel doesn't intercept `POST /` for forms).
 
 ```bash
-vercel
-vercel --prod
+# Install the Netlify CLI once.
+npm i -g netlify-cli
+
+# From inside the project root.
+netlify init           # link this repo to a new or existing Netlify site
+netlify deploy --build # preview deploy
+netlify deploy --prod  # production deploy
 ```
 
-Then in the Vercel dashboard:
+Then in the Netlify dashboard:
 
-1. Project → Settings → Domains → add `frugavo.com` and `www.frugavo.com`.
+1. Site settings → Domain management → add `frugavo.com` and `www.frugavo.com`.
 2. Set DNS in your registrar to the Vercel name servers or add A / CNAME records as Vercel suggests.
 3. Add any env vars under Project → Settings → Environment Variables — currently none are required to build.
 

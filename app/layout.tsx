@@ -70,22 +70,13 @@ export default function RootLayout({
         </a>
 
         {/*
-          Build-time form definition for Netlify Forms detection. Netlify's
-          bot crawls deployed HTML at build time and registers any form that
-          carries data-netlify="true". The React form on the page POSTs to
-          /, including `form-name=waitlist`, and Netlify matches it back to
-          this declaration. Hidden visually so users never see it.
+          Netlify Forms registration lives in /public/__forms.html. That file
+          is statically served and crawled by Netlify's build bot at deploy
+          time. We intentionally don't render the hidden form here — Next.js
+          hydration can strip framework-unaware attributes (data-netlify,
+          netlify-honeypot) under some conditions. The static-HTML approach
+          is more reliable.
         */}
-        <form
-          name="waitlist"
-          data-netlify="true"
-          netlify-honeypot="bot-field"
-          hidden
-        >
-          <input type="email" name="email" />
-          <input type="text" name="bot-field" />
-        </form>
-
         {children}
       </body>
     </html>

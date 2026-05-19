@@ -383,9 +383,9 @@ export const footer = {
       title: "Company",
       links: [
         { label: "About", href: "/about" },
-        { label: "Blog", href: "/blog" },
-        { label: "Careers", href: "/careers" },
-        { label: "Press", href: "/press" },
+        { label: "Blog", href: "/learn" },
+        { label: "Careers", href: "mailto:hello@frugavo.com?subject=Careers%20at%20Frugavo" },
+        { label: "Press", href: "/" },
       ],
     },
     {

@@ -1,0 +1,30 @@
+# Netlify build + plugin config for Frugavo.
+#
+# The @netlify/plugin-nextjs plugin handles Next.js App Router routing,
+# image optimization, and edge functions automatically. It's installed at
+# build time via the plugins block below — no manual npm install needed.
+#
+# Form submissions to / with form-name=waitlist are captured because of the
+# declaration in /public/__forms.html. View captured submissions in the
+# Netlify dashboard under Site → Forms.
+
+[build]
+  command = "npm run build"
+  publish = ".next"
+
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
+
+# Optional: enable Netlify Forms spam protection (Akismet, reCAPTCHA, or
+# honeypot). Our React form already uses the bot-field honeypot, declared
+# in /public/__forms.html via netlify-honeypot="bot-field". No further
+# configuration required for the honeypot path.
+
+# Headers — sane defaults for a marketing/landing site.
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Permissions-Policy = "camera=(), microphone=(), geolocation=()"

@@ -1,0 +1,29 @@
+<!--
+  Netlify Forms detection file.
+
+  Netlify's build bot scans the deployed site for any <form data-netlify="true">
+  at deploy time. For static-export and JS-framework projects (including
+  Next.js), the most reliable place to put that declaration is in a static
+  HTML file under /public — Netlify crawls /public deterministically, before
+  any framework rehydration.
+
+  The React form in components/sections/final-cta.tsx POSTs URL-encoded data
+  to "/" with a hidden `form-name=waitlist` field. Netlify matches the
+  submission back to the declaration below by name.
+
+  Do not delete this file. If you rename the form, update both this file and
+  final-cta.tsx.
+-->
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Frugavo — Netlify Forms registration</title>
+  </head>
+  <body>
+    <form name="waitlist" data-netlify="true" netlify-honeypot="bot-field">
+      <input type="email" name="email" />
+      <input type="text" name="bot-field" />
+    </form>
+  </body>
+</html>
