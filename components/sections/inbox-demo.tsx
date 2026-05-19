@@ -104,12 +104,13 @@ export function InboxDemo() {
             </span>
           </div>
           <h2 className="mt-2 text-[40px] md:text-[56px] font-display font-bold tracking-[-0.03em] leading-[1.05] text-ink">
-            Watch Frugavo work.
+            See what your list will look like.
           </h2>
           <p className="mt-4 text-[18px] text-ink-body">
-            An interactive preview of how Frugavo will cancel subscriptions when
-            you connect your own inbox. The data and brands below are samples —
-            we're launching soon.{" "}
+            A preview of the Frugavo dashboard once your bank is connected.
+            Every recurring charge in one list, with a one-tap path to the
+            provider’s real cancel page. The data and brands shown are samples
+            — we’re launching soon.{" "}
             <a href="#cta" className="text-ink underline underline-offset-4 hover:text-brand transition">
               Join the waitlist
             </a>{" "}
@@ -418,13 +419,13 @@ function Dashboard({
 }
 
 // -- CANCEL MODAL ------------------------------------------------------------
-
-const STEPS = [
-  { label: "Connecting to {brand}", ms: 800 },
-  { label: "Logging in", ms: 800 },
-  { label: "Navigating to subscription settings", ms: 1000 },
-  { label: "Confirming cancellation", ms: 800 },
-];
+//
+// V1 product is assist-only: deep link to provider + pre-filled email +
+// self-report. The earlier modal showed a fake "AI agent logging in and
+// cancelling" flow, which misrepresented the product. This version reflects
+// what the user actually does: open the provider's cancel page in a new
+// tab, send a pre-filled email if needed, mark as cancelled. Frugavo then
+// watches the next billing cycle via Plaid to confirm the charge stops.
 
 function CancelModal({
   sub,
@@ -435,54 +436,24 @@ function CancelModal({
   onClose: () => void;
   onComplete: (sub: InboxSub) => void;
 }) {
-  const reduced = useReducedMotion();
-  const [step, setStep] = useState(0);
-  const [done, setDone] = useState(false);
+  const [step, setStep] = useState<"choice" | "watching">("choice");
   const completedRef = useRef(false);
 
   useEffect(() => {
     if (!sub) {
-      setStep(0);
-      setDone(false);
+      setStep("choice");
       completedRef.current = false;
-      return;
     }
-    if (reduced) {
-      setStep(STEPS.length);
-      setDone(true);
-      if (!completedRef.current) {
-        completedRef.current = true;
-        onComplete(sub);
-      }
-      return;
+  }, [sub]);
+
+  const handleMarkCancelled = () => {
+    if (!sub) return;
+    setStep("watching");
+    if (!completedRef.current) {
+      completedRef.current = true;
+      onComplete(sub);
     }
-    let cancelled = false;
-    let acc = 0;
-    const timers: number[] = [];
-    STEPS.forEach((s, i) => {
-      acc += s.ms;
-      timers.push(
-        window.setTimeout(() => {
-          if (cancelled) return;
-          setStep(i + 1);
-        }, acc)
-      );
-    });
-    timers.push(
-      window.setTimeout(() => {
-        if (cancelled) return;
-        setDone(true);
-        if (!completedRef.current) {
-          completedRef.current = true;
-          onComplete(sub);
-        }
-      }, acc + 200)
-    );
-    return () => {
-      cancelled = true;
-      timers.forEach(clearTimeout);
-    };
-  }, [sub, onComplete, reduced]);
+  };
 
   return (
     <AnimatePresence>
@@ -517,99 +488,91 @@ function CancelModal({
                   {sub.brand}
                 </div>
                 <div className="text-[12.5px] text-ink-muted tnum">
-                  {formatCurrency(sub.amount)}/mo
+                  {formatCurrency(sub.amount)}/mo · {formatCurrency(sub.amount * 12, false)}/yr
                 </div>
               </div>
             </div>
 
-            <div className="mt-6 space-y-2.5">
-              {STEPS.map((s, i) => {
-                const isActive = !done && step === i;
-                const isComplete = done || step > i;
-                return (
-                  <div
-                    key={i}
-                    className={cn(
-                      "flex items-center gap-3 rounded-xl px-3 py-2.5 text-[13.5px] transition",
-                      isActive && "bg-ink/[0.03]"
-                    )}
-                  >
-                    <span
-                      className={cn(
-                        "flex h-6 w-6 items-center justify-center rounded-full transition",
-                        isComplete
-                          ? "bg-brand-light text-brand"
-                          : isActive
-                          ? "bg-ink/[0.06] text-ink"
-                          : "bg-ink/[0.04] text-ink-muted"
-                      )}
-                    >
-                      {isComplete ? (
-                        <Check size={12} strokeWidth={3} />
-                      ) : isActive ? (
-                        <Loader2 size={12} className="animate-spin" />
-                      ) : (
-                        <span className="h-1.5 w-1.5 rounded-full bg-current" />
-                      )}
-                    </span>
-                    <span
-                      className={cn(
-                        isComplete ? "text-ink" : isActive ? "text-ink" : "text-ink-muted"
-                      )}
-                    >
-                      {s.label.replace("{brand}", sub.brand)}
-                      {isActive && "…"}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
+            {step === "choice" && (
+              <>
+                <p className="mt-5 text-[14px] leading-relaxed text-ink-body">
+                  Frugavo will open {sub.brand}&apos;s real cancel page in a new
+                  tab and prepare an email you can send from your own inbox.
+                  After you finish, mark it cancelled and we&apos;ll watch your
+                  next billing cycle to confirm the charge stops.
+                </p>
 
-            {/* success state */}
-            <AnimatePresence>
-              {done && (
-                <motion.div
-                  initial={{ opacity: 0, y: 12 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-                  className="relative mt-5 rounded-2xl bg-brand-light p-4 text-center"
+                <div className="mt-5 space-y-2">
+                  <button
+                    className="w-full inline-flex items-center justify-center gap-2 rounded-xl border border-hairline bg-white px-4 h-11 text-[13.5px] font-medium text-ink hover:border-ink/30 hover:shadow-soft transition"
+                    onClick={(e) => e.preventDefault()}
+                  >
+                    Open cancel page for {sub.brand} →
+                  </button>
+                  <button
+                    className="w-full inline-flex items-center justify-center gap-2 rounded-xl border border-hairline bg-white px-4 h-11 text-[13.5px] font-medium text-ink hover:border-ink/30 hover:shadow-soft transition"
+                    onClick={(e) => e.preventDefault()}
+                  >
+                    Copy cancellation email
+                  </button>
+                </div>
+
+                <button
+                  onClick={handleMarkCancelled}
+                  className="mt-4 w-full inline-flex items-center justify-center gap-1.5 rounded-full bg-ink h-11 px-5 text-[14px] font-medium text-white hover:bg-ink/85 transition"
                 >
-                  <div className="relative inline-block">
-                    <Confetti />
-                    <motion.div
-                      initial={{ scale: 0 }}
-                      animate={{ scale: 1 }}
-                      transition={{
-                        type: "spring",
-                        stiffness: 320,
-                        damping: 18,
-                        delay: 0.05,
-                      }}
-                      className="relative mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-brand text-white"
-                    >
-                      <Check size={22} strokeWidth={3} />
-                    </motion.div>
-                  </div>
-                  <div className="mt-3 text-[15px] font-semibold text-brand">
-                    Cancelled
-                  </div>
-                  <div className="text-[13px] text-emerald-800/80 mt-0.5 tnum">
-                    You'll save {formatCurrency(sub.amount * 12)} this year.
-                  </div>
-                  <div className="mt-4">
-                    <Button
-                      size="sm"
-                      variant="dark"
-                      onClick={onClose}
-                      className="h-9"
-                    >
-                      Done
-                    </Button>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
+                  <Check size={14} strokeWidth={2.5} />
+                  Mark as cancelled
+                </button>
+              </>
+            )}
+
+            {step === "watching" && (
+              <motion.div
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+                className="relative mt-5 rounded-2xl bg-brand-light p-5 text-center"
+              >
+                <div className="relative inline-block">
+                  <Confetti />
+                  <motion.div
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    transition={{
+                      type: "spring",
+                      stiffness: 320,
+                      damping: 18,
+                      delay: 0.05,
+                    }}
+                    className="relative mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-brand text-white"
+                  >
+                    <Check size={22} strokeWidth={3} />
+                  </motion.div>
+                </div>
+                <div className="mt-3 text-[15px] font-semibold text-brand">
+                  Marked as cancelled
+                </div>
+                <div className="text-[13px] text-emerald-800/80 mt-1 max-w-[320px] mx-auto leading-relaxed">
+                  We&apos;ll watch your next billing cycle from {sub.brand}.
+                  If they charge you again, we&apos;ll email you so you can
+                  follow up.
+                </div>
+                <div className="text-[12px] text-emerald-800/70 mt-2 tnum">
+                  Estimated yearly saving: {formatCurrency(sub.amount * 12)}
+                </div>
+                <div className="mt-4">
+                  <Button
+                    size="sm"
+                    variant="dark"
+                    onClick={onClose}
+                    className="h-9"
+                  >
+                    Done
+                  </Button>
+                </div>
+              </motion.div>
+            )}
           </motion.div>
         </motion.div>
       )}

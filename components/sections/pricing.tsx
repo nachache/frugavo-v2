@@ -1,23 +1,16 @@
 "use client";
 
-import { useState } from "react";
-import { motion } from "framer-motion";
 import { Check, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { FadeIn } from "@/components/motion/fade-in";
 import { pricing } from "@/lib/content";
-import { cn } from "@/lib/utils";
 
-type Cadence = "monthly" | "annual";
+// v1 pricing is a single $5/mo flat plan. We dropped the dual-card
+// "Flat vs Performance" layout because the Performance tier required a
+// savings-tracking system we don't have in v1.
 
 export function Pricing() {
-  const [cadence, setCadence] = useState<Cadence>("annual");
-  const [flat, performance] = pricing.plans;
-
-  const flatPrice =
-    cadence === "monthly"
-      ? { big: flat.priceMonthly, unit: "/mo", note: undefined }
-      : { big: flat.priceAnnual, unit: "/yr", note: `save $${flat.annualSavings}` };
+  const [plan] = pricing.plans;
 
   return (
     <section id="pricing" className="py-24 md:py-32 bg-white/40">
@@ -32,101 +25,54 @@ export function Pricing() {
           </div>
         </FadeIn>
 
-        <div className="mt-12 grid gap-6 lg:grid-cols-2 max-w-[960px]">
-          {/* FLAT */}
+        <div className="mt-12 max-w-[520px] mx-auto">
           <FadeIn>
-            <div className="gradient-border-rotating relative h-full rounded-3xl bg-white p-8 shadow-soft">
+            <div className="gradient-border-rotating relative rounded-3xl bg-white p-8 shadow-soft">
               <div className="absolute -top-3 left-8 inline-flex items-center gap-1 rounded-full bg-ink px-2.5 py-1 text-[10.5px] font-medium tracking-wide text-white uppercase">
                 <Sparkles size={11} />
-                Recommended
+                Early access
               </div>
 
-              <div className="flex items-center justify-between">
-                <h3 className="text-[22px] font-display font-semibold tracking-[-0.02em] text-ink">
-                  {flat.name}
-                </h3>
+              <h3 className="text-[22px] font-display font-semibold tracking-[-0.02em] text-ink">
+                {plan.name}
+              </h3>
 
-                {/* monthly/annual toggle */}
-                <div className="inline-flex rounded-full bg-ink/[0.05] p-1 text-[12px]">
-                  {(["monthly", "annual"] as Cadence[]).map((c) => (
-                    <button
-                      key={c}
-                      onClick={() => setCadence(c)}
-                      className={cn(
-                        "relative rounded-full px-3 py-1.5 capitalize transition",
-                        cadence === c ? "text-ink" : "text-ink-muted hover:text-ink"
-                      )}
-                    >
-                      {cadence === c && (
-                        <motion.span
-                          layoutId="cadence-pill"
-                          transition={{ type: "spring", stiffness: 360, damping: 30 }}
-                          className="absolute inset-0 rounded-full bg-white shadow-soft"
-                        />
-                      )}
-                      <span className="relative">{c}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="mt-6 flex items-baseline gap-2">
-                <span className="text-[64px] leading-none font-display font-bold tracking-[-0.04em] text-ink tnum">
-                  ${flatPrice.big}
+              <div className="mt-5 flex items-baseline gap-2">
+                <span className="text-[72px] leading-none font-display font-bold tracking-[-0.04em] text-ink tnum">
+                  ${plan.priceMonthly}
                 </span>
                 <span className="text-[16px] font-medium text-ink-muted">
-                  {flatPrice.unit}
+                  /month
                 </span>
-                {flatPrice.note && (
-                  <span className="ml-1 inline-flex items-center rounded-full bg-brand-light px-2 py-0.5 text-[11px] font-medium text-brand">
-                    {flatPrice.note}
-                  </span>
-                )}
               </div>
+              <p className="mt-2 text-[13px] text-ink-muted">
+                Less than the cost of one forgotten subscription.
+              </p>
 
               <ul className="mt-7 space-y-3">
-                {flat.features.map((f) => (
-                  <li key={f} className="flex items-start gap-2.5 text-[14px] text-ink-body">
-                    <Check size={16} className="mt-0.5 text-brand shrink-0" strokeWidth={2.5} />
+                {plan.features.map((f) => (
+                  <li
+                    key={f}
+                    className="flex items-start gap-2.5 text-[14.5px] text-ink-body"
+                  >
+                    <Check
+                      size={16}
+                      className="mt-0.5 text-brand shrink-0"
+                      strokeWidth={2.5}
+                    />
                     {f}
                   </li>
                 ))}
               </ul>
 
               <Button asChild size="lg" className="mt-8 w-full">
-                <a href="#cta">{flat.cta}</a>
+                <a href="#cta">{plan.cta}</a>
               </Button>
-            </div>
-          </FadeIn>
 
-          {/* PERFORMANCE */}
-          <FadeIn delay={0.1}>
-            <div className="relative h-full rounded-3xl bg-white p-8 shadow-soft border border-hairline/60">
-              <h3 className="text-[22px] font-display font-semibold tracking-[-0.02em] text-ink">
-                {performance.name}
-              </h3>
-
-              <div className="mt-6 flex items-baseline gap-2">
-                <span className="text-[64px] leading-none font-display font-bold tracking-[-0.04em] text-ink tnum">
-                  30%
-                </span>
-                <span className="text-[14px] font-medium text-ink-muted max-w-[180px]">
-                  of first-year savings, per cancelled sub
-                </span>
-              </div>
-
-              <ul className="mt-7 space-y-3">
-                {performance.features.map((f) => (
-                  <li key={f} className="flex items-start gap-2.5 text-[14px] text-ink-body">
-                    <Check size={16} className="mt-0.5 text-brand shrink-0" strokeWidth={2.5} />
-                    {f}
-                  </li>
-                ))}
-              </ul>
-
-              <Button asChild size="lg" variant="dark" className="mt-8 w-full">
-                <a href="#cta">{performance.cta}</a>
-              </Button>
+              <p className="mt-4 text-center text-[12px] text-ink-muted">
+                Scan is free. You only pay once you want to cancel
+                subscriptions or get monthly alerts.
+              </p>
             </div>
           </FadeIn>
         </div>

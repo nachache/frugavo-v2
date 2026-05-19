@@ -14,12 +14,12 @@ export const nav = {
 
 export const hero = {
   eyebrow: "Pre-launch preview · Early access · Sample data shown",
-  headline: "Cancel the subscriptions you forgot you had.",
+  headline: "Find every subscription you forgot you had.",
   subhead:
-    "Frugavo finds recurring charges in your inbox and bank account, and cancels the ones you tell it to. No phone calls. No “are you sure?” loops.",
+    "Connect your bank in 60 seconds. Frugavo scans 12 months of charges and shows you every recurring bill. Tap Cancel on the ones you don’t want — we’ll walk you straight to the provider’s cancel page, then watch your next billing cycle to confirm it actually stopped.",
   primaryCta: { label: "Join the waitlist", href: "#cta" },
   secondaryCta: { label: "See how it works", href: "#demo" },
-  trust: "Read-only access · We don’t store bank credentials · We don’t sell data",
+  trust: "Read-only access via Plaid · We don’t store bank credentials · We don’t sell data",
 };
 
 export type DemoSub = {
@@ -49,21 +49,21 @@ export const howItWorks = {
   steps: [
     {
       n: "01",
-      icon: "Inbox",
-      title: "Connect",
-      body: "Link your inbox or bank in 30 seconds. Read-only access — we see receipts, not your messages or money.",
+      icon: "Landmark",
+      title: "Connect your bank",
+      body: "Link a bank or credit card in 30 seconds via Plaid — the same connection your bank app uses. Read-only. We never see or store your credentials.",
     },
     {
       n: "02",
       icon: "Search",
-      title: "Discover",
-      body: "We find every recurring charge. Free trials about to bill. Subs you forgot existed. All in one place.",
+      title: "See every recurring charge",
+      body: "Frugavo scans 12 months of transactions and shows you every recurring bill in one list — with monthly and annual totals.",
     },
     {
       n: "03",
       icon: "Zap",
-      title: "Cancel",
-      body: "Tap to cancel. Our AI agent logs in, navigates the cancel flow, and confirms it's done. You watch it happen live.",
+      title: "Cancel with one tap",
+      body: "Tap Cancel and we open the provider’s real cancel page with a pre-filled email ready to send. Then Plaid watches your next billing cycle to confirm the charge actually stopped.",
     },
   ],
 };
@@ -165,8 +165,9 @@ export const inboxSubs: InboxSub[] = [
 export type ProviderItem = { id?: string; name: string };
 
 export const providers = {
-  heading: "We handle 2,000+ subscription providers.",
-  subhead: "If it bills monthly, we can probably cancel it.",
+  heading: "Cancel-assist for 2,000+ providers.",
+  subhead:
+    "If it bills your card on a schedule, Frugavo will detect it and walk you to the right cancel page.",
   categories: [
     {
       title: "Streaming",
@@ -255,36 +256,21 @@ export const ticker = [
 export const pricing = {
   heading: "Pricing that makes sense.",
   subhead:
-    "Pay us less than one cancelled subscription a month. Or only when we save you money.",
+    "Less than the cost of one forgotten subscription. The scan is free; you only pay once you want to do something with the list.",
   plans: [
     {
       id: "flat",
-      name: "Flat",
+      name: "Frugavo",
       recommended: true,
-      priceMonthly: 9,
-      priceAnnual: 79,
-      annualSavings: 29,
+      priceMonthly: 5,
       features: [
-        "Unlimited cancellations",
-        "All 2,000+ providers supported",
-        "Free trial monitoring & alerts",
-        "Email + bank scanning",
-        "Cancel anytime",
+        "Connect unlimited bank and card accounts",
+        "Monthly re-scan of your transactions",
+        "Cancel-assist for every detected subscription",
+        "Renewal alerts before each charge",
+        "Cancel anytime — one click",
       ],
-      cta: "Start saving",
-    },
-    {
-      id: "performance",
-      name: "Performance",
-      recommended: false,
-      tagline: "30% of first year savings",
-      features: [
-        "Pay only when we save you money",
-        "One-time fee per cancelled sub",
-        "No monthly commitment",
-        "Same detection features",
-      ],
-      cta: "Choose performance",
+      cta: "Join the waitlist",
     },
   ],
 };
@@ -312,40 +298,44 @@ export const trust = {
 
 export const faqs = [
   {
-    q: "Is this safe? Why should I trust Frugavo with my inbox?",
-    a: "We use read-only OAuth scopes — Frugavo can see receipt metadata but cannot send email, read your conversations, or move money. Bank connections run through Plaid, which is the same infrastructure used by Venmo, Chime, and Robinhood. Credentials never touch our servers.",
+    q: "Is this safe? What does Frugavo actually see?",
+    a: "Bank connections run through Plaid — the same infrastructure used by Venmo, Chime, and Robinhood. Read-only access. We see merchant names, amounts, and dates. We never see or store your bank password. We can’t move money, transfer funds, or do anything except read the transaction list.",
   },
   {
-    q: "How does Frugavo actually cancel a subscription?",
-    a: "An AI agent opens a sandboxed browser, logs into the provider with credentials you authorize, navigates to the cancellation page, and completes the flow. You see every step happen live, and we save a confirmation receipt.",
+    q: "How does the cancellation actually work?",
+    a: "When you tap Cancel on a subscription, Frugavo opens the provider’s real cancellation page in a new tab and pre-fills a cancellation email you can send from your own inbox. You complete the cancellation yourself — usually 60 seconds. Then Plaid watches your next billing cycle and confirms whether the charge actually stopped.",
+  },
+  {
+    q: "Why don’t you cancel for me automatically?",
+    a: "Because doing it well requires storing your credentials for every provider, handling 2FA, and surviving every provider’s anti-automation defenses — all of which we don’t want to do badly. We’d rather walk you straight to the cancel page and confirm the result via your bank than promise full automation we can’t guarantee. Full agentic cancellation is on the year-two roadmap.",
   },
   {
     q: "What if a provider requires a phone call to cancel?",
-    a: "For the small number of providers that still require a call (looking at you, gym chains), our agent places the call on your behalf, navigates the IVR, and stays on hold. You get a transcript and confirmation.",
+    a: "A small number of providers (mostly gyms and some telcos) still require a phone call. For those, Frugavo provides the phone number, the script, and the best time to call. A paid concierge add-on that places the call for you is on the roadmap.",
   },
   {
-    q: "Do you cancel free trials before they bill?",
-    a: "Yes — that's one of the highest-leverage things we do. We track the trial expiry date and prompt you 48 hours before billing, or auto-cancel if you've pre-approved.",
+    q: "Do you catch free trials before they bill?",
+    a: "Yes — once we’ve seen the first trial transaction, we track the expected next charge and email you 48 hours before. The 48-hour window is enough to cancel the trial before any charge appears.",
   },
   {
-    q: "Which banks and email providers do you support?",
-    a: "Email: Gmail and Outlook. Banks: 12,000+ US and Canadian institutions through Plaid, including every major retail bank and most credit unions.",
+    q: "Which banks do you support?",
+    a: "Every major US and Canadian bank and credit union through Plaid — over 12,000 institutions total. If your bank app uses Plaid (most do), Frugavo will connect.",
   },
   {
     q: "Is this available in Canada?",
-    a: "Yes — Frugavo is built for North America. We support CAD subscriptions and Canadian banks at launch. UK and EU coming after.",
+    a: "Yes — Frugavo is built for North America. We support CAD subscriptions and Canadian banks at launch.",
   },
   {
     q: "How is this different from Rocket Money?",
-    a: "Rocket Money detects subscriptions and then hands you a script to call the provider yourself. Frugavo's AI agent does the cancellation end-to-end. Detection is the easy part — actually killing the charge is the hard part. That's our wedge.",
+    a: "Rocket Money is bundled with a budgeting product and pushes you toward their bill-negotiation upsell. Frugavo does one thing: find subscriptions, walk you to the cancel page, and confirm via your bank that the charge actually stopped. No upsells, no negotiation pitches, no budgeting features. Five dollars a month, flat.",
   },
   {
-    q: "What happens if a cancellation fails?",
-    a: "Our agent retries, escalates to a human concierge if needed, and refunds the cancellation fee on the rare occasion neither works. We post detailed status logs to your dashboard.",
+    q: "What if I miss a charge after I try to cancel?",
+    a: "Plaid monitors your next billing cycle. If the same merchant charges you again after you marked the subscription as cancelled, we email you so you can follow up. We also keep a per-provider success-rate dashboard so we know which cancellation flows are reliable and which need a phone call instead.",
   },
   {
     q: "Can I cancel my Frugavo account easily?",
-    a: "Yes — one click in settings. We'd be hypocrites otherwise.",
+    a: "Yes — one click in settings. We’d be hypocrites otherwise.",
   },
 ];
 

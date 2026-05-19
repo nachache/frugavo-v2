@@ -1,11 +1,11 @@
 "use client";
 
-import { Inbox, Search, Zap, type LucideIcon } from "lucide-react";
+import { Inbox, Landmark, Search, Zap, type LucideIcon } from "lucide-react";
 import { motion } from "framer-motion";
 import { Stagger, StaggerItem } from "@/components/motion/fade-in";
 import { howItWorks } from "@/lib/content";
 
-const iconMap: Record<string, LucideIcon> = { Inbox, Search, Zap };
+const iconMap: Record<string, LucideIcon> = { Inbox, Landmark, Search, Zap };
 
 export function HowItWorks() {
   return (
