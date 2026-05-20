@@ -2,49 +2,51 @@ import { redirect } from "next/navigation";
 import { currentUser } from "@clerk/nextjs/server";
 import Link from "next/link";
 import { supabaseAdmin } from "@/lib/supabase";
+import { runScanForUser } from "@/lib/scan";
+import {
+  SubscriptionList,
+  type Subscription,
+} from "@/components/app/subscription-list";
 
 // /app — the authenticated dashboard root.
 //
 // Routing logic:
-//   1. If the user has no bank connected, send them to /app/connect to
-//      start the Plaid Link flow.
-//   2. If they have a bank but haven't run a scan yet, send them to
-//      /app/scan to kick it off.
-//   3. Otherwise show the subscriptions list (placeholder for now).
-//
-// The Supabase service-role client is used because we don't have RLS
-// policies wired to Clerk JWTs yet. Every query is scoped to the authed
-// Clerk user_id at the application layer.
+//   1. No bank connected → /app/connect.
+//   2. Bank connected, no scan yet → run scan inline, then render list.
+//   3. Bank connected, scan complete → render list with cached data and
+//      let the user trigger a re-scan from the list UI.
 
 export default async function AppHome() {
   const user = await currentUser();
   if (!user) redirect("/sign-in");
 
-  // Ensure an app_users mirror row exists. Cheap upsert; runs once per
-  // visit until we wire a Clerk webhook later.
-  if (supabaseAdmin) {
-    await supabaseAdmin
-      .from("app_users")
-      .upsert(
-        {
-          id: user.id,
-          email: user.emailAddresses[0]?.emailAddress ?? "",
-        },
-        { onConflict: "id" }
-      );
+  if (!supabaseAdmin) {
+    return (
+      <section className="container-page py-16 md:py-24 max-w-[720px]">
+        <p className="text-[15px] text-danger">
+          Supabase is not configured. Set NEXT_PUBLIC_SUPABASE_URL and
+          SUPABASE_SERVICE_ROLE_KEY in your Netlify environment variables.
+        </p>
+      </section>
+    );
   }
 
-  // Check whether the user has any bank connection on file.
-  const { data: items } = supabaseAdmin
-    ? await supabaseAdmin
-        .from("plaid_items")
-        .select("id")
-        .eq("user_id", user.id)
-        .limit(1)
-    : { data: [] };
+  // Ensure the app_users mirror row exists.
+  await supabaseAdmin.from("app_users").upsert(
+    {
+      id: user.id,
+      email: user.emailAddresses[0]?.emailAddress ?? "",
+    },
+    { onConflict: "id" }
+  );
+
+  // Step 1 — does the user have any connected bank?
+  const { data: items } = await supabaseAdmin
+    .from("plaid_items")
+    .select("id, status, last_synced_at")
+    .eq("user_id", user.id);
 
   if (!items || items.length === 0) {
-    // No bank connected → onboarding.
     return (
       <section className="container-page py-16 md:py-24 max-w-[720px]">
         <span className="text-[13px] font-medium text-brand">
@@ -80,25 +82,47 @@ export default async function AppHome() {
     );
   }
 
-  // Bank connected. Show subscriptions list (placeholder for now until we
-  // build the scan engine in week 3).
+  // Step 2 — are there existing subscriptions for this user?
+  let subs = await fetchSubscriptions(user.id);
+
+  // First scan: if there are connected items but no rows in `subscriptions`
+  // yet, run a synchronous scan now so the user sees data on first visit.
+  // Subsequent visits use the cached rows; the user can hit "Re-scan" in
+  // the UI to refresh.
+  const noScanYet = items.every((i) => !i.last_synced_at);
+  if (subs.length === 0 && noScanYet) {
+    await runScanForUser(user.id);
+    subs = await fetchSubscriptions(user.id);
+  }
+
   return (
-    <section className="container-page py-16 md:py-24 max-w-[860px]">
+    <section className="container-page py-12 md:py-16 max-w-[860px]">
       <span className="text-[13px] font-medium text-brand">Dashboard</span>
       <h1 className="mt-2 font-display text-[36px] md:text-[44px] font-bold tracking-[-0.03em] leading-[1.05] text-ink">
         Your subscriptions
       </h1>
-      <p className="mt-5 text-[16px] leading-relaxed text-ink-body">
-        We&apos;re still building the scan engine. Once it&apos;s live, this
-        page will show every recurring charge on your connected accounts with
-        cancel-assist for each one.
+      <p className="mt-3 text-[15px] leading-relaxed text-ink-body">
+        Every recurring charge Plaid detected on your connected accounts.
+        Re-scan to pull the latest.
       </p>
-      <div className="mt-8 rounded-3xl bg-white border border-hairline/60 p-6 text-center">
-        <p className="text-[14px] text-ink-muted">
-          Scan engine ships in week 3 of the v1 roadmap. You&apos;ll be among
-          the first beta users to try it.
-        </p>
+
+      <div className="mt-10">
+        <SubscriptionList initial={subs} />
       </div>
     </section>
   );
+}
+
+async function fetchSubscriptions(userId: string): Promise<Subscription[]> {
+  if (!supabaseAdmin) return [];
+  const { data } = await supabaseAdmin
+    .from("subscriptions")
+    .select(
+      "id, merchant_name, amount_cents, currency, frequency, last_charged_at, next_expected_charge_at, status, user_decision"
+    )
+    .eq("user_id", userId)
+    .order("status", { ascending: true })
+    .order("amount_cents", { ascending: false });
+
+  return (data ?? []) as Subscription[];
 }
