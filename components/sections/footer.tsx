@@ -11,12 +11,16 @@ export function Footer() {
             <p className="mt-4 text-[14px] leading-relaxed text-ink-body">
               {footer.tagline}
             </p>
-            {/* Business address + contact email surfaced on the landing page.
-                Both Google Ads and Meta Ads require a reachable business
-                address for advertisers in financial-adjacent categories. */}
+            {/* Contact email + (optionally) business address. The address is
+                null until a real registered address exists; required by paid-
+                ad platforms but not required for organic traffic. */}
             <address className="mt-4 not-italic text-[13px] text-ink-muted leading-relaxed">
-              {footer.address}
-              <br />
+              {footer.address && (
+                <>
+                  {footer.address}
+                  <br />
+                </>
+              )}
               <a
                 href={`mailto:${footer.contactEmail}`}
                 className="hover:text-ink transition"

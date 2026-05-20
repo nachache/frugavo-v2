@@ -354,10 +354,11 @@ export const finalCta = {
 
 export const footer = {
   tagline: "The subscription killer.",
-  // TODO: replace with your real registered business address before launch.
-  // Both Google Ads and Meta Ads require a reachable business address on
-  // the landing page for financial-adjacent advertisers.
-  address: "Frugavo Inc. · 1234 Placeholder Ave, Montréal, QC · Canada",
+  // Business address omitted until Frugavo Inc. has a real registered
+  // address to publish. Required by Google Ads and Meta Ads for paid
+  // financial-services advertising, but not required for organic traffic
+  // or for running the waitlist site. Add it back before running paid ads.
+  address: null as string | null,
   contactEmail: "hello@frugavo.com",
   cols: [
     {
