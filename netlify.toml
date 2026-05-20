@@ -20,11 +20,18 @@
 # in /public/__forms.html via netlify-honeypot="bot-field". No further
 # configuration required for the honeypot path.
 
-# Headers — sane defaults for a marketing/landing site.
+# Headers — sane defaults for the marketing site and the authenticated
+# app. Permissions-Policy denies camera / mic / geolocation app-wide
+# (we don't need them), and explicitly allows the small set of features
+# Plaid Link uses inside its cross-origin iframe.
 [[headers]]
   for = "/*"
   [headers.values]
     X-Frame-Options = "DENY"
     X-Content-Type-Options = "nosniff"
     Referrer-Policy = "strict-origin-when-cross-origin"
-    Permissions-Policy = "camera=(), microphone=(), geolocation=()"
+    Permissions-Policy = """camera=(), microphone=(), geolocation=(), \
+fullscreen=(self "https://cdn.plaid.com" "https://*.plaid.com"), \
+clipboard-read=(self "https://cdn.plaid.com" "https://*.plaid.com"), \
+clipboard-write=(self "https://cdn.plaid.com" "https://*.plaid.com"), \
+accelerometer=(self "https://cdn.plaid.com" "https://*.plaid.com")"""
