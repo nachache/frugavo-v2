@@ -176,7 +176,7 @@ export function SubscriptionList({
                 </button>
 
                 {open && (
-                  <ul className="divide-y divide-hairline/60">
+                  <ul className="grid gap-3 p-4 sm:p-5 sm:grid-cols-2 lg:grid-cols-3 bg-canvas/40">
                     {subs.map((s) => (
                       <SubscriptionRow key={s.id} sub={s} />
                     ))}
@@ -204,7 +204,7 @@ export function SubscriptionList({
             />
           </button>
           {showPruned && (
-            <ul className="mt-4 grid gap-3">
+            <ul className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {cancelled.map((s) => (
                 <SubscriptionRow key={s.id} sub={s} cancelled />
               ))}
@@ -230,28 +230,43 @@ function SubscriptionRow({
   return (
     <li
       className={cn(
-        "px-5 py-4 flex items-center gap-4",
+        "rounded-2xl bg-white border border-hairline/60 p-4 flex flex-col gap-3 hover:shadow-soft transition-shadow",
         cancelled && "opacity-60"
       )}
     >
-      <BrandLogo merchant={sub.merchant_name} category={sub.category} size={40} />
-
-      <div className="flex-1 min-w-0">
-        <div className="text-[14.5px] font-medium text-ink truncate">
-          {sub.merchant_name}
+      {/* Header: logo + name + category */}
+      <div className="flex items-start gap-3">
+        <BrandLogo merchant={sub.merchant_name} category={sub.category} size={40} />
+        <div className="min-w-0 flex-1">
+          <div className="text-[14.5px] font-semibold text-ink truncate">
+            {sub.merchant_name}
+          </div>
+          <div className="mt-0.5 flex items-center gap-1.5 text-[11.5px] text-ink-muted">
+            <span
+              aria-hidden
+              className="h-1.5 w-1.5 rounded-full shrink-0"
+              style={{ backgroundColor: CATEGORY_COLOR[cat] }}
+            />
+            <span>{CATEGORY_LABEL[cat]}</span>
+          </div>
         </div>
-        <div className="mt-0.5 flex items-center gap-1.5 text-[11.5px] text-ink-muted tnum">
-          <span
-            aria-hidden
-            className="h-1.5 w-1.5 rounded-full shrink-0"
-            style={{ backgroundColor: CATEGORY_COLOR[cat] }}
-          />
-          <span>{CATEGORY_LABEL[cat]}</span>
+      </div>
+
+      {/* Price block */}
+      <div className="tnum">
+        <div className="flex items-baseline gap-1.5">
+          <span className="text-[20px] font-display font-bold text-ink">
+            {formatCurrency(monthly / 100)}
+          </span>
+          <span className="text-[11.5px] font-medium text-ink-muted">/mo</span>
+        </div>
+        <div className="text-[11.5px] text-ink-muted">
+          {formatCurrency(annual / 100, false)}/yr
           {sub.last_charged_at && (
             <>
-              <span className="text-ink/30">·</span>
+              <span className="text-ink/30 mx-1.5">·</span>
               <span>
-                last charged{" "}
+                last{" "}
                 {new Date(sub.last_charged_at).toLocaleDateString(undefined, {
                   month: "short",
                   day: "numeric",
@@ -262,37 +277,27 @@ function SubscriptionRow({
         </div>
       </div>
 
+      {/* Actions */}
       {!cancelled ? (
-        <div className="flex items-center gap-3">
-          <div className="text-right tnum">
-            <div className="text-[15.5px] font-display font-semibold text-ink">
-              {formatCurrency(monthly / 100)}
-              <span className="text-[11.5px] font-medium text-ink-muted">/mo</span>
-            </div>
-            <div className="text-[11px] text-ink-muted">
-              {formatCurrency(annual / 100, false)}/yr
-            </div>
-          </div>
-          <div className="hidden sm:flex items-center gap-1.5 shrink-0">
-            <button
-              disabled
-              title="Cancel-assist ships in week 5"
-              className="inline-flex h-9 items-center gap-1 rounded-full border border-hairline bg-white px-3 text-[12.5px] font-medium text-ink hover:border-accent hover:bg-accent hover:text-white transition disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <X size={12} />
-              Cancel
-            </button>
-            <button
-              disabled
-              className="inline-flex h-9 items-center gap-1 rounded-full border border-hairline bg-white px-3 text-[12.5px] font-medium text-ink hover:bg-ink/[0.04] transition disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <Check size={12} />
-              Keep
-            </button>
-          </div>
+        <div className="flex items-center gap-1.5">
+          <button
+            disabled
+            title="Cancel-assist ships in week 5"
+            className="flex-1 inline-flex h-9 items-center justify-center gap-1 rounded-full border border-hairline bg-white px-3 text-[12.5px] font-medium text-ink hover:border-accent hover:bg-accent hover:text-white transition disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <X size={12} />
+            Cancel
+          </button>
+          <button
+            disabled
+            className="flex-1 inline-flex h-9 items-center justify-center gap-1 rounded-full border border-hairline bg-white px-3 text-[12.5px] font-medium text-ink hover:bg-ink/[0.04] transition disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <Check size={12} />
+            Keep
+          </button>
         </div>
       ) : (
-        <span className="inline-flex items-center gap-1 rounded-full bg-brand-light px-3 h-8 text-[11.5px] font-medium text-brand">
+        <span className="self-start inline-flex items-center gap-1 rounded-full bg-brand-light px-3 h-7 text-[11.5px] font-medium text-brand">
           <Check size={11} strokeWidth={3} />
           Saved {formatCurrency(annual / 100, false)}/yr
         </span>

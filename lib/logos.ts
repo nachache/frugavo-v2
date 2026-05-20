@@ -138,6 +138,12 @@ const KNOWN_DOMAINS: Record<string, string> = {
   "linkedin premium": "linkedin.com",
   patreon: "patreon.com",
   duolingo: "duolingo.com",
+  "duolingo super": "duolingo.com",
+  "united airlines": "united.com",
+  united: "united.com",
+  delta: "delta.com",
+  amex: "americanexpress.com",
+  "american express": "americanexpress.com",
   rosetta: "rosettastone.com",
   coursera: "coursera.org",
   udemy: "udemy.com",
@@ -168,8 +174,12 @@ export function domainFor(merchant: string): string | null {
   return null;
 }
 
-export function clearbitUrl(domain: string, size = 80): string {
-  return `https://logo.clearbit.com/${domain}?size=${size}`;
+// Google's favicon service. Free, no API key, no rate limits worth
+// worrying about. Returns the site's favicon at the requested size
+// (16/32/64/128/256 work). Quality is lower than full brand logos but
+// recognizable at avatar sizes, and there's no auth setup involved.
+export function logoUrl(domain: string, size = 128): string {
+  return `https://www.google.com/s2/favicons?domain=${domain}&sz=${size}`;
 }
 
 // Deterministic monogram color tied to the category so the fallback

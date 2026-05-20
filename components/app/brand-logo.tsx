@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { clearbitUrl, domainFor, monogram, monogramColor } from "@/lib/logos";
+import { logoUrl, domainFor, monogram, monogramColor } from "@/lib/logos";
 
 // Renders a brand logo via Clearbit when we have a domain mapping,
 // otherwise a colored monogram avatar. The img is given an onError
@@ -50,12 +50,12 @@ export function BrandLogo({
   return (
     /* eslint-disable-next-line @next/next/no-img-element */
     <img
-      src={clearbitUrl(domain, size * 2)}
+      src={logoUrl(domain, 128)}
       alt=""
       onError={() => setErrored(true)}
       loading="lazy"
       decoding="async"
-      className={`${sizeCls} shrink-0 rounded-xl bg-white object-contain p-1 ring-1 ring-black/[0.04] ${className ?? ""}`}
+      className={`${sizeCls} shrink-0 rounded-xl bg-white object-contain p-1.5 ring-1 ring-black/[0.04] ${className ?? ""}`}
     />
   );
 }
