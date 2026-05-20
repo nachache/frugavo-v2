@@ -126,14 +126,18 @@ export function InboxDemo() {
           Skip animation and reset demo
         </button>
 
-        <div className="mt-12 grid gap-6 lg:grid-cols-2">
-          <Inbox scanned={scanned} inView={inView} />
-          <Dashboard
-            cards={cards}
-            totalSaved={totalSaved}
-            onCancel={onCancel}
-            onReset={onReset}
-          />
+        <div className="mt-12 grid gap-6 lg:grid-cols-2 min-w-0">
+          <div className="min-w-0">
+            <Inbox scanned={scanned} inView={inView} />
+          </div>
+          <div className="min-w-0">
+            <Dashboard
+              cards={cards}
+              totalSaved={totalSaved}
+              onCancel={onCancel}
+              onReset={onReset}
+            />
+          </div>
         </div>
       </div>
 
@@ -180,8 +184,8 @@ function Inbox({
         </span>
       </div>
 
-      <div className="grid grid-cols-[120px_1fr]">
-        {/* sidebar */}
+      <div className="grid grid-cols-1 sm:grid-cols-[120px_1fr]">
+        {/* sidebar — hidden on mobile to keep the email list full-width */}
         <aside className="border-r border-hairline/60 p-3 hidden sm:block">
           <SideItem icon={InboxIcon} label="Inbox" active />
           <SideItem icon={Star} label="Starred" />
@@ -350,7 +354,7 @@ function Dashboard({
         </button>
       </div>
 
-      <div className="grid grid-cols-2 gap-2.5 p-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 p-3">
         {inboxSubs.map((s) => {
           const state = cards[s.id];
           const cancelled = state === "cancelled";
@@ -359,7 +363,7 @@ function Dashboard({
             <article
               key={s.id}
               className={cn(
-                "relative flex items-center gap-3 rounded-2xl border bg-white p-3 transition duration-300",
+                "relative flex items-center gap-3 rounded-2xl border bg-white p-3 transition duration-300 min-w-0",
                 cancelled
                   ? "border-hairline/60 opacity-60"
                   : "border-hairline/60 shadow-soft hover:shadow-float hover:-translate-y-0.5"

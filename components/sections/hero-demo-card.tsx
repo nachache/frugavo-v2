@@ -74,8 +74,10 @@ export function HeroDemoCard() {
   }, 0);
 
   return (
-    <div className="relative">
-      {/* perspective wrapper — slight 3D tilt sells the "floating panel" feel */}
+    <div className="relative min-w-0">
+      {/* perspective wrapper — slight 3D tilt sells the "floating panel" feel.
+          The tilt is disabled at mobile widths because it produces a tiny but
+          real horizontal scroll when the card uses the full viewport width. */}
       <div
         className="relative"
         style={{
@@ -83,11 +85,11 @@ export function HeroDemoCard() {
         }}
       >
         <motion.div
-          initial={{ opacity: 0, y: 24, rotateX: 6, rotateY: -8 }}
-          animate={{ opacity: 1, y: 0, rotateX: 2, rotateY: -4 }}
+          initial={{ opacity: 0, y: 24 }}
+          animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.9, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
           style={{ transformStyle: "preserve-3d" }}
-          className="relative rounded-3xl bg-white shadow-lift border border-hairline/60 overflow-hidden"
+          className="relative rounded-3xl bg-white shadow-lift border border-hairline/60 overflow-hidden lg:[transform:rotateX(2deg)_rotateY(-4deg)]"
         >
           {/* top chrome bar */}
           <div className="flex items-center justify-between border-b border-hairline/60 px-5 py-3.5 bg-white">
