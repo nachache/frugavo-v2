@@ -7,9 +7,13 @@ const isProtectedRoute = createRouteMatcher([
   "/api/app/(.*)",
 ]);
 
-export default clerkMiddleware((auth, req) => {
+export default clerkMiddleware(async (auth, req) => {
+  // In the installed @clerk/nextjs version, `auth` is a function that
+  // returns the auth context. Invoke it, then call .protect() on the
+  // result. The older `auth.protect()` form (no parentheses) was the
+  // pre-2024 pattern and now produces a TypeScript error.
   if (isProtectedRoute(req)) {
-    auth.protect();
+    auth().protect();
   }
 });
 
