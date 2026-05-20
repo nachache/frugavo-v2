@@ -4,26 +4,26 @@ import { useEffect } from "react";
 
 // Conditional GA4 debug-mode activator.
 //
-// GA4 only treats a session as "debug" — visible in Admin → DebugView — when
-// gtag has been called with config { debug_mode: true }, or when Google
-// Tag Assistant / the GA Debugger Chrome extension is active. A query-
-// string parameter alone doesn't do anything.
+// GA4 only treats a session as "debug" — visible in Admin → DebugView —
+// when gtag has been called with config { debug_mode: true }, or when
+// Google Tag Assistant / the GA Debugger Chrome extension is active. A
+// query-string parameter alone doesn't do anything.
 //
-// This component lets us flip debug mode on by appending ?ga_debug=1 to any
-// URL. On mount, it checks the URL. If the flag is present and the gtag
-// global has loaded, it re-issues the config call with debug_mode: true.
-// The re-config is idempotent — calling it after the standard config call
-// doesn't break anything; it just adds the debug flag to subsequent events.
+// This component flips debug mode on when ?ga_debug=1 is present in the
+// URL. It re-issues the GA4 config call with debug_mode: true after gtag
+// has loaded. The re-config is idempotent — events fired afterward carry
+// the debug flag and show up in DebugView.
 //
-// Strip the parameter before sharing URLs publicly so debug events don't
+// Strip ?ga_debug=1 before sharing URLs publicly so debug events don't
 // pollute production data.
 
-declare global {
-  interface Window {
-    gtag?: (...args: unknown[]) => void;
-    dataLayer?: unknown[];
-  }
-}
+// We intentionally do NOT augment the global Window type here.
+// @next/third-parties already declares window.gtag in its own types and
+// declaring it again with a slightly different signature causes a
+// TypeScript build failure. Instead, we cast window at the call site.
+type GtagWindow = Window & {
+  gtag?: (command: string, target: string, params?: Record<string, unknown>) => void;
+};
 
 export function GaDebug({ gaId }: { gaId: string }) {
   useEffect(() => {
@@ -32,14 +32,12 @@ export function GaDebug({ gaId }: { gaId: string }) {
     const params = new URLSearchParams(window.location.search);
     if (params.get("ga_debug") !== "1") return;
 
+    const w = window as GtagWindow;
+
     // Wait briefly for gtag.js to finish loading before re-issuing config.
     const tryEnable = () => {
-      if (typeof window.gtag === "function") {
-        window.gtag("config", gaId, { debug_mode: true });
-        // Visible breadcrumb so we can confirm in the console that debug
-        // mode was actually activated.
-        // eslint-disable-next-line no-console
-        console.log(`[GA4] debug_mode enabled for ${gaId}`);
+      if (typeof w.gtag === "function") {
+        w.gtag("config", gaId, { debug_mode: true });
         return true;
       }
       return false;
