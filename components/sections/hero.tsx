@@ -56,11 +56,10 @@ export function Hero() {
               delay: 0.08,
               ease: [0.16, 1, 0.3, 1],
             }}
-            className="mt-6 font-display font-bold text-ink text-[40px] md:text-[56px] leading-[1.05] tracking-[-0.03em]"
+            className="mt-6 font-display font-bold text-ink text-[44px] md:text-[64px] leading-[1.02] tracking-[-0.03em]"
           >
-            The average person thinks they spend{" "}
-            <span className="text-ink/60">$86</span> on subscriptions.{" "}
-            <span className="text-brand">They actually spend $219.</span>
+            You think you pay <span className="text-ink/50">$86</span>.{" "}
+            <span className="text-brand">It&apos;s really $219.</span>
           </motion.h1>
 
           <motion.p

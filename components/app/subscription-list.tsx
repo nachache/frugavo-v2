@@ -21,6 +21,7 @@ import { BrandLogo } from "./brand-logo";
 import { DashboardHero } from "./dashboard-hero";
 import { CancelCandidates } from "./cancel-candidates";
 import { CancelModal } from "./cancel-modal";
+import { PendingCancellations } from "./pending-cancellations";
 
 // Row shape exposed to the dashboard page. Mirrors the DB columns we
 // select in app/app/page.tsx; matches the SubLike shape from the math
@@ -61,10 +62,23 @@ export function SubscriptionList({
 
   const candidates = useMemo(() => cancelCandidates(items), [items]);
 
+  // Rows the user has cancelled but the watcher hasn't confirmed yet.
+  // We split these out so they live in their own "Watching next bill"
+  // section between active and pruned.
+  const pendingCancellations = useMemo(
+    () =>
+      items.filter(
+        (s) => s.status === "active" && s.user_decision === "cancel"
+      ),
+    [items]
+  );
+
   const grouped = useMemo(() => {
     const map = new Map<Category, Subscription[]>();
     for (const s of items) {
       if (s.status !== "active") continue;
+      // Skip pending cancellations — they get their own section below.
+      if (s.user_decision === "cancel") continue;
       const cat = asCategory(s.category);
       const arr = map.get(cat) ?? [];
       arr.push(s);
@@ -209,6 +223,8 @@ export function SubscriptionList({
           })}
         </div>
       </section>
+
+      <PendingCancellations pending={pendingCancellations} />
 
       {cancelled.length > 0 && (
         <section className="mt-10">
