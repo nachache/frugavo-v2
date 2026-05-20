@@ -46,7 +46,8 @@ export function Pricing() {
                 </span>
               </div>
               <p className="mt-2 text-[13px] text-ink-muted">
-                Less than the cost of one forgotten subscription.
+                The scan itself is free. You only pay once you want the full
+                list and the cancel-assist tools.
               </p>
 
               <ul className="mt-7 space-y-3">

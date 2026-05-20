@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter, Inter_Tight, Fraunces, Newsreader } from "next/font/google";
 import { GoogleAnalytics } from "@next/third-parties/google";
+import { ClerkProvider } from "@clerk/nextjs";
 import { GaDebug } from "@/components/shared/ga-debug";
 import { ConsentBanner, ConsentGate } from "@/components/shared/consent";
 import "./globals.css";
@@ -60,6 +61,17 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
+    <ClerkProvider
+      appearance={{
+        variables: {
+          colorPrimary: "#047857",
+          colorText: "#0A0A0A",
+          colorBackground: "#FAF8F4",
+          borderRadius: "0.75rem",
+          fontFamily: "var(--font-inter), system-ui, sans-serif",
+        },
+      }}
+    >
     <html
       lang="en"
       className={`${inter.variable} ${interTight.variable} ${fraunces.variable} ${newsreader.variable}`}
@@ -99,5 +111,6 @@ export default function RootLayout({
         </ConsentGate>
       )}
     </html>
+    </ClerkProvider>
   );
 }

@@ -507,18 +507,8 @@ function CancelModal({
                 </p>
 
                 <div className="mt-5 space-y-2">
-                  <button
-                    className="w-full inline-flex items-center justify-center gap-2 rounded-xl border border-hairline bg-white px-4 h-11 text-[13.5px] font-medium text-ink hover:border-ink/30 hover:shadow-soft transition"
-                    onClick={(e) => e.preventDefault()}
-                  >
-                    Open cancel page for {sub.brand} →
-                  </button>
-                  <button
-                    className="w-full inline-flex items-center justify-center gap-2 rounded-xl border border-hairline bg-white px-4 h-11 text-[13.5px] font-medium text-ink hover:border-ink/30 hover:shadow-soft transition"
-                    onClick={(e) => e.preventDefault()}
-                  >
-                    Copy cancellation email
-                  </button>
+                  <DemoOpenButton brand={sub.brand} />
+                  <DemoCopyEmailButton brand={sub.brand} />
                 </div>
 
                 <button
@@ -528,6 +518,11 @@ function CancelModal({
                   <Check size={14} strokeWidth={2.5} />
                   Mark as cancelled
                 </button>
+
+                <p className="mt-3 text-center text-[11px] text-ink-muted">
+                  Sample data · The two buttons above are illustrative; in the
+                  real app they open the actual provider cancel page.
+                </p>
               </>
             )}
 
@@ -581,5 +576,97 @@ function CancelModal({
         </motion.div>
       )}
     </AnimatePresence>
+  );
+}
+
+// -- DEMO BUTTONS ------------------------------------------------------------
+//
+// These buttons exist only inside the marketing demo modal. In the real app
+// they open the provider's actual cancel page and copy a real pre-filled
+// email. Here, they simulate the interaction with a toast + transient state
+// so the landing-page visitor can feel the flow without us shipping fake
+// "real" links.
+
+function DemoOpenButton({ brand }: { brand: string }) {
+  const { push } = useToast();
+  const [opened, setOpened] = useState(false);
+
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        setOpened(true);
+        push({
+          title: "Opening cancel page",
+          sub: `In the real app, ${brand}'s cancel page opens in a new tab.`,
+        });
+        window.setTimeout(() => setOpened(false), 2200);
+      }}
+      className={cn(
+        "w-full inline-flex items-center justify-center gap-2 rounded-xl border bg-white px-4 h-11 text-[13.5px] font-medium transition",
+        opened
+          ? "border-brand/40 text-brand"
+          : "border-hairline text-ink hover:border-ink/30 hover:shadow-soft"
+      )}
+    >
+      {opened ? (
+        <>
+          <Check size={14} strokeWidth={3} />
+          Opened {brand} cancel page
+        </>
+      ) : (
+        <>Open cancel page for {brand} →</>
+      )}
+    </button>
+  );
+}
+
+function DemoCopyEmailButton({ brand }: { brand: string }) {
+  const { push } = useToast();
+  const [copied, setCopied] = useState(false);
+
+  const sampleEmail =
+    `Subject: Cancel my ${brand} subscription\n\n` +
+    `Hi ${brand} team,\n\n` +
+    `Please cancel my subscription effective immediately. ` +
+    `My account email is [your email].\n\n` +
+    `Confirmation of cancellation by reply email would be appreciated.\n\n` +
+    `Thanks,\n[your name]`;
+
+  return (
+    <button
+      type="button"
+      onClick={async () => {
+        try {
+          await navigator.clipboard.writeText(sampleEmail);
+          setCopied(true);
+          push({
+            title: "Sample email copied",
+            sub: "Paste it into your email client to see the template.",
+          });
+          window.setTimeout(() => setCopied(false), 2200);
+        } catch {
+          push({
+            title: "Couldn't copy",
+            sub: "Your browser blocked clipboard access.",
+          });
+        }
+      }}
+      className={cn(
+        "w-full inline-flex items-center justify-center gap-2 rounded-xl border bg-white px-4 h-11 text-[13.5px] font-medium transition",
+        copied
+          ? "border-brand/40 text-brand"
+          : "border-hairline text-ink hover:border-ink/30 hover:shadow-soft"
+      )}
+    >
+      {copied ? (
+        <>
+          <Check size={14} strokeWidth={3} />
+          Email copied
+        </>
+      ) : (
+        <>Copy cancellation email</>
+      )}
+    </button>
   );
 }

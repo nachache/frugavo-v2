@@ -8,7 +8,7 @@ export const nav = {
     { label: "Library", href: "/learn" },
     { label: "FAQ", href: "/#faq" },
   ],
-  signIn: { label: "Sign in", href: "/signin" },
+  signIn: { label: "Sign in", href: "/sign-in" },
   cta: { label: "Get early access", href: "/#cta" },
 };
 
@@ -256,7 +256,7 @@ export const ticker = [
 export const pricing = {
   heading: "Pricing that makes sense.",
   subhead:
-    "Less than the cost of one forgotten subscription. The scan is free; you only pay once you want to do something with the list.",
+    "The 60-second scan is free. Pay $5 to unlock your full subscription list, cancel-assist for every charge, and confirmation that each cancellation actually stopped.",
   plans: [
     {
       id: "flat",
@@ -264,11 +264,12 @@ export const pricing = {
       recommended: true,
       priceMonthly: 5,
       features: [
-        "Connect unlimited bank and card accounts",
-        "Monthly re-scan of your transactions",
-        "Cancel-assist for every detected subscription",
-        "Renewal alerts before each charge",
-        "Cancel anytime — one click",
+        "Full view of every recurring charge",
+        "Cancel-assist: deep link to provider + pre-filled email",
+        "Plaid confirms each cancellation actually stopped",
+        "Monthly re-scan + renewal alerts",
+        "Unlimited bank and card accounts",
+        "Cancel Frugavo anytime",
       ],
       cta: "Join the waitlist",
     },
