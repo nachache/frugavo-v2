@@ -217,7 +217,22 @@ async function scanOneItem(args: {
     access_token: accessToken,
   });
 
-  const streams = (recurring.data.outflow_streams ?? []) as PlaidStreamLike[];
+  let streams = (recurring.data.outflow_streams ?? []) as PlaidStreamLike[];
+
+  // Filter out streams that are clearly not subscriptions — credit card
+  // pay-downs, automatic transfers, payroll/loan repayments. Plaid's
+  // recurring detector flags these as outflow streams because they ARE
+  // recurring outflows, but they belong on a different surface (debts,
+  // not subscriptions) and they confuse users when shown as cancellable.
+  streams = streams.filter((s) => isProbablySubscription(s));
+
+  // Sandbox-only: prepend a realistic synthetic fixture so the AI
+  // normalization path actually gets exercised. Plaid sandbox only
+  // returns ~7 generic-named streams which isn't enough to validate the
+  // engine. Production never enters this branch.
+  if (PLAID_ENV === "sandbox") {
+    streams = [...streams, ...buildSyntheticSandboxStreams()];
+  }
 
   await runWithCap(streams, ROW_CONCURRENCY, async (stream) => {
     const amount = stream.average_amount?.amount ?? 0;
@@ -485,6 +500,98 @@ async function seedSandboxFallback(
     }
   }
   return detected;
+}
+
+// ---------- non-subscription filter ----------
+//
+// Plaid's recurring detector returns any consistent outflow, including
+// things that aren't really "subscriptions" — credit card auto-pays,
+// loan repayments, internal transfers, payroll-related items. We filter
+// them out before they ever reach the AI normalizer or the dashboard.
+// Conservative: only drop on strong signal so we never hide a real sub.
+
+const NON_SUBSCRIPTION_PATTERNS: RegExp[] = [
+  /credit\s*card.*payment/i,        // "CREDIT CARD 3333 PAYMENT"
+  /automatic\s*payment/i,            // "AUTOMATIC PAYMENT - THANK"
+  /\bcc\s*payment\b/i,
+  /loan\s*payment/i,
+  /mortgage\s*payment/i,
+  /auto\s*loan/i,
+  /transfer\s*(to|from)/i,
+  /\bpayroll\b/i,
+  /\bach\s*deposit\b/i,
+  /\bvenmo\s*cashout\b/i,
+  /\bzelle\b/i,
+];
+
+function isProbablySubscription(s: PlaidStreamLike): boolean {
+  const haystack = `${s.merchant_name ?? ""} ${s.description ?? ""}`.trim();
+  if (!haystack) return false;
+  for (const pattern of NON_SUBSCRIPTION_PATTERNS) {
+    if (pattern.test(haystack)) return false;
+  }
+  return true;
+}
+
+// ---------- realistic synthetic streams for sandbox testing ----------
+//
+// These exercise the full pipeline: messy raw descriptors → AI
+// normalization → category tagging → regret score. The descriptors
+// mimic real bank statement strings (transaction ids, payment
+// processors, locale codes) so we can verify the normalizer collapses
+// them to clean brand names.
+
+function buildSyntheticSandboxStreams(): PlaidStreamLike[] {
+  const today = new Date();
+  const daysAgo = (n: number): string =>
+    new Date(today.getTime() - n * 86_400_000).toISOString().slice(0, 10);
+
+  const make = (
+    id: string,
+    description: string,
+    plaidMerchant: string | null,
+    amount: number,
+    daysSince: number,
+    frequency: string = "MONTHLY"
+  ): PlaidStreamLike => ({
+    stream_id: `syn-${id}`,
+    merchant_name: plaidMerchant,
+    description,
+    average_amount: { amount, iso_currency_code: "USD" },
+    frequency,
+    last_date: daysAgo(daysSince),
+    is_active: true,
+  });
+
+  return [
+    make("netflix",  "SP AFF*NETFLIX 866-579-7172 CA", "Netflix", 22.99, 4),
+    make("spotify",  "SPOTIFY USA 877-7787-9", "Spotify", 11.99, 9),
+    make("amzn-prime","AMZN PRIME*RX49J3DM1 WA", "Amazon", 14.99, 14),
+    make("adobe-cc", "ADOBE *CREATIVECLOUD 408-536", "Adobe", 59.99, 7),
+    make("nyt",      "NYTimes*Subscription NY", "The New York Times", 25.00, 11),
+    make("hbo-max",  "HBOMAX*PLAYTI XX5839", null, 15.99, 6),
+    make("disney",   "DISNEY PLUS BURBANK CA", "Disney+", 13.99, 19),
+    make("youtube-prem", "GOOGLE *YOUTUBE PRE g.co/he", null, 13.99, 2),
+    make("icloud",   "APPLE.COM/BILL 866-712-7753", "Apple", 9.99, 22),
+    make("audible",  "AUDIBLE*HG3J29 amzn.com/bill", "Audible", 14.95, 17),
+    make("dropbox",  "DROPBOX*1NJK39DJ DUBLIN", "Dropbox", 11.99, 12),
+    make("notion",   "NOTION LABS INC SF CA", "Notion", 10.00, 8),
+    make("linkedin", "LINKEDIN-PREMIUM 855-65", "LinkedIn", 39.99, 24),
+    make("peloton",  "PELOTON*MEMBERSHIP NY", "Peloton", 44.00, 3),
+    make("strava",   "STRAVA INC SAN FRANCIS", "Strava", 11.99, 13),
+    make("classpass","CLASSPASS INC NEW YORK", null, 99.00, 27),
+    make("hellofresh","HelloFresh*78293DJ NY", "HelloFresh", 89.94, 5),
+    make("doordash-dash","DOORDASH *DashPass SF", null, 9.99, 16),
+    make("att",      "ATT*BILL PAYMENT 800-2", "AT&T", 75.00, 20),
+    make("verizon",  "VZWRLSS*APOCC VISN 800-922", "Verizon", 95.00, 1),
+    make("github",   "GITHUB INC 877-448-4820", "GitHub", 4.00, 10),
+    make("openai",   "OPENAI *CHATGPT PLUS SF", null, 20.00, 5),
+    make("anthropic","ANTHROPIC PBC SAN FRAN", "Anthropic", 20.00, 15),
+    make("nyt-cooking","NYTimes*Cooking 800-69", null, 5.00, 21),
+    make("nintendo", "NINTENDO ONLINE FAMILY", "Nintendo", 34.99, 60, "ANNUALLY"),
+    make("amazon-music","Amazon Music*RT82J SE", "Amazon", 10.99, 8),
+    make("squarespace","SQUARESPACE INC NY 646-69", "Squarespace", 23.00, 18),
+  ];
 }
 
 export type { ScanRow, ScanPhase };
