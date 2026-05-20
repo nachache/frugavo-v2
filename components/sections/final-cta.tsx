@@ -3,6 +3,7 @@
 import { FormEvent, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { ArrowRight, Check } from "lucide-react";
+import { sendGAEvent } from "@next/third-parties/google";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Confetti } from "@/components/shared/confetti";
@@ -62,6 +63,14 @@ export function FinalCta() {
       } catch {
         // ignore
       }
+
+      // Fire GA4 conversion event. The helper no-ops if GA isn't loaded
+      // (e.g. in dev without the env var), so this is safe to call
+      // unconditionally. Mark waitlist_submit as a Key Event in GA4 Admin
+      // to make it eligible for Google Ads conversion import later.
+      sendGAEvent("event", "waitlist_submit", {
+        method: "netlify_form",
+      });
 
       setSubmitted(true);
     } catch {

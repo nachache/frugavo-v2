@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Inter, Inter_Tight, Fraunces, Newsreader } from "next/font/google";
+import { GoogleAnalytics } from "@next/third-parties/google";
 import "./globals.css";
 
 // next/font self-hosts the typefaces — no runtime CDN call.
@@ -79,6 +80,15 @@ export default function RootLayout({
         */}
         {children}
       </body>
+
+      {/* GA4 — only rendered when the Measurement ID is set. Loaded after
+          hydration by @next/third-parties to avoid blocking first paint.
+          The ID lives in the NEXT_PUBLIC_GA_ID env var so it's read at build
+          time and embedded in the client bundle. Set it in Netlify under
+          Site settings → Environment variables. */}
+      {process.env.NEXT_PUBLIC_GA_ID && (
+        <GoogleAnalytics gaId={process.env.NEXT_PUBLIC_GA_ID} />
+      )}
     </html>
   );
 }
