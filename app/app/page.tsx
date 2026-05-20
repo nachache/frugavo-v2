@@ -95,6 +95,8 @@ export default async function AppHome() {
     subs = await fetchSubscriptions(user.id);
   }
 
+  const charges = await fetchCharges(user.id);
+
   return (
     <section className="container-page py-12 md:py-16 max-w-[860px]">
       <span className="text-[13px] font-medium text-brand">Dashboard</span>
@@ -107,7 +109,7 @@ export default async function AppHome() {
       </p>
 
       <div className="mt-10">
-        <SubscriptionList initial={subs} />
+        <SubscriptionList initial={subs} charges={charges} />
       </div>
     </section>
   );
@@ -125,4 +127,22 @@ async function fetchSubscriptions(userId: string): Promise<Subscription[]> {
     .order("amount_cents", { ascending: false });
 
   return (data ?? []) as Subscription[];
+}
+
+// Trailing-12-month window of charges. Drives the hero area chart. We
+// bound by date to keep the payload small even for users with years of
+// history in production.
+async function fetchCharges(
+  userId: string
+): Promise<{ amount_cents: number; charged_at: string }[]> {
+  if (!supabaseAdmin) return [];
+  const since = new Date();
+  since.setMonth(since.getMonth() - 13);
+  const { data } = await supabaseAdmin
+    .from("subscription_charges")
+    .select("amount_cents, charged_at")
+    .eq("user_id", userId)
+    .gte("charged_at", since.toISOString().slice(0, 10))
+    .order("charged_at", { ascending: true });
+  return (data ?? []) as { amount_cents: number; charged_at: string }[];
 }

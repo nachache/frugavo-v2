@@ -14,6 +14,7 @@ import {
   annualCents,
   cancelCandidates,
   monthlyEquivalentCents,
+  type ChargeRow,
   type SubLike,
 } from "@/lib/subscription-math";
 import { BrandLogo } from "./brand-logo";
@@ -29,7 +30,13 @@ export type Subscription = SubLike & {
   user_decision: "keep" | "cancel" | "unsure" | null;
 };
 
-export function SubscriptionList({ initial }: { initial: Subscription[] }) {
+export function SubscriptionList({
+  initial,
+  charges = [],
+}: {
+  initial: Subscription[];
+  charges?: ChargeRow[];
+}) {
   const router = useRouter();
   const [items] = useState(initial);
   const [rescanning, startRescan] = useTransition();
@@ -122,7 +129,12 @@ export function SubscriptionList({ initial }: { initial: Subscription[] }) {
 
   return (
     <div>
-      <DashboardHero subs={items} onRescan={triggerRescan} rescanning={rescanning} />
+      <DashboardHero
+        subs={items}
+        charges={charges}
+        onRescan={triggerRescan}
+        rescanning={rescanning}
+      />
 
       <CancelCandidates candidates={candidates} />
 

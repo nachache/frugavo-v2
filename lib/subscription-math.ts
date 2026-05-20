@@ -56,38 +56,60 @@ export function totalMonthlyCents(subs: SubLike[]): number {
   );
 }
 
-// 12-month series. Without per-transaction history we project each
-// active subscription across the trailing 12 months. Annual subs only
-// land in the month of their anniversary (derived from last_charged_at);
-// monthly/weekly/biweekly land every month. Result is honest given the
-// data we have today; once we wire /transactions/sync the same component
-// reads from the actual ledger.
+// 12-month series. Prefers real per-charge history when provided
+// (lib/scan.ts seeds subscription_charges in sandbox; production will
+// populate it from /transactions/sync). Falls back to a projection from
+// current state when the charges argument is empty, which is the only
+// thing we can do until history exists.
 export type MonthBucket = {
   label: string;          // e.g. "Jun"
   yearMonth: string;      // "2026-06"
   totalCents: number;
 };
 
-export function trailingTwelveMonths(subs: SubLike[], now = new Date()): MonthBucket[] {
+export type ChargeRow = {
+  amount_cents: number;
+  charged_at: string; // YYYY-MM-DD
+};
+
+export function trailingTwelveMonths(
+  subs: SubLike[],
+  charges: ChargeRow[] = [],
+  now = new Date()
+): MonthBucket[] {
   const buckets: MonthBucket[] = [];
   const fmt = new Intl.DateTimeFormat("en-US", { month: "short" });
+
+  // Bucket real charges by YYYY-MM first so the hot path is a map lookup.
+  const realByMonth = new Map<string, number>();
+  for (const c of charges) {
+    const ym = c.charged_at.slice(0, 7);
+    realByMonth.set(ym, (realByMonth.get(ym) ?? 0) + c.amount_cents);
+  }
+
+  const haveHistory = realByMonth.size > 0;
 
   for (let i = 11; i >= 0; i--) {
     const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
     const yearMonth = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+
     let totalCents = 0;
 
-    for (const s of subs) {
-      if (s.status !== "active") continue;
-      if (s.frequency === "annually") {
-        const anchor = s.last_charged_at ? new Date(s.last_charged_at) : null;
-        if (anchor && anchor.getMonth() === d.getMonth()) {
-          totalCents += s.amount_cents;
+    if (haveHistory) {
+      totalCents = realByMonth.get(yearMonth) ?? 0;
+    } else {
+      // Projection fallback.
+      for (const s of subs) {
+        if (s.status !== "active") continue;
+        if (s.frequency === "annually") {
+          const anchor = s.last_charged_at ? new Date(s.last_charged_at) : null;
+          if (anchor && anchor.getMonth() === d.getMonth()) {
+            totalCents += s.amount_cents;
+          }
+          continue;
         }
-        continue;
+        totalCents += monthlyEquivalentCents(s.amount_cents, s.frequency);
       }
-      // Everything else accrues monthly-equivalent every month.
-      totalCents += monthlyEquivalentCents(s.amount_cents, s.frequency);
     }
 
     buckets.push({

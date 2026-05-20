@@ -17,18 +17,23 @@ import {
   categoryBreakdown,
   totalMonthlyCents,
   trailingTwelveMonths,
+  type ChargeRow,
   type SubLike,
 } from "@/lib/subscription-math";
 
 type Props = {
   subs: SubLike[];
+  charges?: ChargeRow[];
   onRescan: () => void;
   rescanning?: boolean;
 };
 
-export function DashboardHero({ subs, onRescan, rescanning }: Props) {
+export function DashboardHero({ subs, charges = [], onRescan, rescanning }: Props) {
   const monthly = totalMonthlyCents(subs);
-  const months = useMemo(() => trailingTwelveMonths(subs), [subs]);
+  const months = useMemo(
+    () => trailingTwelveMonths(subs, charges),
+    [subs, charges]
+  );
   const breakdown = useMemo(() => categoryBreakdown(subs), [subs]);
   const activeCount = subs.filter((s) => s.status === "active").length;
 
@@ -95,7 +100,7 @@ export function DashboardHero({ subs, onRescan, rescanning }: Props) {
           {/* 12-month area chart */}
           <div className="flex-1 min-w-0">
             <div className="text-[11.5px] uppercase tracking-[0.14em] text-ink-muted font-semibold">
-              Last 12 months (estimated)
+              Last 12 months{charges.length === 0 ? " (estimated)" : ""}
             </div>
             <div className="mt-3 h-[120px]">
               <ResponsiveContainer width="100%" height="100%">

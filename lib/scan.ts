@@ -13,6 +13,11 @@ import type {
   ScanRow,
   ScanPhase,
 } from "@/lib/types/scan";
+import {
+  SANDBOX_SEED_SUBS,
+  chargesForSeed,
+  type SeedSub,
+} from "./sandbox-seed";
 
 // ---------------------------------------------------------------------------
 // Scan orchestrator.
@@ -226,12 +231,15 @@ async function scanOneItem(args: {
   // not subscriptions) and they confuse users when shown as cancellable.
   streams = streams.filter((s) => isProbablySubscription(s));
 
-  // Sandbox-only: prepend a realistic synthetic fixture so the AI
-  // normalization path actually gets exercised. Plaid sandbox only
-  // returns ~7 generic-named streams which isn't enough to validate the
-  // engine. Production never enters this branch.
+  // Sandbox-only: append a rich fixture that simulates realistic user
+  // data — varied start dates, mid-year price increases, churn, annual
+  // spikes, usage-based variable bills. Each fixture also seeds 12
+  // months of subscription_charges so the chart reads real history.
+  // Production never enters this branch.
+  let seedSubs: SeedSub[] = [];
   if (PLAID_ENV === "sandbox") {
-    streams = [...streams, ...buildSyntheticSandboxStreams()];
+    seedSubs = SANDBOX_SEED_SUBS;
+    streams = [...streams, ...seedSubs.map(seedToPlaidStream)];
   }
 
   await runWithCap(streams, ROW_CONCURRENCY, async (stream) => {
@@ -283,7 +291,7 @@ async function scanOneItem(args: {
       ai_source: norm.ai_source,
     };
 
-    const { error: upsertErr } = await supabaseAdmin!
+    const { data: upserted, error: upsertErr } = await supabaseAdmin!
       .from("subscriptions")
       .upsert(
         {
@@ -305,12 +313,41 @@ async function scanOneItem(args: {
           updated_at: new Date().toISOString(),
         },
         { onConflict: "user_id,plaid_stream_id" }
-      );
+      )
+      .select("id")
+      .single();
 
-    if (upsertErr) {
+    if (upsertErr || !upserted) {
       // eslint-disable-next-line no-console
       console.error("[scan] upsert failed", upsertErr);
       return;
+    }
+
+    // Sandbox-only: persist the seed's historical charges so the 12-month
+    // chart and "started X months ago" copy read real numbers.
+    if (PLAID_ENV === "sandbox" && stream.stream_id.startsWith("syn-")) {
+      const seedId = stream.stream_id.slice(4);
+      const seed = seedSubs.find((s) => s.id === seedId);
+      if (seed) {
+        const charges = chargesForSeed(seed);
+        if (charges.length > 0) {
+          const rows = charges.map((c) => ({
+            user_id: userId,
+            subscription_id: upserted.id as string,
+            plaid_stream_id: stream.stream_id,
+            amount_cents: c.amount_cents,
+            charged_at: c.charged_at,
+            is_estimated: true,
+            currency: row.currency,
+          }));
+          await supabaseAdmin!
+            .from("subscription_charges")
+            .upsert(rows, {
+              onConflict: "subscription_id,charged_at,amount_cents",
+              ignoreDuplicates: true,
+            });
+        }
+      }
     }
 
     onRow(monthlyEquivalentCents(row.amount_cents, row.frequency));
@@ -533,65 +570,32 @@ function isProbablySubscription(s: PlaidStreamLike): boolean {
   return true;
 }
 
-// ---------- realistic synthetic streams for sandbox testing ----------
+// ---------- sandbox seed → Plaid stream adapter ----------
 //
-// These exercise the full pipeline: messy raw descriptors → AI
-// normalization → category tagging → regret score. The descriptors
-// mimic real bank statement strings (transaction ids, payment
-// processors, locale codes) so we can verify the normalizer collapses
-// them to clean brand names.
+// Converts a rich SeedSub (with historical patterns) into the
+// PlaidStreamLike shape the scan pipeline expects. The "cancelled mid
+// year" subs get is_active=false so the upsert lands them in the
+// Pruned section. Historical charges are persisted separately, after
+// the upsert in scanOneItem.
 
-function buildSyntheticSandboxStreams(): PlaidStreamLike[] {
+function seedToPlaidStream(seed: SeedSub): PlaidStreamLike {
   const today = new Date();
-  const daysAgo = (n: number): string =>
-    new Date(today.getTime() - n * 86_400_000).toISOString().slice(0, 10);
+  const lastDate = new Date(today.getTime() - seed.lastChargedDaysAgo * 86_400_000)
+    .toISOString()
+    .slice(0, 10);
 
-  const make = (
-    id: string,
-    description: string,
-    plaidMerchant: string | null,
-    amount: number,
-    daysSince: number,
-    frequency: string = "MONTHLY"
-  ): PlaidStreamLike => ({
-    stream_id: `syn-${id}`,
-    merchant_name: plaidMerchant,
-    description,
-    average_amount: { amount, iso_currency_code: "USD" },
-    frequency,
-    last_date: daysAgo(daysSince),
-    is_active: true,
-  });
+  const isCancelled = seed.history?.cancelledMonthsAgo !== undefined;
+  const freqUpper = seed.frequency.toUpperCase();
 
-  return [
-    make("netflix",  "SP AFF*NETFLIX 866-579-7172 CA", "Netflix", 22.99, 4),
-    make("spotify",  "SPOTIFY USA 877-7787-9", "Spotify", 11.99, 9),
-    make("amzn-prime","AMZN PRIME*RX49J3DM1 WA", "Amazon", 14.99, 14),
-    make("adobe-cc", "ADOBE *CREATIVECLOUD 408-536", "Adobe", 59.99, 7),
-    make("nyt",      "NYTimes*Subscription NY", "The New York Times", 25.00, 11),
-    make("hbo-max",  "HBOMAX*PLAYTI XX5839", null, 15.99, 6),
-    make("disney",   "DISNEY PLUS BURBANK CA", "Disney+", 13.99, 19),
-    make("youtube-prem", "GOOGLE *YOUTUBE PRE g.co/he", null, 13.99, 2),
-    make("icloud",   "APPLE.COM/BILL 866-712-7753", "Apple", 9.99, 22),
-    make("audible",  "AUDIBLE*HG3J29 amzn.com/bill", "Audible", 14.95, 17),
-    make("dropbox",  "DROPBOX*1NJK39DJ DUBLIN", "Dropbox", 11.99, 12),
-    make("notion",   "NOTION LABS INC SF CA", "Notion", 10.00, 8),
-    make("linkedin", "LINKEDIN-PREMIUM 855-65", "LinkedIn", 39.99, 24),
-    make("peloton",  "PELOTON*MEMBERSHIP NY", "Peloton", 44.00, 3),
-    make("strava",   "STRAVA INC SAN FRANCIS", "Strava", 11.99, 13),
-    make("classpass","CLASSPASS INC NEW YORK", null, 99.00, 27),
-    make("hellofresh","HelloFresh*78293DJ NY", "HelloFresh", 89.94, 5),
-    make("doordash-dash","DOORDASH *DashPass SF", null, 9.99, 16),
-    make("att",      "ATT*BILL PAYMENT 800-2", "AT&T", 75.00, 20),
-    make("verizon",  "VZWRLSS*APOCC VISN 800-922", "Verizon", 95.00, 1),
-    make("github",   "GITHUB INC 877-448-4820", "GitHub", 4.00, 10),
-    make("openai",   "OPENAI *CHATGPT PLUS SF", null, 20.00, 5),
-    make("anthropic","ANTHROPIC PBC SAN FRAN", "Anthropic", 20.00, 15),
-    make("nyt-cooking","NYTimes*Cooking 800-69", null, 5.00, 21),
-    make("nintendo", "NINTENDO ONLINE FAMILY", "Nintendo", 34.99, 60, "ANNUALLY"),
-    make("amazon-music","Amazon Music*RT82J SE", "Amazon", 10.99, 8),
-    make("squarespace","SQUARESPACE INC NY 646-69", "Squarespace", 23.00, 18),
-  ];
+  return {
+    stream_id: `syn-${seed.id}`,
+    merchant_name: seed.plaidMerchantName,
+    description: seed.description,
+    average_amount: { amount: seed.amountCents / 100, iso_currency_code: "USD" },
+    frequency: freqUpper,
+    last_date: lastDate,
+    is_active: !isCancelled,
+  };
 }
 
 export type { ScanRow, ScanPhase };
