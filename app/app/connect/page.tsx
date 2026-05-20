@@ -1,32 +1,58 @@
 import type { Metadata } from "next";
+import { ConnectBankButton } from "@/components/plaid/connect-bank-button";
 
 export const metadata: Metadata = {
   title: "Connect your bank · Frugavo",
 };
 
-// Plaid Link flow lives here. v1 will host the actual Plaid Link initialize
-// + onSuccess handler. For now this is a stub — we'll wire it in week 2
-// of the build roadmap, once the Plaid sandbox keys are in place.
+// /app/connect — Plaid Link entry point.
+//
+// During sandbox you can use Plaid's test credentials to simulate a real
+// connection:
+//   Institution: any (e.g. "First Platypus Bank")
+//   Username: user_good
+//   Password: pass_good
+//   2FA code (when prompted): 1234
+// Any other combination produces specific error states for testing.
 
 export default function ConnectPage() {
   return (
     <section className="container-page py-16 md:py-24 max-w-[640px]">
       <span className="text-[13px] font-medium text-brand">Connect</span>
       <h1 className="mt-2 font-editorial text-[32px] md:text-[40px] font-semibold tracking-[-0.025em] leading-[1.05] text-ink">
-        Plaid Link goes here.
+        One quick step. Then we&apos;ll find your subscriptions.
       </h1>
       <p className="mt-5 text-[16px] leading-relaxed text-ink-body">
-        This is the Plaid Link button placeholder. In week 2 of the build, we
-        wire up <code>react-plaid-link</code>, fetch a link token from
-        <code>/api/plaid/link-token</code>, render the Link modal, and on
-        success POST the public token to <code>/api/plaid/exchange</code> to
-        store the Plaid Item in Supabase.
+        Frugavo uses Plaid to read your transactions. Plaid is the same
+        infrastructure your bank app uses. Your bank credentials never touch
+        our servers and we use a read-only scope — we can&apos;t move money,
+        send messages, or change anything in your account.
       </p>
-      <p className="mt-4 text-[14px] leading-relaxed text-ink-muted">
-        Required environment variables: <code>PLAID_CLIENT_ID</code>,{" "}
-        <code>PLAID_SECRET</code>, <code>PLAID_ENV</code> (
-        <code>sandbox</code> | <code>development</code> | <code>production</code>).
-      </p>
+
+      <div className="mt-8">
+        <ConnectBankButton />
+      </div>
+
+      <div className="mt-12 rounded-2xl bg-white border border-hairline/60 p-5">
+        <h2 className="text-[14px] font-semibold text-ink">
+          Sandbox test credentials
+        </h2>
+        <p className="mt-2 text-[13px] leading-relaxed text-ink-body">
+          We&apos;re currently in sandbox mode. Pick any institution in the
+          Plaid Link modal, then sign in with:
+        </p>
+        <ul className="mt-2 text-[13px] text-ink-body space-y-1">
+          <li>
+            Username: <code className="rounded bg-ink/[0.05] px-1.5 py-0.5">user_good</code>
+          </li>
+          <li>
+            Password: <code className="rounded bg-ink/[0.05] px-1.5 py-0.5">pass_good</code>
+          </li>
+          <li>
+            If asked for a 2FA code: <code className="rounded bg-ink/[0.05] px-1.5 py-0.5">1234</code>
+          </li>
+        </ul>
+      </div>
     </section>
   );
 }

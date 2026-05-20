@@ -17,10 +17,12 @@
     "framer-motion": "11.3.21",
     "lucide-react": "0.428.0",
     "next": "14.2.5",
+    "plaid": "^27.0.0",
     "react": "18.3.1",
     "react-dom": "18.3.1",
     "react-icons": "5.3.0",
     "react-markdown": "^9.0.1",
+    "react-plaid-link": "^3.6.1",
     "remark-gfm": "^4.0.0",
     "tailwind-merge": "2.5.2"
   },
