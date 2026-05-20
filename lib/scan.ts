@@ -83,6 +83,14 @@ export async function runScanForUser(clerkUserId: string): Promise<ScanResult> {
 
         const isActive = stream.is_active !== false;
 
+        // The Plaid SDK's TransactionStream type doesn't expose every
+        // field that the API actually returns (predicted_next_date is one
+        // such field — it ships in the response but isn't in the typed
+        // interface for this SDK version). Narrow cast lets us read it
+        // without disabling strict types for the whole file.
+        const predictedNext = (stream as { predicted_next_date?: string | null })
+          .predicted_next_date ?? null;
+
         const { error: upsertErr } = await supabaseAdmin
           .from("subscriptions")
           .upsert(
@@ -95,7 +103,7 @@ export async function runScanForUser(clerkUserId: string): Promise<ScanResult> {
               currency,
               frequency,
               last_charged_at: stream.last_date ?? null,
-              next_expected_charge_at: stream.predicted_next_date ?? null,
+              next_expected_charge_at: predictedNext,
               status: isActive ? "active" : "cancelled",
               updated_at: new Date().toISOString(),
             },
