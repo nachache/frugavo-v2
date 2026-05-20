@@ -50,7 +50,7 @@ export default async function AppHome() {
         <span className="text-[13px] font-medium text-brand">
           Welcome to Frugavo
         </span>
-        <h1 className="mt-2 font-editorial text-[36px] md:text-[48px] font-semibold tracking-[-0.025em] leading-[1.05] text-ink">
+        <h1 className="mt-2 font-display text-[36px] md:text-[44px] font-bold tracking-[-0.03em] leading-[1.05] text-ink">
           Let&apos;s connect your bank.
         </h1>
         <p className="mt-5 text-[17px] leading-relaxed text-ink-body">
@@ -85,7 +85,7 @@ export default async function AppHome() {
   return (
     <section className="container-page py-16 md:py-24 max-w-[860px]">
       <span className="text-[13px] font-medium text-brand">Dashboard</span>
-      <h1 className="mt-2 font-editorial text-[36px] md:text-[48px] font-semibold tracking-[-0.025em] leading-[1.05] text-ink">
+      <h1 className="mt-2 font-display text-[36px] md:text-[44px] font-bold tracking-[-0.03em] leading-[1.05] text-ink">
         Your subscriptions
       </h1>
       <p className="mt-5 text-[16px] leading-relaxed text-ink-body">

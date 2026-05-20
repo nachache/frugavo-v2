@@ -29,7 +29,7 @@ export default async function SettingsPage() {
   return (
     <section className="container-page py-16 md:py-20 max-w-[720px]">
       <span className="text-[13px] font-medium text-brand">Settings</span>
-      <h1 className="mt-2 font-editorial text-[36px] md:text-[44px] font-semibold tracking-[-0.025em] leading-[1.05] text-ink">
+      <h1 className="mt-2 font-display text-[36px] md:text-[44px] font-bold tracking-[-0.03em] leading-[1.05] text-ink">
         Your account
       </h1>
 

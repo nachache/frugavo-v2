@@ -19,7 +19,7 @@ export default function ConnectPage() {
   return (
     <section className="container-page py-16 md:py-24 max-w-[640px]">
       <span className="text-[13px] font-medium text-brand">Connect</span>
-      <h1 className="mt-2 font-editorial text-[32px] md:text-[40px] font-semibold tracking-[-0.025em] leading-[1.05] text-ink">
+      <h1 className="mt-2 font-display text-[32px] md:text-[40px] font-bold tracking-[-0.03em] leading-[1.05] text-ink">
         One quick step. Then we&apos;ll find your subscriptions.
       </h1>
       <p className="mt-5 text-[16px] leading-relaxed text-ink-body">
