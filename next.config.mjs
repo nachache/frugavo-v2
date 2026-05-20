@@ -19,16 +19,21 @@ const nextConfig = {
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
           {
             key: "Permissions-Policy",
+            // Plaid Link runs inside a cross-origin iframe and needs a
+            // long list of permissions to handle modern bank auth flows
+            // (passkeys, payment redirects, fullscreen on mobile, clipboard
+            // for OTP paste). Per-origin allowlists work in spec but break
+            // in practice on Safari + some Chrome versions, so we open
+            // these to all origins. The genuinely sensitive permissions
+            // (camera, mic, geolocation) stay denied.
             value:
-              // Deny things we don't use.
               "camera=(), microphone=(), geolocation=(), " +
-              // Allow features Plaid Link needs inside its cross-origin
-              // iframe. Without these, Plaid Link fails to open on some
-              // institutions or device combinations.
-              'fullscreen=(self "https://cdn.plaid.com" "https://link.plaid.com"), ' +
-              'clipboard-read=(self "https://cdn.plaid.com"), ' +
-              'clipboard-write=(self "https://cdn.plaid.com"), ' +
-              'accelerometer=(self "https://cdn.plaid.com")',
+              "fullscreen=*, " +
+              "publickey-credentials-get=*, " +
+              "payment=*, " +
+              "clipboard-read=*, " +
+              "clipboard-write=*, " +
+              "accelerometer=*",
           },
         ],
       },
