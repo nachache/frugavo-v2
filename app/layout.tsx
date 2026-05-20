@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter, Inter_Tight, Fraunces, Newsreader } from "next/font/google";
 import { GoogleAnalytics } from "@next/third-parties/google";
 import { GaDebug } from "@/components/shared/ga-debug";
+import { ConsentBanner, ConsentGate } from "@/components/shared/consent";
 import "./globals.css";
 
 // next/font self-hosts the typefaces — no runtime CDN call.
@@ -80,20 +81,22 @@ export default function RootLayout({
           is more reliable.
         */}
         {children}
+
+        {/* Consent banner — shows until the user picks Accept or Decline.
+            Decision persists in localStorage. */}
+        <ConsentBanner />
       </body>
 
-      {/* GA4 — only rendered when the Measurement ID is set. Loaded after
-          hydration by @next/third-parties to avoid blocking first paint.
-          The ID lives in the NEXT_PUBLIC_GA_ID env var so it's read at build
-          time and embedded in the client bundle. Set it in Netlify under
-          Site settings → Environment variables. */}
+      {/* GA4 — only renders when (a) the Measurement ID is configured and
+          (b) the visitor has explicitly granted consent via the banner.
+          @next/third-parties loads the gtag script lazily after hydration. */}
       {process.env.NEXT_PUBLIC_GA_ID && (
-        <>
+        <ConsentGate>
           <GoogleAnalytics gaId={process.env.NEXT_PUBLIC_GA_ID} />
           {/* Appending ?ga_debug=1 to any URL turns on GA4 debug_mode so
               events appear in Admin → DebugView. */}
           <GaDebug gaId={process.env.NEXT_PUBLIC_GA_ID} />
-        </>
+        </ConsentGate>
       )}
     </html>
   );
