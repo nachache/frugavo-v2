@@ -30,14 +30,24 @@ export function GaDebug({ gaId }: { gaId: string }) {
     if (typeof window === "undefined") return;
 
     const params = new URLSearchParams(window.location.search);
-    if (params.get("ga_debug") !== "1") return;
+    const flag = params.get("ga_debug");
+
+    // Unconditional breadcrumb so we can verify the component mounted at
+    // all. Visible in DevTools Console.
+    // eslint-disable-next-line no-console
+    console.log(
+      `[GaDebug] mounted · gaId=${gaId} · ga_debug=${flag ?? "(absent)"}`
+    );
+
+    if (flag !== "1") return;
 
     const w = window as GtagWindow;
 
-    // Wait briefly for gtag.js to finish loading before re-issuing config.
     const tryEnable = () => {
       if (typeof w.gtag === "function") {
         w.gtag("config", gaId, { debug_mode: true });
+        // eslint-disable-next-line no-console
+        console.log(`[GaDebug] debug_mode activated for ${gaId}`);
         return true;
       }
       return false;
@@ -47,8 +57,13 @@ export function GaDebug({ gaId }: { gaId: string }) {
     const interval = window.setInterval(() => {
       if (tryEnable()) window.clearInterval(interval);
     }, 200);
-    // Give up after 5 seconds if gtag never loads (e.g. blocked).
-    const timeout = window.setTimeout(() => window.clearInterval(interval), 5000);
+    const timeout = window.setTimeout(() => {
+      window.clearInterval(interval);
+      // eslint-disable-next-line no-console
+      console.warn(
+        "[GaDebug] gtag never loaded within 5s — likely blocked by an ad blocker or browser privacy setting"
+      );
+    }, 5000);
 
     return () => {
       window.clearInterval(interval);
