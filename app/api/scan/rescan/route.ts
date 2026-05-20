@@ -16,7 +16,7 @@ import { SCAN_BUDGET_MS } from "@/lib/types/scan";
 export const runtime = "nodejs";
 export const maxDuration = 30;
 
-export async function POST(_req?: Request) {
+export async function POST(_req: Request) {
   void _req;
   const user = await currentUser();
   if (!user) {
