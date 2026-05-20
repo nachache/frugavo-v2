@@ -7,10 +7,12 @@ import {
   annualCents,
   monthlyEquivalentCents,
   type CancelCandidate,
+  type SubLike,
 } from "@/lib/subscription-math";
 
 type Props = {
   candidates: CancelCandidate[];
+  onCancel?: (sub: SubLike) => void;
 };
 
 const REASON_STYLE = {
@@ -31,7 +33,7 @@ const REASON_STYLE = {
   },
 } as const;
 
-export function CancelCandidates({ candidates }: Props) {
+export function CancelCandidates({ candidates, onCancel }: Props) {
   if (candidates.length === 0) return null;
 
   return (
@@ -82,9 +84,8 @@ export function CancelCandidates({ candidates }: Props) {
                     </div>
                   </div>
                   <button
-                    disabled
-                    title="Cancel-assist ships in week 5"
-                    className="inline-flex h-9 items-center gap-1 rounded-full border border-hairline bg-white px-3 text-[12.5px] font-medium text-ink hover:border-accent hover:bg-accent hover:text-white transition disabled:opacity-50 disabled:cursor-not-allowed"
+                    onClick={() => onCancel?.(c.sub)}
+                    className="inline-flex h-9 items-center gap-1 rounded-full border border-hairline bg-white px-3 text-[12.5px] font-medium text-ink hover:border-accent hover:bg-accent hover:text-white transition"
                   >
                     <X size={12} />
                     Cancel

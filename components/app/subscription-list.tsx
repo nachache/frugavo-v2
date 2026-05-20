@@ -20,6 +20,7 @@ import {
 import { BrandLogo } from "./brand-logo";
 import { DashboardHero } from "./dashboard-hero";
 import { CancelCandidates } from "./cancel-candidates";
+import { CancelModal } from "./cancel-modal";
 
 // Row shape exposed to the dashboard page. Mirrors the DB columns we
 // select in app/app/page.tsx; matches the SubLike shape from the math
@@ -38,8 +39,9 @@ export function SubscriptionList({
   charges?: ChargeRow[];
 }) {
   const router = useRouter();
-  const [items] = useState(initial);
+  const [items, setItems] = useState(initial);
   const [rescanning, startRescan] = useTransition();
+  const [cancelTarget, setCancelTarget] = useState<SubLike | null>(null);
   const [openCategories, setOpenCategories] = useState<Set<Category>>(() => {
     // Open only the most expensive category by default — the rest stay
     // collapsed so the page lands at a calm vertical height.
@@ -95,6 +97,22 @@ export function SubscriptionList({
     });
   };
 
+  // Cancellation handlers — the modal calls onConfirmed after the user
+  // hits "I cancelled it" and our API records it. We optimistically
+  // tag user_decision='cancel' so the row dims right away. We accept
+  // SubLike (not the full Subscription) so the CancelCandidates strip
+  // can hand its candidate.sub straight through.
+  const openCancel = (s: SubLike) => setCancelTarget(s);
+  const closeCancel = () => setCancelTarget(null);
+  const onCancelConfirmed = (subId: string) => {
+    setItems((prev) =>
+      prev.map((s) =>
+        s.id === subId ? { ...s, user_decision: "cancel" as const } : s
+      )
+    );
+    setCancelTarget(null);
+  };
+
   const toggleCategory = (cat: Category) => {
     setOpenCategories((prev) => {
       const next = new Set(prev);
@@ -136,7 +154,7 @@ export function SubscriptionList({
         rescanning={rescanning}
       />
 
-      <CancelCandidates candidates={candidates} />
+      <CancelCandidates candidates={candidates} onCancel={openCancel} />
 
       <section className="mt-10">
         <h2 className="text-[12px] uppercase tracking-[0.14em] font-semibold text-ink-muted">
@@ -178,7 +196,11 @@ export function SubscriptionList({
                 {open && (
                   <ul className="grid gap-3 p-4 sm:p-5 sm:grid-cols-2 lg:grid-cols-3 bg-canvas/40">
                     {subs.map((s) => (
-                      <SubscriptionRow key={s.id} sub={s} />
+                      <SubscriptionRow
+                        key={s.id}
+                        sub={s}
+                        onCancel={openCancel}
+                      />
                     ))}
                   </ul>
                 )}
@@ -206,12 +228,23 @@ export function SubscriptionList({
           {showPruned && (
             <ul className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {cancelled.map((s) => (
-                <SubscriptionRow key={s.id} sub={s} cancelled />
+                <SubscriptionRow
+                  key={s.id}
+                  sub={s}
+                  cancelled
+                  onCancel={openCancel}
+                />
               ))}
             </ul>
           )}
         </section>
       )}
+
+      <CancelModal
+        sub={cancelTarget}
+        onClose={closeCancel}
+        onConfirmed={onCancelConfirmed}
+      />
     </div>
   );
 }
@@ -219,19 +252,23 @@ export function SubscriptionList({
 function SubscriptionRow({
   sub,
   cancelled,
+  onCancel,
 }: {
   sub: Subscription;
   cancelled?: boolean;
+  onCancel?: (sub: Subscription) => void;
 }) {
   const monthly = monthlyEquivalentCents(sub.amount_cents, sub.frequency);
   const annual = annualCents(sub.amount_cents, sub.frequency);
   const cat = asCategory(sub.category);
+  const pendingCancel = sub.user_decision === "cancel" && !cancelled;
 
   return (
     <li
       className={cn(
         "rounded-2xl bg-white border border-hairline/60 p-4 flex flex-col gap-3 hover:shadow-soft transition-shadow",
-        cancelled && "opacity-60"
+        cancelled && "opacity-60",
+        pendingCancel && "border-brand/40 bg-brand-light/30"
       )}
     >
       {/* Header: logo + name + category */}
@@ -278,12 +315,16 @@ function SubscriptionRow({
       </div>
 
       {/* Actions */}
-      {!cancelled ? (
+      {pendingCancel ? (
+        <span className="self-start inline-flex items-center gap-1 rounded-full bg-brand-light px-3 h-7 text-[11.5px] font-medium text-brand">
+          <Check size={11} strokeWidth={3} />
+          Cancelled — watching next bill
+        </span>
+      ) : !cancelled ? (
         <div className="flex items-center gap-1.5">
           <button
-            disabled
-            title="Cancel-assist ships in week 5"
-            className="flex-1 inline-flex h-9 items-center justify-center gap-1 rounded-full border border-hairline bg-white px-3 text-[12.5px] font-medium text-ink hover:border-accent hover:bg-accent hover:text-white transition disabled:opacity-50 disabled:cursor-not-allowed"
+            onClick={() => onCancel?.(sub)}
+            className="flex-1 inline-flex h-9 items-center justify-center gap-1 rounded-full border border-hairline bg-white px-3 text-[12.5px] font-medium text-ink hover:border-accent hover:bg-accent hover:text-white transition"
           >
             <X size={12} />
             Cancel
