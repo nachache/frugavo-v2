@@ -14,12 +14,15 @@ export const nav = {
 
 export const hero = {
   eyebrow: "Pre-launch preview · Early access · Sample data shown",
-  headline: "Find every subscription you forgot you had.",
+  headline:
+    "The average person thinks they spend $86 on subscriptions. They actually spend $219.",
+  sourceCitation: "Source: C+R Research, January 2026",
   subhead:
-    "Connect your bank in 60 seconds. Frugavo scans 12 months of charges and shows you every recurring bill. Tap Cancel on the ones you don’t want — we’ll walk you straight to the provider’s cancel page, then watch your next billing cycle to confirm it actually stopped.",
-  primaryCta: { label: "Join the waitlist", href: "#cta" },
+    "89% of people underestimate. 42% are still paying for something they forgot about. We watch your accounts and quietly find the leaks — so the surprise lands once, not every month.",
+  primaryCta: { label: "Show me my real number", href: "#cta" },
   secondaryCta: { label: "See how it works", href: "#demo" },
-  trust: "Read-only access via Plaid · We don’t store bank credentials · We don’t sell data",
+  trust:
+    "Read-only access via Plaid · We don’t store bank credentials · We don’t sell data",
 };
 
 export type DemoSub = {

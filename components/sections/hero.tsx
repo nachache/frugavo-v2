@@ -56,17 +56,28 @@ export function Hero() {
               delay: 0.08,
               ease: [0.16, 1, 0.3, 1],
             }}
-            className="mt-6 text-hero font-display font-bold text-ink"
+            className="mt-6 font-display font-bold text-ink text-[40px] md:text-[56px] leading-[1.05] tracking-[-0.03em]"
           >
-            {hero.headline}
+            The average person thinks they spend{" "}
+            <span className="text-ink/60">$86</span> on subscriptions.{" "}
+            <span className="text-brand">They actually spend $219.</span>
           </motion.h1>
+
+          <motion.p
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.5, delay: 0.14 }}
+            className="mt-3 text-[12.5px] text-ink-muted tnum"
+          >
+            {hero.sourceCitation}
+          </motion.p>
 
           <motion.p
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{
               duration: 0.7,
-              delay: 0.16,
+              delay: 0.2,
               ease: [0.16, 1, 0.3, 1],
             }}
             className="mt-6 max-w-[560px] text-[18px] md:text-[19px] leading-relaxed text-ink-body"
