@@ -78,9 +78,11 @@ export function ConnectBankButton() {
           setErrorMessage("Could not save the connection.");
           return;
         }
-        // Bank is connected. Dashboard at /app will now skip the connect
-        // step on next render.
-        router.push("/app");
+        // Bank is connected. Route to /app/scanning so the user watches
+        // subscriptions stream in via the progress arc + reveal list
+        // instead of landing on a blank dashboard while the scan runs.
+        // The scanning page auto-forwards to /app once the scan completes.
+        router.push("/app/scanning");
         router.refresh();
       } catch {
         setStatus("error");
