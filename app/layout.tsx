@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter, Inter_Tight, Fraunces, Newsreader } from "next/font/google";
 import { GoogleAnalytics } from "@next/third-parties/google";
+import { GaDebug } from "@/components/shared/ga-debug";
 import "./globals.css";
 
 // next/font self-hosts the typefaces — no runtime CDN call.
@@ -87,7 +88,12 @@ export default function RootLayout({
           time and embedded in the client bundle. Set it in Netlify under
           Site settings → Environment variables. */}
       {process.env.NEXT_PUBLIC_GA_ID && (
-        <GoogleAnalytics gaId={process.env.NEXT_PUBLIC_GA_ID} />
+        <>
+          <GoogleAnalytics gaId={process.env.NEXT_PUBLIC_GA_ID} />
+          {/* Appending ?ga_debug=1 to any URL turns on GA4 debug_mode so
+              events appear in Admin → DebugView. */}
+          <GaDebug gaId={process.env.NEXT_PUBLIC_GA_ID} />
+        </>
       )}
     </html>
   );
