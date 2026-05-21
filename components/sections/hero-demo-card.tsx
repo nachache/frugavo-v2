@@ -217,8 +217,8 @@ export function HeroDemoCard() {
 
       // PHASE B — Cancel modal (4.6 -> 7s)
       schedule(4800, () => {
-        const netflixRow = rowListRef.current?.querySelector('[data-id="netflix"]');
-        netflixRow?.classList.add("highlighted");
+        const targetRow = rowListRef.current?.querySelector('[data-id="adobe"]');
+        targetRow?.classList.add("highlighted");
       });
       schedule(5300, () => modalRef.current?.classList.add("in"));
       modalRef.current?.querySelectorAll(".m-path").forEach((p, i) => {
@@ -236,18 +236,18 @@ export function HeroDemoCard() {
 
       // PHASE D — Pruned state (8.5 -> 10s)
       schedule(8600, () => {
-        const netflixRow = rowListRef.current?.querySelector(
-          '[data-id="netflix"]'
+        const targetRow = rowListRef.current?.querySelector(
+          '[data-id="adobe"]'
         );
-        if (!netflixRow) return;
-        netflixRow.classList.remove("highlighted");
-        netflixRow.classList.add("pruned");
-        const amtEl = netflixRow.querySelector(".amt");
+        if (!targetRow) return;
+        targetRow.classList.remove("highlighted");
+        targetRow.classList.add("pruned");
+        const amtEl = targetRow.querySelector(".amt");
         if (amtEl) {
           amtEl.outerHTML =
             `<span class="pruned-chip">` +
               `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>` +
-              `Saved $275/yr` +
+              `Saved $720/yr` +
             `</span>`;
         }
       });
@@ -325,10 +325,10 @@ export function HeroDemoCard() {
         {/* Cancel modal — slides up from bottom */}
         <div className="modal" ref={modalRef}>
           <div className="m-head">
-            <div className="m-glyph">
+            <div className="m-glyph" style={{ background: "#FA0F00" }}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src={logoUrl("netflix.com", 64)}
+                src={logoUrl("adobe.com", 64)}
                 alt=""
                 loading="lazy"
                 decoding="async"
@@ -339,12 +339,12 @@ export function HeroDemoCard() {
                   if (fb) fb.style.display = "flex";
                 }}
               />
-              <span className="m-glyph-fallback">N</span>
+              <span className="m-glyph-fallback">A</span>
             </div>
             <div>
               <div className="m-savings-lbl">You&apos;d save</div>
               <div className="m-amount font-display tnum">
-                $275<span className="u">/year</span>
+                $720<span className="u">/year</span>
               </div>
             </div>
           </div>
@@ -359,7 +359,7 @@ export function HeroDemoCard() {
               </span>
               <div className="m-text">
                 <div className="lbl">Open cancel page</div>
-                <div className="sub-lbl">netflix.com/cancelplan</div>
+                <div className="sub-lbl">account.adobe.com/plans</div>
               </div>
             </div>
             <div className="m-path" data-i="1">
@@ -414,9 +414,9 @@ export function HeroDemoCard() {
                 fill="#34D399"
               />
             </svg>
-            <div className="cele-label">Pruned · Netflix</div>
+            <div className="cele-label">Pruned · Adobe CC</div>
             <div className="cele-amt font-display">
-              +$275<span className="u">/yr saved</span>
+              +$720<span className="u">/yr saved</span>
             </div>
           </div>
         </div>
@@ -655,23 +655,26 @@ export function HeroDemoCard() {
           left: 12px; right: 12px; bottom: 12px;
           background: white;
           border: 1px solid #E7E5E0;
-          border-radius: 16px;
-          padding: 14px;
+          border-radius: 14px;
+          padding: 10px 12px;
           transform: translateY(120%); opacity: 0;
           transition:
             transform 500ms cubic-bezier(.16, 1, .3, 1),
             opacity 260ms ease;
           z-index: 3;
+          /* Keep the modal compact — it should overlay the row list
+             but leave the total card and progress arc visible above. */
+          max-height: 58%;
         }
         .modal:global(.in) { transform: translateY(0); opacity: 1; }
         .m-head {
-          display: flex; align-items: center; gap: 10px;
-          padding-bottom: 10px;
+          display: flex; align-items: center; gap: 9px;
+          padding-bottom: 8px;
           border-bottom: 1px solid #E7E5E0;
         }
         .m-glyph {
           position: relative;
-          width: 34px; height: 34px; border-radius: 9px;
+          width: 28px; height: 28px; border-radius: 8px;
           background: white;
           border: 1px solid rgba(10, 10, 10, 0.06);
           overflow: hidden;
@@ -680,7 +683,7 @@ export function HeroDemoCard() {
         .m-glyph :global(img) {
           width: 100%; height: 100%;
           object-fit: contain;
-          padding: 5px;
+          padding: 4px;
           display: block;
         }
         .m-glyph :global(.m-glyph-fallback) {
@@ -688,28 +691,28 @@ export function HeroDemoCard() {
           display: none;
           align-items: center; justify-content: center;
           color: white; background: #E50914;
-          font-weight: 600; font-size: 14px;
-          border-radius: 9px;
+          font-weight: 600; font-size: 12px;
+          border-radius: 8px;
         }
         .m-savings-lbl {
-          font-size: 9.5px; letter-spacing: 0.14em; text-transform: uppercase;
+          font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase;
           color: #047857; font-weight: 600;
         }
         .m-amount {
-          font-size: 22px; font-weight: 700; color: #047857;
+          font-size: 18px; font-weight: 700; color: #047857;
           line-height: 1; letter-spacing: -0.02em;
           font-variant-numeric: tabular-nums;
         }
         .m-amount .u {
-          font-size: 10px; color: #064E3B; opacity: 0.7;
+          font-size: 9px; color: #064E3B; opacity: 0.7;
           margin-left: 3px; font-weight: 500;
         }
-        .m-paths { margin-top: 10px; display: grid; gap: 5px; }
+        .m-paths { margin-top: 8px; display: grid; gap: 4px; }
         .m-path {
-          display: flex; align-items: center; gap: 9px;
-          padding: 7px 9px;
+          display: flex; align-items: center; gap: 8px;
+          padding: 6px 8px;
           border: 1px solid #E7E5E0;
-          border-radius: 9px;
+          border-radius: 8px;
           background: white;
           opacity: 0; transform: translateY(6px);
           transition:
@@ -718,24 +721,24 @@ export function HeroDemoCard() {
         }
         .m-path:global(.in) { opacity: 1; transform: translateY(0); }
         .m-path .ic {
-          width: 22px; height: 22px; border-radius: 7px; flex-shrink: 0;
+          width: 20px; height: 20px; border-radius: 6px; flex-shrink: 0;
           background: #ECFDF5; color: #047857;
           display: inline-flex; align-items: center; justify-content: center;
         }
-        .m-path .ic :global(svg) { width: 12px; height: 12px; }
+        .m-path .ic :global(svg) { width: 10px; height: 10px; }
         .m-path .m-text { min-width: 0; }
         .m-path :global(.lbl) {
-          font-size: 11px; font-weight: 500; color: #0A0A0A;
+          font-size: 10.5px; font-weight: 500; color: #0A0A0A;
         }
         .m-path :global(.sub-lbl) {
-          font-size: 9.5px; color: #737373; margin-top: 1px;
+          font-size: 9px; color: #737373; margin-top: 0;
         }
         .m-confirm {
-          margin-top: 10px;
-          height: 34px; width: 100%;
+          margin-top: 8px;
+          height: 30px; width: 100%;
           background: #0A0A0A; color: white;
           border: none; border-radius: 999px;
-          font-size: 11.5px; font-weight: 500;
+          font-size: 11px; font-weight: 500;
           cursor: pointer;
           display: inline-flex; align-items: center; justify-content: center; gap: 5px;
           font-family: inherit;

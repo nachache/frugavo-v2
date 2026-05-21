@@ -1,0 +1,793 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Frugavo hero motion preview</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Inter+Tight:wght@500;600;700&display=swap" />
+<style>
+  :root {
+    --emerald-50: #ECFDF5;
+    --emerald-100: #D1FAE5;
+    --emerald-300: #6EE7B7;
+    --emerald-600: #059669;
+    --emerald-700: #047857;
+    --emerald-900: #064E3B;
+    --canvas: #FAF8F4;
+    --ink: #0A0A0A;
+    --ink-body: #404040;
+    --ink-muted: #737373;
+    --hairline: #E7E5E0;
+    --hairline-soft: #EDEBE5;
+    --accent: #EA580C;
+    --coral: #FB7185;
+    --coral-wash: #FB71851A;
+    --amber: #F59E0B;
+    --violet: #8B5CF6;
+    --pink: #EC4899;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: var(--canvas); color: var(--ink); }
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-feature-settings: "ss01","cv11","tnum";
+    -webkit-font-smoothing: antialiased;
+    min-height: 100vh;
+    padding: 32px 16px 48px;
+  }
+  .display { font-family: 'Inter Tight', 'Inter', sans-serif; letter-spacing: -0.02em; }
+  .tnum { font-variant-numeric: tabular-nums; }
+  .preview-bg {
+    max-width: 1100px; margin: 0 auto;
+    background:
+      radial-gradient(ellipse at 70% 20%, rgba(16,185,129,0.10), transparent 50%),
+      radial-gradient(ellipse at 20% 80%, rgba(245,158,11,0.06), transparent 50%);
+    border-radius: 28px;
+    padding: 40px 20px;
+  }
+  .head {
+    max-width: 420px; margin: 0 auto 18px;
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  }
+  .brand {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-size: 11.5px; color: var(--ink-muted); font-weight: 500;
+    letter-spacing: 0.06em; text-transform: uppercase;
+  }
+  .brand .leaf {
+    width: 18px; height: 18px; border-radius: 999px;
+    background: var(--emerald-100); color: var(--emerald-700);
+    display: inline-flex; align-items: center; justify-content: center;
+  }
+  .replay {
+    appearance: none;
+    height: 28px; padding: 0 12px; font-size: 11px; font-weight: 500;
+    background: var(--ink); color: white; cursor: pointer;
+    border: none; border-radius: 999px;
+    display: inline-flex; align-items: center; gap: 6px;
+    font-family: inherit;
+    transition: opacity 160ms;
+  }
+  .replay:hover { opacity: 0.88; }
+
+  /* ========================================
+     HERO CARD — fits ~400px wide, ~600px tall
+     ======================================== */
+  .hero-card {
+    position: relative;
+    width: 100%;
+    max-width: 420px;
+    margin: 0 auto;
+    background: white;
+    border: 1px solid var(--hairline);
+    border-radius: 22px;
+    box-shadow:
+      0 1px 2px rgba(10,10,10,0.04),
+      0 12px 32px rgba(10,10,10,0.06),
+      0 32px 64px -20px rgba(10,10,10,0.10);
+    overflow: hidden;
+  }
+  .hero-card::before {
+    content: "";
+    position: absolute; inset: auto 0 0 0; height: 200px;
+    background: radial-gradient(ellipse at 50% 100%, rgba(16,185,129,0.08), transparent 60%);
+    pointer-events: none; z-index: 0;
+  }
+
+  /* Top bar */
+  .hc-top {
+    position: relative; z-index: 1;
+    display: flex; align-items: center; gap: 12px;
+    padding: 16px 16px 12px;
+  }
+  .arc-wrap { position: relative; width: 44px; height: 44px; flex-shrink: 0; }
+  .arc { width: 100%; height: 100%; transform: rotate(-90deg); }
+  .arc .track { stroke: rgba(10,10,10,0.08); }
+  .arc .sweep {
+    stroke: var(--emerald-700);
+    stroke-linecap: round;
+    stroke-dasharray: 70 360;
+    animation: arc-sweep 2.4s linear infinite;
+  }
+  @keyframes arc-sweep { to { stroke-dashoffset: -430; } }
+  .arc-center {
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .arc-center .dot {
+    width: 4px; height: 4px; border-radius: 50%; background: var(--emerald-700);
+    animation: pulse 1.6s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%,100% { opacity: 0.4; transform: scale(0.85); }
+    50% { opacity: 1; transform: scale(1.15); }
+  }
+  .phase {
+    display: flex; flex-direction: column; gap: 1px; flex: 1; min-width: 0;
+  }
+  .phase-step {
+    font-size: 9.5px; letter-spacing: 0.16em; text-transform: uppercase;
+    color: var(--ink-muted); font-weight: 500;
+  }
+  .phase-label {
+    font-size: 13.5px; font-weight: 600; color: var(--ink);
+    transition: opacity 280ms cubic-bezier(.16,1,.3,1), transform 280ms cubic-bezier(.16,1,.3,1);
+  }
+  .phase-label.entering { opacity: 0; transform: translateY(3px); }
+  .live-pill {
+    display: inline-flex; align-items: center; gap: 5px;
+    background: var(--emerald-50); color: var(--emerald-700);
+    font-size: 10px; font-weight: 600; letter-spacing: 0.04em;
+    padding: 4px 8px; border-radius: 999px;
+    flex-shrink: 0;
+  }
+  .live-pill .live-dot {
+    width: 5px; height: 5px; border-radius: 50%; background: var(--emerald-600);
+    animation: live-pulse 1.6s ease-in-out infinite;
+  }
+  @keyframes live-pulse {
+    0%, 100% { opacity: 0.5; }
+    50% { opacity: 1; }
+  }
+
+  /* Total card */
+  .total-card {
+    position: relative; z-index: 1;
+    margin: 0 16px;
+    background: var(--emerald-50);
+    border: 1px solid var(--emerald-100);
+    border-radius: 14px;
+    padding: 12px 14px;
+  }
+  .total-lbl {
+    font-size: 9.5px; letter-spacing: 0.16em; text-transform: uppercase;
+    color: var(--emerald-900); opacity: 0.7; font-weight: 500;
+  }
+  .total-row {
+    display: flex; align-items: baseline; justify-content: space-between;
+    margin-top: 2px;
+  }
+  .total-main {
+    font-size: 28px; font-weight: 700; letter-spacing: -0.02em;
+    color: var(--emerald-700); line-height: 1;
+    font-variant-numeric: tabular-nums;
+  }
+  .total-main .u {
+    font-size: 11px; color: var(--emerald-900); opacity: 0.75;
+    margin-left: 3px; font-weight: 500;
+  }
+  .total-meta {
+    font-size: 10.5px; color: var(--emerald-900); opacity: 0.7;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+  .five-yr {
+    margin-top: 6px;
+    display: inline-flex; align-items: baseline; gap: 4px;
+    background: rgba(255,255,255,0.55);
+    padding: 4px 10px; border-radius: 999px;
+    font-size: 10.5px; color: var(--emerald-900);
+    opacity: 0; transition: opacity 380ms ease;
+  }
+  .five-yr.in { opacity: 1; }
+  .five-yr b { color: var(--emerald-700); font-weight: 700; font-variant-numeric: tabular-nums; }
+
+  /* Row list */
+  .row-list {
+    position: relative; z-index: 1;
+    list-style: none; padding: 12px 16px 16px; margin: 0;
+    display: grid; gap: 7px;
+  }
+  .row {
+    display: flex; align-items: center; gap: 10px;
+    padding: 9px 11px;
+    background: white;
+    border: 1px solid var(--hairline-soft);
+    border-radius: 11px;
+    opacity: 0; transform: translateY(8px);
+    transition:
+      opacity 480ms cubic-bezier(.16,1,.3,1),
+      transform 480ms cubic-bezier(.16,1,.3,1),
+      background-color 360ms ease,
+      border-color 360ms ease;
+  }
+  .row.in { opacity: 1; transform: translateY(0); }
+  .row.highlighted {
+    border-color: var(--coral);
+    background: linear-gradient(180deg, var(--coral-wash), white 80%);
+  }
+  .row.pruned {
+    background: var(--emerald-50);
+    border-color: var(--emerald-100);
+  }
+  .row .glyph {
+    width: 26px; height: 26px; border-radius: 8px;
+    display: inline-flex; align-items: center; justify-content: center;
+    color: white; font-size: 11px; font-weight: 600;
+    flex-shrink: 0;
+    transition: filter 360ms ease;
+  }
+  .row.pruned .glyph { filter: grayscale(0.4) opacity(0.7); }
+  .row .nm { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+  .row .name {
+    font-size: 12.5px; font-weight: 500; color: var(--ink);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .row .cat {
+    font-size: 10px; color: var(--ink-muted); letter-spacing: 0.02em;
+    margin-top: 1px; display: flex; align-items: center; gap: 5px;
+  }
+  .row .cat .cdot { width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0; }
+  .row .amt {
+    font-size: 12px; font-weight: 500; color: var(--ink);
+    font-variant-numeric: tabular-nums; flex-shrink: 0;
+    transition: opacity 280ms ease;
+  }
+  .row.pruned .amt { opacity: 0; }
+  .row .pruned-chip {
+    position: absolute;
+    display: inline-flex; align-items: center; gap: 3px;
+    background: var(--emerald-700); color: white;
+    font-size: 9.5px; font-weight: 600;
+    padding: 3px 8px; border-radius: 999px;
+    opacity: 0; transform: scale(0.85);
+    transition:
+      opacity 320ms ease,
+      transform 480ms cubic-bezier(.34,1.56,.64,1);
+  }
+  .row .pruned-chip svg { width: 9px; height: 9px; }
+  .row.pruned { position: relative; }
+  .row.pruned .pruned-chip {
+    opacity: 1; transform: scale(1);
+    position: relative;
+  }
+  .row.highlighted .reason-chip {
+    opacity: 1; transform: translateY(0);
+  }
+  .row .reason-chip {
+    display: inline-flex; align-items: center; gap: 3px;
+    background: var(--coral-wash); color: #9F1239;
+    font-size: 9.5px; font-weight: 600;
+    padding: 3px 7px; border-radius: 999px;
+    margin-left: 4px; flex-shrink: 0;
+    opacity: 0; transform: translateY(-4px);
+    transition: opacity 320ms ease, transform 320ms ease;
+  }
+
+  /* Trust strip */
+  .trust {
+    position: relative; z-index: 1;
+    margin: 0 16px 14px;
+    text-align: center;
+    font-size: 10px; color: var(--ink-muted);
+    opacity: 0; transition: opacity 380ms ease;
+  }
+  .trust.in { opacity: 1; }
+  .trust .shield {
+    display: inline-block; width: 6px; height: 6px; border-radius: 50%;
+    background: var(--emerald-700); margin-right: 5px;
+    vertical-align: 1px;
+  }
+
+  /* Cancel modal — slides up from bottom of card. Sized to cover
+     only the bottom ~55% so the arc + total stay visible above it. */
+  .modal {
+    position: absolute;
+    left: 12px; right: 12px; bottom: 12px;
+    background: white;
+    border: 1px solid var(--hairline);
+    border-radius: 14px;
+    padding: 10px 12px;
+    transform: translateY(120%); opacity: 0;
+    transition:
+      transform 500ms cubic-bezier(.16,1,.3,1),
+      opacity 260ms ease;
+    z-index: 3;
+    max-height: 58%;
+  }
+  .modal.in { transform: translateY(0); opacity: 1; }
+  .modal .m-head {
+    display: flex; align-items: center; gap: 9px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--hairline);
+  }
+  .m-glyph {
+    width: 28px; height: 28px; border-radius: 8px;
+    background: #E50914; color: white; font-weight: 600; font-size: 12px;
+    display: inline-flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .m-savings-lbl {
+    font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase;
+    color: var(--emerald-700); font-weight: 600;
+  }
+  .m-amount {
+    font-size: 18px; font-weight: 700; color: var(--emerald-700);
+    line-height: 1; font-variant-numeric: tabular-nums; letter-spacing: -0.02em;
+  }
+  .m-amount .u {
+    font-size: 9px; color: var(--emerald-900); opacity: 0.7;
+    margin-left: 3px; font-weight: 500;
+  }
+  .m-paths { margin-top: 8px; display: grid; gap: 4px; }
+  .m-path {
+    display: flex; align-items: center; gap: 8px;
+    padding: 6px 8px;
+    border: 1px solid var(--hairline);
+    border-radius: 8px;
+    background: white;
+    opacity: 0; transform: translateY(6px);
+    transition: opacity 320ms cubic-bezier(.16,1,.3,1), transform 320ms cubic-bezier(.16,1,.3,1);
+  }
+  .m-path.in { opacity: 1; transform: translateY(0); }
+  .m-path .ic {
+    width: 20px; height: 20px; border-radius: 6px; flex-shrink: 0;
+    background: var(--emerald-50); color: var(--emerald-700);
+    display: inline-flex; align-items: center; justify-content: center;
+  }
+  .m-path .ic svg { width: 10px; height: 10px; }
+  .m-path .lbl { font-size: 10.5px; font-weight: 500; color: var(--ink); }
+  .m-path .sub-lbl { font-size: 9px; color: var(--ink-muted); margin-top: 0; }
+  .m-confirm {
+    margin-top: 8px;
+    height: 30px; width: 100%;
+    background: var(--ink); color: white; border: none;
+    border-radius: 999px; font-size: 11px; font-weight: 500;
+    cursor: pointer;
+    display: inline-flex; align-items: center; justify-content: center; gap: 5px;
+    font-family: inherit;
+    transition: transform 160ms ease;
+  }
+  .m-confirm.armed { animation: btn-press 320ms ease; }
+  @keyframes btn-press {
+    0%   { transform: scale(1); }
+    35%  { transform: scale(0.95); }
+    100% { transform: scale(1); }
+  }
+  .m-confirm svg { width: 11px; height: 11px; }
+
+  /* Celebration overlay */
+  .celebration {
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    pointer-events: none;
+    z-index: 5;
+    padding: 16px;
+  }
+  .celebration .cele-card {
+    background: white;
+    border: 1px solid var(--emerald-100);
+    border-radius: 18px;
+    padding: 16px 20px;
+    text-align: center;
+    opacity: 0;
+    transform: scale(0.7) translateY(12px);
+    transition:
+      opacity 420ms cubic-bezier(.16,1,.3,1),
+      transform 540ms cubic-bezier(.34,1.56,.64,1);
+    box-shadow:
+      0 4px 12px rgba(4,120,87,0.10),
+      0 16px 40px rgba(4,120,87,0.12);
+    max-width: 200px;
+  }
+  .celebration.in .cele-card { opacity: 1; transform: scale(1) translateY(0); }
+  .cele-label {
+    font-size: 9.5px; letter-spacing: 0.16em; text-transform: uppercase;
+    color: var(--emerald-700); font-weight: 600; margin-top: 6px;
+  }
+  .cele-amt {
+    margin-top: 3px;
+    font-size: 22px; font-weight: 700; color: var(--emerald-700);
+    line-height: 1; font-variant-numeric: tabular-nums; letter-spacing: -0.02em;
+  }
+  .cele-amt .u {
+    font-size: 10px; color: var(--emerald-900); opacity: 0.7;
+    margin-left: 3px; font-weight: 500;
+  }
+  .seedling { width: 40px; height: 40px; margin: 0 auto; display: block; }
+  .seedling .stem {
+    stroke: var(--emerald-700); stroke-width: 2.4;
+    stroke-linecap: round; fill: none;
+    stroke-dasharray: 30; stroke-dashoffset: 30;
+    transition: stroke-dashoffset 540ms ease;
+  }
+  .celebration.in .seedling .stem { stroke-dashoffset: 0; }
+  .seedling .leaf-l, .seedling .leaf-r {
+    opacity: 0;
+    transform-box: fill-box;
+    transform-origin: center;
+    transform: scale(0);
+    transition:
+      transform 480ms cubic-bezier(.34,1.56,.64,1),
+      opacity 320ms ease;
+  }
+  .celebration.in .seedling .leaf-l {
+    transform: scale(1); opacity: 1; transition-delay: 360ms;
+  }
+  .celebration.in .seedling .leaf-r {
+    transform: scale(1); opacity: 1; transition-delay: 500ms;
+  }
+  .seedling .soil { opacity: 0.4; }
+
+  /* Confetti */
+  .confetti-host {
+    position: absolute; inset: 0;
+    pointer-events: none; z-index: 4;
+    overflow: hidden;
+  }
+  .confetti-host span {
+    position: absolute;
+    left: 50%; top: 50%;
+    width: 7px; height: 3px;
+    border-radius: 1.5px;
+    opacity: 0;
+    will-change: transform, opacity;
+  }
+  .confetti-host.fire span {
+    animation: confetti 1400ms cubic-bezier(.16,1,.3,1) forwards;
+  }
+  @keyframes confetti {
+    0%   { opacity: 0; transform: translate(-50%, -50%) rotate(0deg); }
+    10%  { opacity: 1; }
+    70%  { opacity: 1; }
+    100% {
+      opacity: 0;
+      transform:
+        translate(calc(-50% + var(--dx)), calc(-50% + var(--dy) + 140px))
+        rotate(var(--rot));
+    }
+  }
+
+  /* Footer caption */
+  .caption {
+    margin: 18px auto 0;
+    max-width: 420px;
+    text-align: center;
+    font-size: 11px;
+    color: var(--ink-muted);
+    line-height: 1.5;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.001ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.001ms !important;
+    }
+  }
+</style>
+</head>
+<body>
+
+<div class="preview-bg">
+
+  <div class="head">
+    <span class="brand">
+      <span class="leaf">
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M2 22c1.25-1.5 5-7 10-7s8.75 5.5 10 7"/>
+          <path d="M12 15c0-4 2-8 9-9-1 5-3 9-9 9z"/>
+        </svg>
+      </span>
+      Hero motion preview
+    </span>
+    <button class="replay" data-action="restart">
+      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+      Restart
+    </button>
+  </div>
+
+  <!-- =========================== -->
+  <!-- HERO CARD                    -->
+  <!-- =========================== -->
+  <div class="hero-card" id="hero-card">
+
+    <div class="hc-top">
+      <div class="arc-wrap">
+        <svg class="arc" viewBox="0 0 100 100">
+          <circle class="track" cx="50" cy="50" r="42" fill="none" stroke-width="6"></circle>
+          <circle class="sweep" cx="50" cy="50" r="42" fill="none" stroke-width="6"></circle>
+        </svg>
+        <div class="arc-center"><span class="dot"></span></div>
+      </div>
+      <div class="phase">
+        <span class="phase-step">Step <span id="phase-num">1</span> of 3</span>
+        <span class="phase-label display" id="phase-label">Connecting securely</span>
+      </div>
+      <span class="live-pill">
+        <span class="live-dot"></span>Live
+      </span>
+    </div>
+
+    <div class="total-card">
+      <div class="total-lbl">Found so far</div>
+      <div class="total-row">
+        <div class="total-main display"><span id="total-amt">$0.00</span><span class="u">/mo</span></div>
+        <div class="total-meta tnum"><span id="total-count">0 charges</span></div>
+      </div>
+      <div class="five-yr" id="five-yr">
+        That's <b id="five-yr-amt">$0</b> over 5 years
+      </div>
+    </div>
+
+    <ul class="row-list" id="row-list"></ul>
+
+    <div class="trust" id="trust">
+      <span class="shield"></span><span id="trust-text">Read-only via Plaid · No card numbers stored</span>
+    </div>
+
+    <!-- Cancel modal -->
+    <div class="modal" id="modal">
+      <div class="m-head">
+        <div class="m-glyph" style="background:#FA0F00">A</div>
+        <div>
+          <div class="m-savings-lbl">You'd save</div>
+          <div class="m-amount display tnum">$720<span class="u">/year</span></div>
+        </div>
+      </div>
+      <div class="m-paths">
+        <div class="m-path" data-i="0">
+          <span class="ic">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+          </span>
+          <div style="flex:1; min-width:0;">
+            <div class="lbl">Open cancel page</div>
+            <div class="sub-lbl">account.adobe.com/plans</div>
+          </div>
+        </div>
+        <div class="m-path" data-i="1">
+          <span class="ic">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+          </span>
+          <div style="flex:1; min-width:0;">
+            <div class="lbl">Copy email template</div>
+            <div class="sub-lbl">For services that need it</div>
+          </div>
+        </div>
+        <div class="m-path" data-i="2">
+          <span class="ic">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+          </span>
+          <div style="flex:1; min-width:0;">
+            <div class="lbl">Call retention</div>
+            <div class="sub-lbl">When phone-only</div>
+          </div>
+        </div>
+      </div>
+      <button class="m-confirm" id="m-confirm">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+        I cancelled it
+      </button>
+    </div>
+
+    <!-- Confetti host -->
+    <div class="confetti-host" id="confetti-host"></div>
+
+    <!-- Celebration overlay -->
+    <div class="celebration" id="celebration">
+      <div class="cele-card">
+        <svg class="seedling" viewBox="0 0 48 48" aria-hidden="true">
+          <ellipse class="soil" cx="24" cy="42" rx="14" ry="2.5" fill="#A78BFA"></ellipse>
+          <path class="stem" d="M24 42 L24 22"></path>
+          <path class="leaf-l" d="M24 28 C 16 24, 12 19, 16 15 C 20 19, 24 24, 24 28 Z" fill="#10B981"></path>
+          <path class="leaf-r" d="M24 22 C 32 18, 36 13, 32 9 C 28 13, 24 18, 24 22 Z" fill="#34D399"></path>
+        </svg>
+        <div class="cele-label">Pruned · Adobe CC</div>
+        <div class="cele-amt display">+$720<span class="u">/yr saved</span></div>
+      </div>
+    </div>
+  </div>
+
+  <p class="caption">
+    Loops continuously. Single self-contained card, ~420px wide. Drop-in replacement for the marketing hero card.
+  </p>
+</div>
+
+<script>
+(function() {
+  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  const SUBS = [
+    { id: 'netflix', name: 'Netflix', cat: 'Streaming', color: '#E50914', dot: '#8B5CF6', amt: 22.99 },
+    { id: 'spotify', name: 'Spotify', cat: 'Streaming', color: '#1DB954', dot: '#8B5CF6', amt: 11.99 },
+    { id: 'adobe',   name: 'Adobe CC', cat: 'Software', color: '#FA0F00', dot: '#3B82F6', amt: 59.99 },
+  ];
+  const TOTAL = SUBS.reduce((s, x) => s + x.amt, 0);
+  const ANNUAL = Math.round(TOTAL * 12);
+  const FIVE_YR = Math.round(TOTAL * 12 * 5);
+  const PHASES = [
+    { num: 1, label: 'Connecting securely' },
+    { num: 2, label: 'Reading transactions' },
+    { num: 3, label: 'Spotting patterns' },
+  ];
+
+  const $ = (id) => document.getElementById(id);
+  const rowList = $('row-list');
+  const totalAmt = $('total-amt');
+  const totalCount = $('total-count');
+  const phaseLabel = $('phase-label');
+  const phaseNum = $('phase-num');
+  const trust = $('trust');
+  const trustText = $('trust-text');
+  const fiveYrCard = $('five-yr');
+  const fiveYrAmt = $('five-yr-amt');
+  const modal = $('modal');
+  const modalPaths = modal.querySelectorAll('.m-path');
+  const confirmBtn = $('m-confirm');
+  const confetti = $('confetti-host');
+  const celebration = $('celebration');
+
+  const fmt = (n) =>
+    '$' + n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const fmtW = (n) => '$' + Math.round(n).toLocaleString('en-US');
+
+  let timers = [];
+  let raf = null;
+
+  function setPhase(idx) {
+    phaseLabel.classList.add('entering');
+    setTimeout(() => {
+      phaseLabel.textContent = PHASES[idx].label;
+      phaseNum.textContent = PHASES[idx].num;
+      requestAnimationFrame(() => phaseLabel.classList.remove('entering'));
+    }, 160);
+  }
+
+  function counter(from, to, duration) {
+    if (raf) cancelAnimationFrame(raf);
+    if (reduce) { totalAmt.textContent = fmt(to); return; }
+    const t0 = performance.now();
+    const tick = (now) => {
+      const t = Math.min(1, (now - t0) / duration);
+      const eased = 1 - Math.pow(1 - t, 3);
+      totalAmt.textContent = fmt(from + (to - from) * eased);
+      if (t < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+  }
+
+  function clearAll() {
+    timers.forEach(clearTimeout); timers = [];
+    if (raf) cancelAnimationFrame(raf);
+    rowList.innerHTML = '';
+    totalAmt.textContent = '$0.00';
+    totalCount.textContent = '0 charges';
+    phaseLabel.classList.remove('entering');
+    phaseLabel.textContent = PHASES[0].label;
+    phaseNum.textContent = PHASES[0].num;
+    fiveYrCard.classList.remove('in');
+    trust.classList.remove('in');
+    modal.classList.remove('in');
+    modalPaths.forEach(p => p.classList.remove('in'));
+    confirmBtn.classList.remove('armed');
+    confetti.classList.remove('fire');
+    confetti.innerHTML = '';
+    celebration.classList.remove('in');
+  }
+
+  function fireConfetti() {
+    confetti.innerHTML = '';
+    const colors = ['#047857','#10B981','#34D399','#F59E0B','#FB7185','#A78BFA','#EC4899'];
+    const N = 36;
+    for (let i = 0; i < N; i++) {
+      const span = document.createElement('span');
+      const angle = (Math.PI * 2 * i) / N + Math.random() * 0.3;
+      const dist = 80 + Math.random() * 60;
+      const dx = Math.cos(angle) * dist;
+      const dy = Math.sin(angle) * dist - 30;
+      const rot = (Math.random() * 720 - 360);
+      span.style.setProperty('--dx', dx + 'px');
+      span.style.setProperty('--dy', dy + 'px');
+      span.style.setProperty('--rot', rot + 'deg');
+      span.style.background = colors[i % colors.length];
+      span.style.animationDelay = (Math.random() * 80) + 'ms';
+      confetti.appendChild(span);
+    }
+    requestAnimationFrame(() => confetti.classList.add('fire'));
+  }
+
+  function run() {
+    clearAll();
+    const t = (ms, fn) => timers.push(setTimeout(fn, reduce ? 0 : ms));
+
+    // ---- PHASE A: scan (0 -> 4.3s) ----
+    t(800, () => setPhase(1));
+
+    SUBS.forEach((s, i) => {
+      t(1600 + i * 320, () => {
+        const li = document.createElement('li');
+        li.className = 'row';
+        li.dataset.id = s.id;
+        li.innerHTML =
+          '<span class="glyph" style="background:' + s.color + '">' + s.name.charAt(0) + '</span>' +
+          '<div class="nm">' +
+            '<span class="name">' + s.name + '</span>' +
+            '<span class="cat"><span class="cdot" style="background:' + s.dot + '"></span>' + s.cat + '</span>' +
+          '</div>' +
+          '<span class="amt tnum">' + fmt(s.amt) + '</span>';
+        rowList.appendChild(li);
+        requestAnimationFrame(() => li.classList.add('in'));
+        totalCount.textContent = (i + 1) + ' charge' + (i ? 's' : '');
+      });
+    });
+
+    t(1600, () => counter(0, TOTAL, 2000));
+    t(3400, () => setPhase(2));
+    t(3900, () => {
+      fiveYrAmt.textContent = fmtW(FIVE_YR);
+      fiveYrCard.classList.add('in');
+    });
+    t(4300, () => {
+      trustText.innerHTML = '<span class="shield"></span>Found 3 charges in 4.3s · Read-only via Plaid';
+      trust.classList.add('in');
+    });
+
+    // ---- PHASE B: cancel modal (4.6 -> 7s) ----
+    t(4800, () => {
+      const targetRow = rowList.querySelector('[data-id="adobe"]');
+      if (targetRow) targetRow.classList.add('highlighted');
+    });
+    t(5300, () => modal.classList.add('in'));
+    modalPaths.forEach((p, i) => t(5500 + i * 120, () => p.classList.add('in')));
+
+    // ---- PHASE C: celebration (7 -> 8.5s) ----
+    t(6800, () => confirmBtn.classList.add('armed'));
+    t(7120, () => modal.classList.remove('in'));
+    t(7200, () => {
+      fireConfetti();
+      celebration.classList.add('in');
+    });
+    t(8500, () => celebration.classList.remove('in'));
+
+    // ---- PHASE D: pruned state (8.5 -> 10s) ----
+    t(8600, () => {
+      const targetRow = rowList.querySelector('[data-id="adobe"]');
+      if (!targetRow) return;
+      targetRow.classList.remove('highlighted');
+      targetRow.classList.add('pruned');
+      const amtEl = targetRow.querySelector('.amt');
+      if (amtEl) {
+        amtEl.outerHTML =
+          '<span class="pruned-chip">' +
+            '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>' +
+            'Saved $720/yr' +
+          '</span>';
+      }
+    });
+
+    // ---- Loop ----
+    t(11000, () => run());
+  }
+
+  document.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-action="restart"]');
+    if (btn) run();
+  });
+
+  run();
+})();
+</script>
+</body>
+</html>
