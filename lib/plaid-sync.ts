@@ -159,7 +159,32 @@ function buildTxnRow(
 ) {
   const desc = t.merchant_name ?? t.name ?? "";
   const norm = normalizeDescriptor(desc);
-  const merchantKey = (norm.catalog_key ?? norm.merchant_name).toLowerCase();
+  const baseKey = (norm.catalog_key ?? norm.merchant_name).toLowerCase();
+  // Biller passthrough split:
+  //
+  // Billers (Apple, Google Play, PayPal, Stripe, Square) wrap many
+  // distinct products under one descriptor. If we keyed every
+  // "APPLE.COM/BILL" charge on `apple`, iCloud ($2.99), Apple Music
+  // ($10.99), and Apple TV+ ($6.99) would all collapse into one
+  // recurrence group. The drift tolerance then rejects the minority
+  // amounts as outliers and we lose two subscriptions.
+  //
+  // Generalized solution: when normalize flags biller_passthrough,
+  // append a quantized amount tier to the merchant_key. The tier is
+  // log-scaled so a price increase from $9.99 → $11.99 still lands in
+  // the same bucket, but $2.99 vs $10.99 vs $49.99 stay separate.
+  //
+  // Tier: floor(amount_dollars / 5) for amounts < $50, then
+  // floor(amount_dollars / 20) for higher.
+  const amountDollars = Math.abs(t.amount ?? 0);
+  let merchantKey = baseKey;
+  if (norm.biller_passthrough) {
+    const tier =
+      amountDollars < 50
+        ? Math.floor(amountDollars / 5)
+        : 10 + Math.floor(amountDollars / 20);
+    merchantKey = `${baseKey}_t${tier}`;
+  }
   const normalizedDescriptor = desc.toLowerCase().trim().replace(/\s+/g, " ");
 
   return {

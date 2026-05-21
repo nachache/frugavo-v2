@@ -194,14 +194,47 @@ function lookupByAliases(cleaned: string): {
   hit: AliasHit | null;
   matchedAlias: string | null;
 } {
-  // Try the full cleaned string first, then progressively shorter
-  // left-anchored prefixes. This catches "netflix.com sub" → "netflix".
-  const tokens = cleaned.split(/\s+/);
+  // Pass 1: token-prefix match, where "tokens" are split on whitespace
+  // AND on bank-descriptor separators (* / -). This catches the very
+  // common case where a bank squishes brand and product together —
+  // "OPENAI*CHATGPT", "MICROSOFT*365", "GOOGLE*WORKSPACE", "GG*GOOGLE
+  // PLAY" — none of which would split on whitespace alone.
+  const tokens = cleaned.split(/[\s*/\-]+/).filter((t) => t.length > 0);
   for (let len = tokens.length; len >= 1; len--) {
     const candidate = tokens.slice(0, len).join(" ").toLowerCase();
     const hit = ALIAS_INDEX.get(candidate);
     if (hit) return { hit, matchedAlias: candidate };
   }
+  // Also try right-anchored token suffixes — "spotify usa inc" should
+  // hit "spotify usa" even though "inc" is the trailing token.
+  for (let start = 0; start < tokens.length; start++) {
+    for (let end = tokens.length; end > start; end--) {
+      if (start === 0 && end === tokens.length) continue; // already tried
+      const candidate = tokens.slice(start, end).join(" ").toLowerCase();
+      const hit = ALIAS_INDEX.get(candidate);
+      if (hit) return { hit, matchedAlias: candidate };
+    }
+  }
+
+  // Pass 2: substring fallback. For each alias in the catalog, check
+  // whether it appears as a whole-word substring of the cleaned
+  // descriptor. Bounded by alias length — short aliases like "go" are
+  // skipped to avoid false matches.
+  //
+  // This catches glued-together descriptors that survive the
+  // multi-separator tokenizer above ("OPENAI*CHATGPT.AI" → "openai"
+  // substring matches the openai alias).
+  const lower = cleaned.toLowerCase();
+  let best: { hit: AliasHit; alias: string } | null = null;
+  for (const [alias, hit] of ALIAS_INDEX) {
+    if (alias.length < 4) continue; // skip short generic tokens
+    if (!lower.includes(alias)) continue;
+    if (!best || alias.length > best.alias.length) {
+      best = { hit, alias };
+    }
+  }
+  if (best) return { hit: best.hit, matchedAlias: best.alias };
+
   return { hit: null, matchedAlias: null };
 }
 

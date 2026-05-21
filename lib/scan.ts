@@ -165,7 +165,26 @@ export async function runScanForUser(
   const enrichment = await fetchPlaidRecurringEnrichment(userId);
 
   // ---- Step 4: deterministic detection ----
-  const detected = detectRecurringStreams(txns);
+  const { streams: detected, audits } = detectRecurringStreams(txns);
+
+  // Debug instrumentation. Gated on FRUGAVO_SCAN_DEBUG_USER_ID matching
+  // the scanning user — single-user opt-in so we can investigate one
+  // account in detail without flooding logs in production.
+  if (
+    process.env.FRUGAVO_SCAN_DEBUG_USER_ID &&
+    process.env.FRUGAVO_SCAN_DEBUG_USER_ID === userId
+  ) {
+    // eslint-disable-next-line no-console
+    console.log(
+      `[scan:debug] user=${userId} scan=${scanId} txns=${txns.length} groups=${audits.length} accepted=${detected.length}`
+    );
+    for (const a of audits) {
+      // eslint-disable-next-line no-console
+      console.log(
+        `[scan:debug] ${a.decision} key=${a.merchant_key} desc="${a.representative_descriptor.slice(0, 60)}" raw=${a.raw_count} kept=${a.kept_count} drift_out=${a.outlier_count} median_gap=${a.median_gap_days}d median_amt=$${a.median_amount_dollars.toFixed(2)} cadence=${a.cadence ?? "none"} reason=${a.rejection_reason ?? "ok"}${a.required_occurrences ? ` need>=${a.required_occurrences}` : ""}`
+      );
+    }
+  }
 
   await emit(scanId, { type: "progress", scan_id: scanId, phase: "spotting" });
 
@@ -300,11 +319,13 @@ async function processDetectedStream(args: {
   }
 
   // ---- Enrichment lookup (Plaid recurring as secondary signal) ----
+  // Plaid recurring/get is best-effort. The PRIMARY pfc signal now comes
+  // from the stored transactions, which detectRecurringStreams already
+  // attached to the detected stream. Enrichment overrides only if Plaid
+  // recognized the stream and has its own (richer) categorization.
   const enrich = enrichment.get(stream.merchant_key);
-  const pfcPrimary =
-    enrich?.pfc_primary ?? firstNonNull(stream.transactions, "pfc_primary");
-  const pfcDetailed =
-    enrich?.pfc_detailed ?? firstNonNull(stream.transactions, "pfc_detailed");
+  const pfcPrimary = enrich?.pfc_primary ?? stream.pfc_primary;
+  const pfcDetailed = enrich?.pfc_detailed ?? stream.pfc_detailed;
 
   const frequency = cadenceToFrequency(stream.frequency);
   const amountCents = Math.round(stream.average_amount_dollars * 100);
@@ -449,7 +470,7 @@ async function readStoredTransactions(userId: string): Promise<TxnInput[]> {
   const { data } = await supabaseAdmin
     .from("plaid_transactions")
     .select(
-      "plaid_transaction_id, posted_date, amount_cents, currency, description, merchant_key, canonical_name, normalized_descriptor, pending"
+      "plaid_transaction_id, posted_date, amount_cents, currency, description, merchant_key, canonical_name, normalized_descriptor, pfc_primary, pfc_detailed, pending"
     )
     .eq("user_id", userId)
     .eq("pending", false)
@@ -459,13 +480,14 @@ async function readStoredTransactions(userId: string): Promise<TxnInput[]> {
   return (data ?? []).map((r) => ({
     txn_id: r.plaid_transaction_id as string,
     date: r.posted_date as string,
-    // Stored as negative for outflows; detection expects that convention.
     amount_dollars: ((r.amount_cents as number) ?? 0) / 100,
     currency: (r.currency as string) ?? "USD",
     raw_descriptor: (r.description as string) ?? "",
     merchant_key: r.merchant_key as string,
     canonical_name: (r.canonical_name as string) ?? "",
     normalized_descriptor: (r.normalized_descriptor as string) ?? "",
+    pfc_primary: (r.pfc_primary as string | null) ?? null,
+    pfc_detailed: (r.pfc_detailed as string | null) ?? null,
   }));
 }
 
@@ -523,18 +545,8 @@ async function fetchPlaidRecurringEnrichment(
   return out;
 }
 
-function firstNonNull(
-  txns: TxnInput[],
-  _field: "pfc_primary" | "pfc_detailed"
-): string | null {
-  // The plaid_transactions row carries pfc_primary / pfc_detailed but
-  // TxnInput is the trimmed shape. We don't propagate PFC into TxnInput
-  // because detection must not depend on it. The enrichment map is the
-  // canonical source. This function just returns null for the path that
-  // doesn't have Plaid recurring data.
-  void txns;
-  return null;
-}
+// (firstNonNull placeholder removed — TxnInput now carries pfc_primary
+// and pfc_detailed directly from plaid_transactions.)
 
 // ---------------------------------------------------------------------------
 // LLM tiebreak for the classifier (only invoked on Gate B score == 2).

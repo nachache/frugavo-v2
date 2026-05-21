@@ -4,53 +4,53 @@
 // streams. No I/O, no Plaid, no DB, no AI, no Date.now(). Same input
 // + same parameters → byte-identical output.
 //
-// Used by:
-//   - lib/raw-data-ingest.ts (sandbox demo path over xlsx fixture)
-//   - lib/scan.ts (production path over plaid_transactions table)
+// Calibration notes (v3.1.0):
 //
-// Both callers feed in the same TxnInput shape and consume the same
-// DetectedStream output, so the engine is the single source of truth.
+//   MIN_OCCURRENCES is BAND-DEPENDENT. A monthly subscription needs
+//   only 2 charges (= ~1 month of history) to register; an annual
+//   subscription also needs only 2 charges (= ~2 years of history),
+//   which is achievable for many users, whereas the old global
+//   threshold of 3 made annual detection structurally impossible.
+//   Lower thresholds increase recall; the classifier (Gate A/B) is
+//   the precision gate that prevents this from turning into noise.
 //
-// Algorithm (mirrors the contract in the audit doc):
+//   AMOUNT DRIFT TOLERANCE widened to 0.25 (was 0.15). Usage-based
+//   billing (OpenAI, AWS, n8n) swings amounts 30%+ between months.
+//   The previous tolerance rejected those charges as outliers, the
+//   surviving group fell below MIN_OCCURRENCES, and the subscription
+//   was silently dropped.
 //
-//   1. Filter to outflows (negative amounts).
-//   2. Group by NORMALIZED merchant key. Caller is responsible for
-//      attaching merchant_key (catalog → fuzzy fallback) to each txn
-//      BEFORE calling this function. We trust whatever it computed.
-//   3. Within each group, apply amount drift tolerance:
-//        ±15% of group median (USD)
-//        ±25% of group median (non-USD / FX)
-//      Transactions outside tolerance are excluded from this group BUT
-//      kept aside as "outliers" for the caller's audit log if it wants.
-//   4. If the surviving group has < min_occurrences (default 3), drop.
-//   5. Compute the median inter-charge gap in days, classify into a
-//      cadence band:
-//        WEEKLY        4–9
-//        BIWEEKLY      10–18
-//        SEMI_MONTHLY  19–22
-//        MONTHLY       23–45
-//        QUARTERLY     80–100
-//        ANNUALLY      330–400
-//   6. If outside every band, drop.
-//   7. Output a DetectedStream per surviving group, sorted by
-//      merchant_key for stable ordering.
+//   MONTHLY CADENCE BAND widened to 20–50 days. End-of-month posting
+//   drift, weekend nudges, and the Feb-28 / Feb-29 edge regularly
+//   push real monthly subs to 22-day or 47-day gaps.
+//
+//   AUDIT array. detectRecurringStreams now returns audits for every
+//   group it considered — kept or rejected — with the rejection
+//   reason. The caller can emit these to logs to debug recall loss.
 
 export type TxnInput = {
-  // Source identifier — Plaid transaction_id in production. Used to
-  // dedupe inside a single group and to back-reference for charge
-  // history rendering.
   txn_id: string;
   date: string; // "YYYY-MM-DD"
   amount_dollars: number; // negative = outflow
-  currency: string; // "USD", "CAD", etc.
+  currency: string;
   raw_descriptor: string;
-  // Caller-attached normalization output. The engine NEVER calls the
-  // normalizer itself — that's the caller's job, and lets us swap
-  // normalization strategies without touching detection.
   merchant_key: string;
   canonical_name: string;
   normalized_descriptor: string;
+  // Optional Plaid PFC tags. Carried through so the classifier downstream
+  // gets the signal even when /transactions/recurring/get enrichment is
+  // unavailable. Detection itself does NOT read these.
+  pfc_primary?: string | null;
+  pfc_detailed?: string | null;
 };
+
+export type Cadence =
+  | "WEEKLY"
+  | "BIWEEKLY"
+  | "SEMI_MONTHLY"
+  | "MONTHLY"
+  | "QUARTERLY"
+  | "ANNUALLY";
 
 export type DetectedStream = {
   merchant_key: string;
@@ -59,38 +59,66 @@ export type DetectedStream = {
   normalized_descriptor: string;
   occurrences: number;
   median_gap_days: number;
-  frequency:
-    | "WEEKLY"
-    | "BIWEEKLY"
-    | "SEMI_MONTHLY"
-    | "MONTHLY"
-    | "QUARTERLY"
-    | "ANNUALLY";
+  frequency: Cadence;
   average_amount_dollars: number;
   median_amount_dollars: number;
   currency: string;
   last_date: string;
   next_expected_date: string;
   transactions: TxnInput[];
-  outliers: TxnInput[]; // amount-drift-rejected charges, kept for audit
+  outliers: TxnInput[];
+  pfc_primary: string | null;
+  pfc_detailed: string | null;
+};
+
+export type RejectionReason =
+  | "median_amount_zero"
+  | "all_drifted"
+  | "below_min_occurrences_no_band"
+  | "below_min_occurrences"
+  | "no_cadence_band";
+
+export type GroupAudit = {
+  merchant_key: string;
+  representative_descriptor: string;
+  raw_count: number;
+  kept_count: number;
+  outlier_count: number;
+  median_gap_days: number;
+  median_amount_dollars: number;
+  decision: "accepted" | "rejected";
+  cadence: Cadence | null;
+  rejection_reason?: RejectionReason;
+  required_occurrences?: number;
 };
 
 export type DetectorParams = {
-  min_occurrences: number; // default 3
-  drift_usd: number; // default 0.15
-  drift_fx: number; // default 0.25
-  cadence_bands: { name: DetectedStream["frequency"]; min: number; max: number }[];
+  // Band-specific minimum occurrence counts. Keys MUST cover every
+  // cadence band, plus a "default" fallback for groups whose cadence
+  // we haven't classified yet.
+  min_occurrences_by_band: Record<Cadence, number> & { default: number };
+  drift_usd: number;
+  drift_fx: number;
+  cadence_bands: { name: Cadence; min: number; max: number }[];
 };
 
 export const DEFAULT_PARAMS: DetectorParams = {
-  min_occurrences: 3,
-  drift_usd: 0.15,
-  drift_fx: 0.25,
+  min_occurrences_by_band: {
+    default: 2,
+    WEEKLY: 4,
+    BIWEEKLY: 3,
+    SEMI_MONTHLY: 2,
+    MONTHLY: 2,
+    QUARTERLY: 2,
+    ANNUALLY: 2,
+  },
+  drift_usd: 0.25,
+  drift_fx: 0.35,
   cadence_bands: [
     { name: "WEEKLY", min: 4, max: 9 },
     { name: "BIWEEKLY", min: 10, max: 18 },
     { name: "SEMI_MONTHLY", min: 19, max: 22 },
-    { name: "MONTHLY", min: 23, max: 45 },
+    { name: "MONTHLY", min: 20, max: 50 },
     { name: "QUARTERLY", min: 80, max: 100 },
     { name: "ANNUALLY", min: 330, max: 400 },
   ],
@@ -117,21 +145,24 @@ function addDays(dateStr: string, days: number): string {
 function bandFor(
   gap: number,
   bands: DetectorParams["cadence_bands"]
-): DetectedStream["frequency"] | null {
+): Cadence | null {
   for (const b of bands) {
     if (gap >= b.min && gap <= b.max) return b.name;
   }
   return null;
 }
 
+export type DetectorResult = {
+  streams: DetectedStream[];
+  audits: GroupAudit[];
+};
+
 export function detectRecurringStreams(
   txns: TxnInput[],
   params: DetectorParams = DEFAULT_PARAMS
-): DetectedStream[] {
-  // Step 1: outflows only.
+): DetectorResult {
   const outflows = txns.filter((t) => t.amount_dollars < 0);
 
-  // Step 2: group by merchant_key.
   const groups = new Map<string, TxnInput[]>();
   for (const t of outflows) {
     const arr = groups.get(t.merchant_key) ?? [];
@@ -139,13 +170,31 @@ export function detectRecurringStreams(
     groups.set(t.merchant_key, arr);
   }
 
-  const out: DetectedStream[] = [];
+  const streams: DetectedStream[] = [];
+  const audits: GroupAudit[] = [];
 
   for (const [key, items] of groups) {
-    // Step 3: drift tolerance per item, against group median.
+    const rep = items[Math.floor(items.length / 2)];
+    const repDescriptor = rep?.raw_descriptor ?? "";
+
+    // Step 1: drift tolerance per item, against group median.
     const amounts = items.map((t) => Math.abs(t.amount_dollars));
     const medAmount = median(amounts);
-    if (medAmount === 0) continue;
+    if (medAmount === 0) {
+      audits.push({
+        merchant_key: key,
+        representative_descriptor: repDescriptor,
+        raw_count: items.length,
+        kept_count: 0,
+        outlier_count: items.length,
+        median_gap_days: 0,
+        median_amount_dollars: 0,
+        decision: "rejected",
+        cadence: null,
+        rejection_reason: "median_amount_zero",
+      });
+      continue;
+    }
 
     const kept: TxnInput[] = [];
     const outliers: TxnInput[] = [];
@@ -157,27 +206,81 @@ export function detectRecurringStreams(
       else outliers.push(t);
     }
 
-    // Step 4: min occurrences.
-    if (kept.length < params.min_occurrences) continue;
+    if (kept.length === 0) {
+      audits.push({
+        merchant_key: key,
+        representative_descriptor: repDescriptor,
+        raw_count: items.length,
+        kept_count: 0,
+        outlier_count: outliers.length,
+        median_gap_days: 0,
+        median_amount_dollars: medAmount,
+        decision: "rejected",
+        cadence: null,
+        rejection_reason: "all_drifted",
+      });
+      continue;
+    }
 
-    // Stable order by date — required for deterministic gap median.
+    // Stable order by date.
     kept.sort((a, b) => a.date.localeCompare(b.date));
 
-    // Step 5: cadence.
+    // Step 2: cadence detection.
     const gaps: number[] = [];
     for (let i = 1; i < kept.length; i++) {
       gaps.push(daysBetween(kept[i - 1].date, kept[i].date));
     }
-    const medianGap = median(gaps);
-    const band = bandFor(medianGap, params.cadence_bands);
-    if (!band) continue;
+    const medianGap = gaps.length === 0 ? 0 : median(gaps);
+    const band =
+      gaps.length === 0 ? null : bandFor(medianGap, params.cadence_bands);
 
-    const rep = kept[Math.floor(kept.length / 2)];
+    // Step 3: min occurrences — band-dependent. Groups with no cadence
+    // yet fall back to `default`.
+    const minOcc =
+      params.min_occurrences_by_band[band ?? "MONTHLY"] !== undefined && band
+        ? params.min_occurrences_by_band[band]
+        : params.min_occurrences_by_band.default;
+
+    if (kept.length < minOcc) {
+      audits.push({
+        merchant_key: key,
+        representative_descriptor: repDescriptor,
+        raw_count: items.length,
+        kept_count: kept.length,
+        outlier_count: outliers.length,
+        median_gap_days: medianGap,
+        median_amount_dollars: medAmount,
+        decision: "rejected",
+        cadence: band,
+        rejection_reason: band
+          ? "below_min_occurrences"
+          : "below_min_occurrences_no_band",
+        required_occurrences: minOcc,
+      });
+      continue;
+    }
+
+    if (!band) {
+      audits.push({
+        merchant_key: key,
+        representative_descriptor: repDescriptor,
+        raw_count: items.length,
+        kept_count: kept.length,
+        outlier_count: outliers.length,
+        median_gap_days: medianGap,
+        median_amount_dollars: medAmount,
+        decision: "rejected",
+        cadence: null,
+        rejection_reason: "no_cadence_band",
+      });
+      continue;
+    }
+
     const lastDate = kept[kept.length - 1].date;
     const avg =
       kept.reduce((s, t) => s + Math.abs(t.amount_dollars), 0) / kept.length;
 
-    out.push({
+    streams.push({
       merchant_key: key,
       canonical_name: rep.canonical_name,
       representative_descriptor: rep.raw_descriptor,
@@ -192,18 +295,31 @@ export function detectRecurringStreams(
       next_expected_date: addDays(lastDate, medianGap),
       transactions: kept,
       outliers,
+      pfc_primary: rep.pfc_primary ?? null,
+      pfc_detailed: rep.pfc_detailed ?? null,
+    });
+
+    audits.push({
+      merchant_key: key,
+      representative_descriptor: rep.raw_descriptor,
+      raw_count: items.length,
+      kept_count: kept.length,
+      outlier_count: outliers.length,
+      median_gap_days: medianGap,
+      median_amount_dollars: medAmount,
+      decision: "accepted",
+      cadence: band,
     });
   }
 
-  // Deterministic ordering for reproducibility.
-  out.sort((a, b) => a.merchant_key.localeCompare(b.merchant_key));
-  return out;
+  // Deterministic ordering.
+  streams.sort((a, b) => a.merchant_key.localeCompare(b.merchant_key));
+  audits.sort((a, b) => a.merchant_key.localeCompare(b.merchant_key));
+  return { streams, audits };
 }
 
-// Convenience helper: map our cadence enum to the Frequency enum the
-// scan module already uses.
 export function cadenceToFrequency(
-  cadence: DetectedStream["frequency"]
+  cadence: Cadence
 ):
   | "weekly"
   | "biweekly"

@@ -21,4 +21,4 @@
 // looking at an old snapshot understands why the result differs from
 // today's engine.
 
-export const SCANNER_VERSION = "3.0.0-phase123";
+export const SCANNER_VERSION = "3.1.0-calibration";
