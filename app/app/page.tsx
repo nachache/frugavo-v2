@@ -186,7 +186,14 @@ async function fetchLatestSnapshotRows(userId: string): Promise<SnapshotRow[]> {
 }
 
 // Per-stream user decisions (keep / cancel) + DB row id, keyed by
-// plaid_stream_id. Carries user state across snapshots.
+// subscription_key. subscription_key is the stable identity introduced
+// by migration 010 — it survives Plaid stream_id drift, so a "Kept"
+// decision from one scan carries forward to the next.
+//
+// Backward compat: rows that pre-date migration 010 have their
+// subscription_key backfilled by the migration itself. Anything with a
+// null subscription_key is silently skipped (would not match a snapshot
+// row anyway).
 async function fetchDecisionMap(
   userId: string
 ): Promise<
@@ -199,10 +206,11 @@ async function fetchDecisionMap(
   if (!supabaseAdmin) return m;
   const { data } = await supabaseAdmin
     .from("subscriptions")
-    .select("id, plaid_stream_id, user_decision")
-    .eq("user_id", userId);
+    .select("id, subscription_key, user_decision")
+    .eq("user_id", userId)
+    .not("subscription_key", "is", null);
   for (const row of data ?? []) {
-    m.set(row.plaid_stream_id as string, {
+    m.set(row.subscription_key as string, {
       id: row.id as string,
       user_decision: (row.user_decision ?? null) as Subscription["user_decision"],
     });
@@ -210,8 +218,14 @@ async function fetchDecisionMap(
   return m;
 }
 
-// Merge snapshot rows with the per-stream decision map. Snapshot wins
-// on every display field; decisions overlay only id + user_decision.
+// Merge snapshot rows with the decision map.
+//
+// Snapshot wins on every display field. We use the snapshot's
+// `plaid_stream_id` field — which the new engine stores AS the
+// subscription_key — to look up the matching subscriptions row for
+// `id` + `user_decision`. Legacy snapshots stored a real plaid_stream_id
+// here; in those cases the lookup misses and we fall back to the
+// snapshot's own key as the React key. No data is lost either way.
 function mergeSnapshotWithDecisions(
   rows: SnapshotRow[],
   decisions: Map<string, { id: string; user_decision: Subscription["user_decision"] }>
@@ -219,7 +233,7 @@ function mergeSnapshotWithDecisions(
   return rows.map((r) => {
     const d = decisions.get(r.plaid_stream_id);
     return {
-      id: d?.id ?? r.plaid_stream_id, // fall back to stream id if not yet upserted
+      id: d?.id ?? r.plaid_stream_id,
       merchant_name: r.merchant_name,
       normalized_name: r.merchant_name,
       category: r.category,
@@ -236,12 +250,15 @@ function mergeSnapshotWithDecisions(
   });
 }
 
+// Legacy fallback when no scan_snapshot exists yet. Reads subscriptions
+// directly. The active scan path writes snapshots so this only triggers
+// for users whose last scan ran before migration 009.
 async function fetchSubscriptions(userId: string): Promise<Subscription[]> {
   if (!supabaseAdmin) return [];
   const { data } = await supabaseAdmin
     .from("subscriptions")
     .select(
-      "id, merchant_name, normalized_name, category, amount_cents, currency, frequency, last_charged_at, next_expected_charge_at, regret_score, status, user_decision, classification"
+      "id, merchant_name, normalized_name, category, amount_cents, currency, frequency, last_charged_at, next_expected_charge_at, regret_score, status, user_decision, classification, subscription_key"
     )
     .eq("user_id", userId)
     .order("status", { ascending: true })

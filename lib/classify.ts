@@ -128,36 +128,30 @@ const CHARITY_INDICATORS =
   /\b(unrwa|islamic\s*relief|nccm|cnmc|red\s*cross|world\s*vision|doctors?\s*without\s*borders?|salvation\s*army|food\s*bank|relief|humanitarian|orphan|refugee|childrens?\s*villages?|humane\s*society|sos\s*children)\b/i;
 
 // ---------- Known subscription domains (positive signal) ----------
+//
+// Single source of truth: lib/data/merchant-catalog.json. We collect
+// every domain listed on a merchant OR biller entry at module load and
+// expose the resulting Set to Gate B. When the catalog grows, this set
+// grows automatically — no duplicate list to maintain.
 
-const KNOWN_SUB_DOMAINS = new Set<string>([
-  // streaming
-  "netflix.com","spotify.com","hulu.com","disneyplus.com","max.com",
-  "paramount.com","peacocktv.com","apple.com","youtube.com","amazon.com",
-  "audible.com","twitch.tv",
-  // software / SaaS
-  "adobe.com","microsoft.com","github.com","gitlab.com","notion.so",
-  "figma.com","slack.com","zoom.us","dropbox.com","google.com",
-  "openai.com","anthropic.com","linear.app","squarespace.com",
-  "1password.com","bitwarden.com","evernote.com","jotform.com",
-  "talentlms.com","n8n.io","expressvpn.com","scotiabank.com",
-  // news
-  "nytimes.com","economist.com","ft.com","wsj.com","washingtonpost.com",
-  // telecom
-  "verizon.com","att.com","t-mobile.com","rogers.com","bell.ca",
-  "telus.com","chatrwireless.com","ebox.ca","fi.google.com",
-  "mintmobile.com",
-  // utilities
-  "hydroottawa.com","enbridge.com","reliancehomecomfort.com",
-  // fitness
-  "onepeloton.com","strava.com","classpass.com","calm.com","headspace.com",
-  // food
-  "hellofresh.com","blueapron.com","doordash.com","uber.com",
-  "instacart.com",
-  // fintech / membership
-  "koho.ca","linkedin.com",
-  // pro dues
-  "oda.ca",
-]);
+import catalog from "@/lib/data/merchant-catalog.json";
+
+type CatalogShape = {
+  merchants: { domains?: string[] }[];
+  billers: { domains?: string[] }[];
+};
+
+const KNOWN_SUB_DOMAINS: Set<string> = (() => {
+  const s = new Set<string>();
+  const c = catalog as unknown as CatalogShape;
+  for (const m of c.merchants ?? []) {
+    for (const d of m.domains ?? []) s.add(d.toLowerCase());
+  }
+  for (const b of c.billers ?? []) {
+    for (const d of b.domains ?? []) s.add(d.toLowerCase());
+  }
+  return s;
+})();
 
 // ---------- Gate A ----------
 

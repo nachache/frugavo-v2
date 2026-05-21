@@ -7,10 +7,17 @@ export type Frequency =
   | "biweekly"
   | "semi_monthly"
   | "monthly"
+  | "quarterly"
   | "annually"
   | "unknown";
 
-export type AiSource = "llm" | "plaid" | "raw" | "unknown";
+// Provenance for the merchant_name + category attached to a row.
+//   catalog → deterministic lookup hit lib/data/merchant-catalog.json
+//   llm     → Haiku resolved it (catalog miss). temperature: 0.
+//   plaid   → Plaid's merchant_name field (LLM unavailable)
+//   raw     → fell back to the bank descriptor verbatim
+//   unknown → nothing produced a name
+export type AiSource = "catalog" | "llm" | "plaid" | "raw" | "unknown";
 
 export type ScanRow = {
   stream_id: string;

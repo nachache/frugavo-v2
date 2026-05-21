@@ -105,6 +105,10 @@ export async function normalizeMerchant(
       {
         model: MODEL,
         max_tokens: 120,
+        // Pinned for determinism. Same descriptor → same merchant_name
+        // and category. Without this the cache-miss path is a coin flip
+        // across runs.
+        temperature: 0,
         system: NORMALIZE_SYSTEM,
         messages: [{ role: "user", content: normalizeUser(input) }],
       },

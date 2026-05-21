@@ -24,8 +24,11 @@ if (!redis) {
 // All keys are funneled through a single module so we can change the
 // versioning scheme in one place when the cache shape evolves.
 
+// All Redis keys live here so versioning + invalidation are centralized.
+//
+// Removed: `userScan` — the old per-user cached scan blob. Replaced by
+// the immutable `scan_snapshots` table read directly from Postgres.
 export const cacheKey = {
-  userScan: (userId: string) => `user:${userId}:scan_v1`,
   rescanLock: (userId: string) => `lock:scan:${userId}`,
   rescanCooldown: (userId: string) => `rescan:cooldown:${userId}`,
   aiMerchant: (descriptorKey: string) => `ai:merchant:v1:${descriptorKey}`,

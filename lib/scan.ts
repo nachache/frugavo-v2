@@ -1,12 +1,10 @@
 import { revalidatePath } from "next/cache";
-import { plaidClient, PLAID_ENV } from "./plaid";
+import { plaidClient } from "./plaid";
 import { supabaseAdmin } from "./supabase";
-import { decryptToken } from "./crypto";
 import { observeError } from "./observe";
 import { normalizeMerchant } from "@/lib/ai/normalize";
 import {
   publishScanEvent,
-  cacheDel,
   cacheKey,
   tryAcquireLock,
 } from "@/lib/cache";
@@ -15,11 +13,8 @@ import type {
   ScanEvent,
   ScanRow,
   ScanPhase,
+  AiSource,
 } from "@/lib/types/scan";
-import {
-  recurringStreamsFromRaw,
-  type RawDetectedStream,
-} from "./raw-data-ingest";
 import {
   classifyStream,
   classifyUserPrompt,
@@ -29,58 +24,50 @@ import {
 } from "./classify";
 import { normalizeDescriptor } from "./merchant-normalize";
 import type { SnapshotRow } from "./types/snapshot";
+import { SCANNER_VERSION } from "./scanner-version";
+import { subscriptionKey } from "./subscription-key";
+import { syncAllItemsForUser } from "./plaid-sync";
+import {
+  detectRecurringStreams,
+  cadenceToFrequency,
+  type TxnInput,
+  type DetectedStream,
+} from "./recurrence-detect";
 import Anthropic from "@anthropic-ai/sdk";
 
 // ---------------------------------------------------------------------------
-// Scan orchestrator.
+// Scan orchestrator — owned-detection architecture.
 //
-// Pipeline per Plaid Item:
-//   1. /transactions/recurring/get → outflow_streams
-//   2. For each stream (concurrency-capped fanout):
-//      a. AI normalize merchant (cache + 800ms timeout + fallback)
-//      b. Compute regret_score against the scan's fixed as_of_date
-//      c. Upsert into subscriptions
-//      d. Publish a `row` SSE event
-//   3. Publish a final `total` then `complete` event.
+// Pipeline (single path; no demo/sandbox branching):
+//   1. Acquire per-user lock + capture as_of_date.
+//   2. INSERT scan_runs (status='running', scanner_version, as_of_date).
+//   3. Sync every active plaid_item via /transactions/sync. Cursor on
+//      plaid_items advances incrementally; plaid_transactions is the
+//      authoritative store.
+//   4. Read all enriched transactions (already carry merchant_key,
+//      canonical_name, normalized_descriptor — populated by sync).
+//   5. Run pure detectRecurringStreams() — deterministic; same input +
+//      same params = identical output.
+//   6. Optional enrichment: Plaid /transactions/recurring/get is fetched
+//      ONLY as a secondary signal source (status, PFC). It NEVER drives
+//      which streams exist or what they look like — that's owned by us.
+//   7. Per detected stream: classify (Gate A → B → optional LLM
+//      tiebreak), compute subscription_key, upsert subscriptions on
+//      (user_id, subscription_key), build SnapshotRow.
+//   8. finalizeScan: append-only scan_snapshot, revalidatePath, terminal
+//      status, SSE complete.
 //
-// Multi-item fanout uses Promise.allSettled with a manual concurrency cap
-// of 6 so one slow/dead Item never blocks fresh ones (spec section 3).
-//
-// Determinism contract (Phase 1):
-//   - One `asOf` Date is captured at scan start and stored on scan_runs.
-//     EVERY time-dependent computation downstream reads `asOf` instead of
-//     calling Date.now() ad hoc. Two scans on the same Plaid response and
-//     the same asOf produce byte-identical subscription rows.
-//   - Streams are stable-sorted by descriptor before classification so
-//     row order is independent of Plaid's response ordering.
-//   - LLM calls (merchant normalize, classifier tiebreak) run with
-//     temperature: 0.
-//   - `updated_at` and `last_ai_run_at` use `asOf`, not the current wall
-//     clock — so an idempotent re-run doesn't churn timestamps.
-//
-// Lifecycle state machine (migration 008):
-//
-//   running ──► finalizing ──► done       (success)
-//                          └─► error      (terminal failure)
-//                          └─► timeout    (budget exceeded)
-//
-//   - `running`    every per-stream upsert is still in flight
-//   - `finalizing` every row has been persisted; cache invalidation and
-//                  downstream notifications are dispatching. Today this
-//                  window is short because every upsert is awaited before
-//                  finalize, but the state exists so future async
-//                  post-write work (Plaid /transactions/sync cursor
-//                  completion, MRR rollups, push notifications) has a
-//                  well-named home. Clients must NOT treat this as final.
-//   - `done`       rows visible, caches invalidated. Safe to read.
-//
-// The SSE `complete` event and the polling `/api/scan/status` endpoint
-// only report `done` after the rows are queryable and `revalidatePath`
-// has been called. That is the contract the dashboard relies on to
-// avoid the stale-data race.
+// Determinism contract:
+//   - Single as_of captured at scan start.
+//   - detectRecurringStreams is pure.
+//   - Catalog-first normalization. Haiku ONLY on catalog miss, temp 0.
+//   - LLM is never on the path of recurrence math, money math, or dates.
+//   - Stable subscription identity via subscription_key (hash of
+//     user_id + merchant_key). User decisions survive descriptor drift.
+//   - scanner_version stamped on every scan_run, scan_snapshot, and
+//     subscription row for replay verification.
 // ---------------------------------------------------------------------------
 
-const ITEM_CONCURRENCY = 6;
 const ROW_CONCURRENCY = 8;
 
 export type ScanResult = {
@@ -91,31 +78,8 @@ export type ScanResult = {
   error?: string;
 };
 
-// The old SANDBOX_FALLBACK_SUBS array and seedSandboxFallback function
-// were removed in the tenant-isolation pass: they injected the same 10
-// hardcoded subscriptions into EVERY user's scan when Plaid sandbox
-// returned 0 streams. That meant one user's "scan" leaked the same
-// demo names into another user's dashboard.
-
-// The raw-data ingest path (lib/raw-data-ingest.ts) is now strictly
-// gated. The xlsx-derived demo data only loads when:
-//   - PLAID_ENV === "sandbox"
-//   - FRUGAVO_SANDBOX_DEMO_USER_ID env var is set
-//   - the running scan's Clerk userId exactly matches it
-// Any other user — even in sandbox mode — sees only the streams Plaid
-// actually returns for their own connected items. No fixtures, no
-// fallback, no leakage.
-function isDemoUser(userId: string): boolean {
-  const allowed = process.env.FRUGAVO_SANDBOX_DEMO_USER_ID;
-  return PLAID_ENV === "sandbox" && !!allowed && allowed === userId;
-}
-
 export type ScanSource = "plaid" | "webhook" | "manual" | "first_connect";
 
-// Entry point. Returns the scan_id immediately after creating the
-// scan_runs row, then drives the rest synchronously inside this call.
-// Callers that need true async kickoff should `void runScanForUser(...)`.
-// The SSE endpoint reads from Redis Stream `scan:{scan_id}:events`.
 export async function runScanForUser(
   userId: string,
   source: ScanSource = "first_connect"
@@ -131,8 +95,8 @@ export async function runScanForUser(
     };
   }
 
-  // Re-scan lock — prevents two concurrent scans for the same user from
-  // double-publishing. 60s TTL is the upper bound on a single scan.
+  // Per-user lock prevents two concurrent scans from racing the same
+  // plaid_items.cursor advancement.
   const lockKey = cacheKey.rescanLock(userId);
   const gotLock = await tryAcquireLock(lockKey, 60);
   if (!gotLock) {
@@ -145,12 +109,8 @@ export async function runScanForUser(
     };
   }
 
-  // The one and only "now" this scan will ever observe. Stored on
-  // scan_runs and threaded through every downstream function that would
-  // otherwise call Date.now(): regretScore, classifier silent-window
-  // heuristics, updated_at timestamps. This is what makes the scan
-  // deterministic — two runs on the same input + same asOf produce
-  // identical output.
+  // Single "now" for this scan. Every time-dependent computation reads
+  // this instead of Date.now() so replay is reproducible.
   const asOf = new Date();
   const asOfIso = asOf.toISOString();
 
@@ -161,6 +121,7 @@ export async function runScanForUser(
       source,
       status: "running",
       as_of_date: asOfIso,
+      scanner_version: SCANNER_VERSION,
     })
     .select("id")
     .single();
@@ -178,424 +139,407 @@ export async function runScanForUser(
 
   await emit(scanId, { type: "progress", scan_id: scanId, phase: "connecting" });
 
-  const { data: items, error: itemsErr } = await supabaseAdmin
-    .from("plaid_items")
-    .select("id, plaid_access_token, plaid_item_id")
-    .eq("user_id", userId)
-    .eq("status", "active");
-
-  if (itemsErr || !items || items.length === 0) {
-    await finalizeScan(scanId, userId, 0, 0, t0, "done");
-    return {
-      scan_id: scanId,
-      detected: 0,
-      failedItems: 0,
-      duration_ms: Date.now() - t0,
+  // ---- Step 1: sync every item's transactions via /transactions/sync ----
+  let syncMetrics = { items: 0, added: 0, modified: 0, removed: 0, pages: 0 };
+  try {
+    const sync = await syncAllItemsForUser(userId);
+    syncMetrics = {
+      items: sync.items,
+      added: sync.result.added,
+      modified: sync.result.modified,
+      removed: sync.result.removed,
+      pages: sync.result.pages,
     };
+  } catch (e) {
+    observeError(e, { route: "scan.sync", tags: { userId } });
   }
 
   await emit(scanId, { type: "progress", scan_id: scanId, phase: "reading" });
 
-  let detected = 0;
-  let failedItems = 0;
-  let monthlyTotalCents = 0;
+  // ---- Step 2: read stored transactions for this user ----
+  const txns = await readStoredTransactions(userId);
 
-  // Collected by every per-stream worker; flushed into scan_snapshots
-  // at finalize. This is the canonical record of what the engine
-  // decided this scan — count, list, totals all derive from this array.
-  const snapshotRows: SnapshotRow[] = [];
+  // ---- Step 3: optional Plaid /transactions/recurring/get enrichment ----
+  // Fetched once per item. Only used for PFC + status hints on
+  // matching merchant_keys. NEVER drives stream membership.
+  const enrichment = await fetchPlaidRecurringEnrichment(userId);
 
-  await runWithCap(items, ITEM_CONCURRENCY, async (item) => {
-    try {
-      await scanOneItem({
-        userId,
-        scanId,
-        asOf,
-        plaidItemRowId: item.id,
-        accessToken: item.plaid_access_token,
-        onRow: (cents) => {
-          monthlyTotalCents += cents;
-          detected += 1;
-        },
-        onSnapshotRow: (row) => snapshotRows.push(row),
-      });
-    } catch (e) {
-      observeError(e, {
-        route: "scan",
-        tags: { itemId: item.id, userId },
-      });
-      failedItems += 1;
-    }
-  });
-
-  // No more demo-data fallback. If Plaid returned zero streams, the
-  // user sees the empty state — they're not silently filled with other
-  // people's data.
+  // ---- Step 4: deterministic detection ----
+  const detected = detectRecurringStreams(txns);
 
   await emit(scanId, { type: "progress", scan_id: scanId, phase: "spotting" });
+
+  // ---- Step 5: classify + persist each detected stream ----
+  let monthlyTotalCents = 0;
+  let detectedConfirmed = 0;
+  const snapshotRows: SnapshotRow[] = [];
+  let llmCalls = 0;
+  let catalogHits = 0;
+
+  // Process in stable order. detectRecurringStreams already sorts by
+  // merchant_key but we re-pin here to make the contract explicit.
+  const orderedStreams = [...detected].sort((a, b) =>
+    a.merchant_key.localeCompare(b.merchant_key)
+  );
+
+  // Cap concurrency. Each per-stream task is bounded by the classifier
+  // tiebreak Haiku call (800ms timeout).
+  await runWithCap(orderedStreams, ROW_CONCURRENCY, async (stream) => {
+    const result = await processDetectedStream({
+      userId,
+      scanId,
+      asOf,
+      stream,
+      enrichment,
+    });
+    if (!result) return;
+    if (result.aiSource === "catalog") catalogHits++;
+    if (result.aiSource === "llm") llmCalls++;
+    if (result.classification === "confirmed") {
+      monthlyTotalCents += result.monthlyEquivalentCents;
+      detectedConfirmed++;
+      await emit(scanId, { type: "row", scan_id: scanId, row: result.scanRow });
+    }
+    snapshotRows.push(result.snapshotRow);
+  });
+
   await emit(scanId, {
     type: "total",
     scan_id: scanId,
     monthly_cents: monthlyTotalCents,
-    count: detected,
+    count: detectedConfirmed,
   });
 
   await finalizeScan(
     scanId,
     userId,
-    detected,
-    failedItems,
+    detectedConfirmed,
+    0, // no per-item failure model anymore; sync failures are logged but non-fatal
     t0,
-    failedItems > 0 && detected === 0 ? "error" : "done",
+    "done",
     {
       asOfIso,
       snapshotRows,
       monthlyUpkeepCents: monthlyTotalCents,
+      metrics: {
+        sync: syncMetrics,
+        catalog_hits: catalogHits,
+        llm_calls: llmCalls,
+        detected_total: detected.length,
+        confirmed: detectedConfirmed,
+      },
     }
   );
 
-  await cacheDel(cacheKey.userScan(userId));
-
   return {
     scan_id: scanId,
-    detected,
-    failedItems,
+    detected: detectedConfirmed,
+    failedItems: 0,
     duration_ms: Date.now() - t0,
   };
 }
 
 // ---------------------------------------------------------------------------
+// Per-stream processor.
+//
+// Pulls catalog metadata, runs classifier, computes subscription_key,
+// upserts the live subscriptions row, and builds the snapshot row.
+// ---------------------------------------------------------------------------
 
-type PlaidStreamLike = {
-  stream_id: string;
-  merchant_name?: string | null;
-  description?: string | null;
-  average_amount?: {
-    amount?: number;
-    iso_currency_code?: string | null;
-    unofficial_currency_code?: string | null;
-  };
-  last_amount?: { amount?: number };
-  frequency?: string;
-  last_date?: string;
-  is_active?: boolean;
-  // Extended for the layered classifier — Plaid returns these on
-  // outflow streams in production. Optional so sandbox-injected streams
-  // can omit them safely.
-  status?: string;
-  personal_finance_category?: {
-    primary?: string;
-    detailed?: string;
-  };
-  // Some streams expose a small array of recent charge amounts; when
-  // present we use it for the CV signal. The Plaid SDK ships these
-  // under different keys across versions, so we treat it as opaque.
-  recent_amount_cents?: number[];
-  predicted_next_date?: string | null;
+type ProcessResult = {
+  classification: "confirmed" | "needs_review";
+  aiSource: AiSource;
+  monthlyEquivalentCents: number;
+  scanRow: ScanRow;
+  snapshotRow: SnapshotRow;
 };
 
-async function scanOneItem(args: {
+async function processDetectedStream(args: {
   userId: string;
   scanId: string;
   asOf: Date;
-  plaidItemRowId: string;
-  accessToken: string;
-  onRow: (monthlyEquivalentCents: number) => void;
-  onSnapshotRow: (row: SnapshotRow) => void;
-}): Promise<void> {
-  const {
-    userId,
-    scanId,
-    asOf,
-    plaidItemRowId,
-    accessToken,
-    onRow,
-    onSnapshotRow,
-  } = args;
+  stream: DetectedStream;
+  enrichment: Map<string, EnrichmentRecord>;
+}): Promise<ProcessResult | null> {
+  const { userId, scanId, asOf, stream, enrichment } = args;
   const asOfIso = asOf.toISOString();
 
-  const recurring = await plaidClient!.transactionsRecurringGet({
-    access_token: decryptToken(accessToken),
-  });
+  // ---- Catalog-first normalization ----
+  // detectRecurringStreams already stored merchant_key + canonical_name.
+  // We re-run normalizeDescriptor on the representative descriptor to
+  // get category + biller info (cheap, in-memory, deterministic).
+  const catalogHit = normalizeDescriptor(stream.representative_descriptor);
+  const catalogResolved =
+    catalogHit.catalog_key !== null ||
+    catalogHit.category === "bank_fees" ||
+    catalogHit.domain !== null;
 
-  let streams = (recurring.data.outflow_streams ?? []) as PlaidStreamLike[];
+  let merchantName: string;
+  let category: string;
+  let aiSource: AiSource;
 
-  // NOTE: the old isProbablySubscription regex is preserved below for
-  // reference but no longer applied here. The layered classifier in
-  // lib/classify.ts (Gate A → Gate B scoring → optional LLM tiebreak)
-  // does this rejection plus much more, and runs per stream below
-  // after we know all the Plaid metadata. See classifyStream().
-
-  // Sandbox-only: ingest the raw bank transactions in
-  // tests/fixtures/raw-transactions.json. The recurrence-detection rule
-  // lives in lib/raw-data-ingest.ts and is intentionally minimal so the
-  // downstream pipeline (filter, AI normalize, category assignment) is
-  // what we're actually testing. We do NOT hand-pick subscriptions or
-  // hand-clean merchant names here. Production never enters this branch.
-  // Demo data injection — ONLY for the explicitly allowlisted demo user
-  // in sandbox mode. Every other user (including other sandbox users)
-  // sees only the streams Plaid returned for their own connected items.
-  // This is the gate that prevents the xlsx fixture from leaking across
-  // accounts.
-  let rawStreams: RawDetectedStream[] = [];
-  if (isDemoUser(userId)) {
-    rawStreams = recurringStreamsFromRaw();
-    streams = [
-      ...streams,
-      ...rawStreams.map((d) => ({
-        stream_id: d.stream_id,
-        merchant_name: null, // null on purpose — force AI normalize
-        description: d.descriptor,
-        average_amount: {
-          amount: d.average_amount,
-          iso_currency_code: "USD",
-        },
-        frequency: d.frequency,
-        last_date: d.last_date,
-        is_active: true,
-        predicted_next_date: d.next_expected_date,
-      })),
-    ];
-  }
-
-  // Determinism: process streams in a fixed order regardless of how
-  // Plaid (or our raw ingest) happened to return them. Sorting by the
-  // descriptor + stream_id tuple guarantees identical input → identical
-  // upsert order → identical SSE event order across runs.
-  streams = [...streams].sort((a, b) => {
-    const ka = `${a.description ?? ""}|${a.merchant_name ?? ""}|${a.stream_id}`;
-    const kb = `${b.description ?? ""}|${b.merchant_name ?? ""}|${b.stream_id}`;
-    return ka.localeCompare(kb);
-  });
-
-  await runWithCap(streams, ROW_CONCURRENCY, async (stream) => {
-    const amount = stream.average_amount?.amount ?? 0;
-    if (!amount || amount <= 0) return;
-
-    const amountCents = Math.round(amount * 100);
-    const rawDescriptor =
-      stream.description ?? stream.merchant_name ?? "Unknown merchant";
-    const frequency = normalizeFrequency(stream.frequency);
-
+  if (catalogResolved) {
+    merchantName = catalogHit.merchant_name;
+    category = catalogHit.category;
+    aiSource = "catalog";
+  } else {
+    // Catalog miss → Haiku, temp 0. Caches in Redis 30d.
+    const amountCents = Math.round(stream.average_amount_dollars * 100);
     const norm = await normalizeMerchant(
       {
-        raw_descriptor: rawDescriptor,
-        plaid_merchant_name: stream.merchant_name ?? null,
+        raw_descriptor: stream.representative_descriptor,
+        plaid_merchant_name: stream.canonical_name,
         amount_cents: amountCents,
-        frequency,
+        frequency: cadenceToFrequency(stream.frequency),
       },
       { userId, scanRunId: scanId }
     );
+    merchantName = norm.merchant_name || stream.canonical_name;
+    category = norm.category ?? "other";
+    aiSource = norm.ai_source;
+  }
 
-    // ------------- Layered classifier -------------
-    //
-    // Run Gate A → Gate B → optional LLM tiebreak. If the result is
-    // 'reject' we never persist this stream. If 'review' we persist
-    // with classification='needs_review' so it's auditable but never
-    // counted in totals or surfaced as a cancel candidate. Only
-    // 'confirm' lands as a confirmed subscription.
+  // ---- Enrichment lookup (Plaid recurring as secondary signal) ----
+  const enrich = enrichment.get(stream.merchant_key);
+  const pfcPrimary =
+    enrich?.pfc_primary ?? firstNonNull(stream.transactions, "pfc_primary");
+  const pfcDetailed =
+    enrich?.pfc_detailed ?? firstNonNull(stream.transactions, "pfc_detailed");
 
-    // Pull real charge amounts for the CV signal. For the demo-user
-    // sandbox path we have every historical transaction; for live
-    // Plaid streams we read recent_amount_cents if present.
-    let recentCharges: number[] | undefined;
-    if (stream.stream_id.startsWith("raw-")) {
-      const raw = rawStreams.find((r) => r.stream_id === stream.stream_id);
-      recentCharges = raw?.transactions.map((t) =>
-        Math.round(Math.abs(t.amount_dollars) * 100)
-      );
-    } else if (stream.recent_amount_cents) {
-      recentCharges = stream.recent_amount_cents;
-    }
+  const frequency = cadenceToFrequency(stream.frequency);
+  const amountCents = Math.round(stream.average_amount_dollars * 100);
 
-    const classifyInput: ClassifyInput = {
-      descriptor: rawDescriptor,
-      merchantName: norm.merchant_name,
-      pfcPrimary: stream.personal_finance_category?.primary ?? null,
-      pfcDetailed: stream.personal_finance_category?.detailed ?? null,
-      frequency: (stream.frequency ?? "").toUpperCase(),
-      status: stream.status ?? null,
-      isActive: stream.is_active !== false,
-      avgAmountCents: amountCents,
-      recentChargeCents: recentCharges,
-      domain: null, // populated by future logo-resolver patch
-    };
+  // ---- Classifier ----
+  const classifyInput: ClassifyInput = {
+    descriptor: stream.representative_descriptor,
+    merchantName,
+    pfcPrimary,
+    pfcDetailed,
+    // Detection cadence enum maps directly to Plaid's frequency enum;
+    // classifier expects upper-case.
+    frequency: stream.frequency,
+    // We own grouping now. "MATURE" reflects the engine's confidence:
+    // 3+ on-cadence charges + drift tolerance passed.
+    status: enrich?.status ?? "MATURE",
+    isActive: true,
+    avgAmountCents: amountCents,
+    recentChargeCents: stream.transactions.map((t) =>
+      Math.round(Math.abs(t.amount_dollars) * 100)
+    ),
+    domain: catalogHit.domain ?? null,
+  };
 
-    const verdict = await classifyStream(classifyInput, llmTiebreak);
+  const verdict = await classifyStream(classifyInput, llmTiebreak);
+  if (verdict.decision === "reject") return null;
+  if (!verdict.classification) return null;
 
-    if (verdict.decision === "reject") {
-      // Never persist — this stream is definitively not a subscription.
-      return;
-    }
+  // ---- Stable identity ----
+  const subKey = subscriptionKey(userId, stream.merchant_key);
 
-    // Catalog override. The external merchant catalog
-    // (lib/data/merchant-catalog.json) takes precedence over the AI
-    // normalizer for any merchant we know — that's what makes results
-    // deterministic across users and Haiku versions. Bank fees route
-    // to their dedicated category instead of falling into "other."
-    const catalogHit = normalizeDescriptor(rawDescriptor);
-    const useCatalog =
-      catalogHit.catalog_key !== null ||
-      catalogHit.category === "bank_fees" ||
-      catalogHit.domain !== null;
-    const merchantName = useCatalog ? catalogHit.merchant_name : norm.merchant_name;
-    const category = useCatalog ? catalogHit.category : norm.category;
-
-    const predictedNext =
-      (stream as { predicted_next_date?: string | null }).predicted_next_date ??
-      null;
-
-    const currency =
-      stream.average_amount?.iso_currency_code ??
-      stream.average_amount?.unofficial_currency_code ??
-      "USD";
-
-    const isActive = stream.is_active !== false;
-    const regret = regretScore({
-      amount_cents: amountCents,
-      frequency,
-      last_charged_at: stream.last_date ?? null,
-      asOf,
-    });
-
-    const row: ScanRow = {
-      stream_id: stream.stream_id,
-      merchant_name: merchantName,
-      raw_descriptor: rawDescriptor,
-      amount_cents: amountCents,
-      currency,
-      frequency,
-      last_charged_at: stream.last_date ?? null,
-      next_expected_charge_at: predictedNext,
-      regret_score: regret,
-      category,
-      ai_source: norm.ai_source,
-    };
-
-    const { data: upserted, error: upsertErr } = await supabaseAdmin!
-      .from("subscriptions")
-      .upsert(
-        {
-          user_id: userId,
-          plaid_item_id: plaidItemRowId,
-          plaid_stream_id: stream.stream_id,
-          merchant_name: row.merchant_name,
-          normalized_name: row.merchant_name,
-          category: row.category,
-          amount_cents: row.amount_cents,
-          currency: row.currency,
-          frequency: row.frequency,
-          last_charged_at: row.last_charged_at,
-          next_expected_charge_at: row.next_expected_charge_at,
-          regret_score: row.regret_score,
-          ai_source: row.ai_source,
-          last_ai_run_at: asOfIso,
-          status: isActive ? "active" : "cancelled",
-          // Classifier verdict. The dashboard filters on this so only
-          // 'confirmed' rows count toward totals and candidate lists.
-          classification: verdict.classification,
-          classification_signals: verdict.signals,
-          classification_score: verdict.score,
-          updated_at: asOfIso,
-        },
-        { onConflict: "user_id,plaid_stream_id" }
-      )
-      .select("id")
-      .single();
-
-    if (upsertErr || !upserted) {
-      // eslint-disable-next-line no-console
-      console.error("[scan] upsert failed", upsertErr);
-      return;
-    }
-
-    // Sandbox-only: persist the REAL transactions for this descriptor.
-    // These are the actual amounts and dates from your bank statement —
-    // not synthesized, not averaged. Drives the 12-month chart.
-    if (PLAID_ENV === "sandbox" && stream.stream_id.startsWith("raw-")) {
-      const detected = rawStreams.find(
-        (d) => d.stream_id === stream.stream_id
-      );
-      if (detected && detected.transactions.length > 0) {
-        const chargeRows = detected.transactions.map((t) => ({
-          user_id: userId,
-          subscription_id: upserted.id as string,
-          plaid_stream_id: stream.stream_id,
-          amount_cents: Math.round(Math.abs(t.amount_dollars) * 100),
-          charged_at: t.date,
-          // false = derived from a real transaction record, not a
-          // synthesized estimate.
-          is_estimated: false,
-          currency: row.currency,
-        }));
-        await supabaseAdmin!
-          .from("subscription_charges")
-          .upsert(chargeRows, {
-            onConflict: "subscription_id,charged_at,amount_cents",
-            ignoreDuplicates: true,
-          });
-      }
-    }
-
-    // Push to the snapshot regardless of classification — needs_review
-    // rows are part of the audit trail. The dashboard filters on
-    // classification === 'confirmed' at read time.
-    const monthlyEq = monthlyEquivalentCents(row.amount_cents, row.frequency);
-    // Tighten types for the snapshot row. We've already returned on
-    // verdict.decision === "reject", so verdict.classification here is
-    // one of "confirmed" | "needs_review". row.category may be null
-    // when the AI normalizer didn't pick one and the catalog missed —
-    // default to "other".
-    const snapshotClassification =
-      (verdict.classification ?? "needs_review") as
-        | "confirmed"
-        | "needs_review";
-    onSnapshotRow({
-      plaid_stream_id: stream.stream_id,
-      merchant_name: row.merchant_name,
-      category: row.category ?? "other",
-      amount_cents: row.amount_cents,
-      currency: row.currency,
-      frequency: row.frequency,
-      monthly_equivalent_cents: monthlyEq,
-      last_charged_at: row.last_charged_at,
-      next_expected_charge_at: row.next_expected_charge_at,
-      classification: snapshotClassification,
-      classification_score: verdict.score,
-      regret_score: row.regret_score,
-      status: isActive ? "active" : "cancelled",
-      source: {
-        catalog_key: catalogHit.catalog_key,
-        matched_alias: catalogHit.signals.matched_alias,
-        matched_domain: catalogHit.signals.matched_domain,
-        biller: catalogHit.biller,
-        raw_descriptor: rawDescriptor,
-        plaid_merchant_name: stream.merchant_name ?? null,
-        ai_source: norm.ai_source,
-      },
-    });
-
-    // Only confirmed subs hit the SSE stream + the running total. The
-    // 'needs_review' rows are stored silently — they appear in nothing
-    // user-facing until someone explicitly builds a review queue UI.
-    if (verdict.classification === "confirmed") {
-      onRow(monthlyEq);
-      await emit(scanId, { type: "row", scan_id: scanId, row });
-    }
+  // ---- regret_score against fixed as_of ----
+  const regret = regretScore({
+    amount_cents: amountCents,
+    frequency,
+    last_charged_at: stream.last_date,
+    asOf,
   });
 
-  await supabaseAdmin!
-    .from("plaid_items")
-    .update({ last_synced_at: new Date().toISOString(), needs_refresh: false })
-    .eq("id", plaidItemRowId);
+  const monthlyEq = monthlyEquivalentCents(amountCents, frequency);
+
+  // ---- Upsert into subscriptions on (user_id, subscription_key) ----
+  // User decisions live on this table and survive across scans because
+  // subscription_key is stable.
+  const { data: upserted, error: upsertErr } = await supabaseAdmin!
+    .from("subscriptions")
+    .upsert(
+      {
+        user_id: userId,
+        // plaid_item_id and plaid_stream_id are nullable now — we
+        // group by merchant_key, not by Plaid's stream identity.
+        plaid_item_id: null,
+        plaid_stream_id: null,
+        subscription_key: subKey,
+        merchant_name: merchantName,
+        normalized_name: merchantName,
+        canonical_name: stream.canonical_name,
+        merchant_key: stream.merchant_key,
+        normalized_descriptor: stream.normalized_descriptor,
+        raw_descriptor: stream.representative_descriptor,
+        category,
+        amount_cents: amountCents,
+        currency: stream.currency,
+        frequency,
+        last_charged_at: stream.last_date,
+        next_expected_charge_at: stream.next_expected_date,
+        regret_score: regret,
+        ai_source: aiSource,
+        last_ai_run_at: asOfIso,
+        status: "active",
+        classification: verdict.classification,
+        classification_signals: verdict.signals,
+        classification_score: verdict.score,
+        scanner_version: SCANNER_VERSION,
+        updated_at: asOfIso,
+      },
+      { onConflict: "user_id,subscription_key" }
+    )
+    .select("id")
+    .single();
+
+  if (upsertErr || !upserted) {
+    // eslint-disable-next-line no-console
+    console.error("[scan] subscriptions upsert failed", upsertErr);
+    return null;
+  }
+
+  const scanRow: ScanRow = {
+    stream_id: subKey,
+    merchant_name: merchantName,
+    raw_descriptor: stream.representative_descriptor,
+    amount_cents: amountCents,
+    currency: stream.currency,
+    frequency,
+    last_charged_at: stream.last_date,
+    next_expected_charge_at: stream.next_expected_date,
+    regret_score: regret,
+    category,
+    ai_source: aiSource,
+  };
+
+  const snapshotRow: SnapshotRow = {
+    plaid_stream_id: subKey,
+    merchant_name: merchantName,
+    category,
+    amount_cents: amountCents,
+    currency: stream.currency,
+    frequency,
+    monthly_equivalent_cents: monthlyEq,
+    last_charged_at: stream.last_date,
+    next_expected_charge_at: stream.next_expected_date,
+    classification: verdict.classification,
+    classification_score: verdict.score,
+    regret_score: regret,
+    status: "active",
+    source: {
+      catalog_key: catalogHit.catalog_key,
+      matched_alias: catalogHit.signals.matched_alias,
+      matched_domain: catalogHit.signals.matched_domain,
+      biller: catalogHit.biller,
+      raw_descriptor: stream.representative_descriptor,
+      plaid_merchant_name: stream.canonical_name,
+      ai_source: aiSource,
+    },
+  };
+
+  return {
+    classification: verdict.classification,
+    aiSource,
+    monthlyEquivalentCents: monthlyEq,
+    scanRow,
+    snapshotRow,
+  };
 }
 
-// ---------- LLM tiebreak callback for the classifier ----------
+// ---------------------------------------------------------------------------
+// Stored transaction read.
+// ---------------------------------------------------------------------------
+
+async function readStoredTransactions(userId: string): Promise<TxnInput[]> {
+  if (!supabaseAdmin) return [];
+  const { data } = await supabaseAdmin
+    .from("plaid_transactions")
+    .select(
+      "plaid_transaction_id, posted_date, amount_cents, currency, description, merchant_key, canonical_name, normalized_descriptor, pending"
+    )
+    .eq("user_id", userId)
+    .eq("pending", false)
+    .not("merchant_key", "is", null)
+    .order("posted_date", { ascending: true });
+
+  return (data ?? []).map((r) => ({
+    txn_id: r.plaid_transaction_id as string,
+    date: r.posted_date as string,
+    // Stored as negative for outflows; detection expects that convention.
+    amount_dollars: ((r.amount_cents as number) ?? 0) / 100,
+    currency: (r.currency as string) ?? "USD",
+    raw_descriptor: (r.description as string) ?? "",
+    merchant_key: r.merchant_key as string,
+    canonical_name: (r.canonical_name as string) ?? "",
+    normalized_descriptor: (r.normalized_descriptor as string) ?? "",
+  }));
+}
+
+// ---------------------------------------------------------------------------
+// Plaid recurring as SECONDARY enrichment.
 //
-// Wraps the Haiku call with the strict-JSON classify contract. 800ms
-// timeout — same as the merchant-name normalizer. Returns null on any
-// failure so the classifier routes to needs_review instead of
-// accidentally confirming on a malformed response.
+// We still call /transactions/recurring/get because Plaid's status field
+// (MATURE / EARLY_DETECTION / TOMBSTONED) and PFC tagging can refine
+// the classifier verdict on borderline streams. But the engine does NOT
+// trust Plaid for which streams exist — that's our job over stored
+// transactions. Failure here is non-fatal.
+// ---------------------------------------------------------------------------
+
+type EnrichmentRecord = {
+  status: string;
+  pfc_primary: string | null;
+  pfc_detailed: string | null;
+};
+
+async function fetchPlaidRecurringEnrichment(
+  userId: string
+): Promise<Map<string, EnrichmentRecord>> {
+  const out = new Map<string, EnrichmentRecord>();
+  if (!supabaseAdmin || !plaidClient) return out;
+  const { data: items } = await supabaseAdmin
+    .from("plaid_items")
+    .select("id, plaid_access_token")
+    .eq("user_id", userId)
+    .eq("status", "active");
+
+  for (const it of items ?? []) {
+    try {
+      const { decryptToken } = await import("./crypto");
+      const res = await plaidClient.transactionsRecurringGet({
+        access_token: decryptToken(it.plaid_access_token as string),
+      });
+      for (const s of res.data.outflow_streams ?? []) {
+        const desc = s.description ?? s.merchant_name ?? "";
+        const norm = normalizeDescriptor(desc);
+        const key = (norm.catalog_key ?? norm.merchant_name).toLowerCase();
+        out.set(key, {
+          status: s.status ?? "",
+          pfc_primary: s.personal_finance_category?.primary ?? null,
+          pfc_detailed: s.personal_finance_category?.detailed ?? null,
+        });
+      }
+    } catch (e) {
+      // Enrichment is best-effort.
+      observeError(e, {
+        route: "scan.enrichment",
+        tags: { itemId: it.id as string, userId },
+      });
+    }
+  }
+  return out;
+}
+
+function firstNonNull(
+  txns: TxnInput[],
+  _field: "pfc_primary" | "pfc_detailed"
+): string | null {
+  // The plaid_transactions row carries pfc_primary / pfc_detailed but
+  // TxnInput is the trimmed shape. We don't propagate PFC into TxnInput
+  // because detection must not depend on it. The enrichment map is the
+  // canonical source. This function just returns null for the path that
+  // doesn't have Plaid recurring data.
+  void txns;
+  return null;
+}
+
+// ---------------------------------------------------------------------------
+// LLM tiebreak for the classifier (only invoked on Gate B score == 2).
+// Temperature pinned to 0 for determinism.
+// ---------------------------------------------------------------------------
 
 const tiebreakClient = process.env.ANTHROPIC_API_KEY
   ? new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
@@ -612,7 +556,6 @@ async function llmTiebreak(
       {
         model: "claude-haiku-4-5-20251001",
         max_tokens: 200,
-        // Pinned for determinism — same borderline input → same verdict.
         temperature: 0,
         system: CLASSIFY_SYSTEM_PROMPT,
         messages: [{ role: "user", content: classifyUserPrompt(input) }],
@@ -641,24 +584,9 @@ async function llmTiebreak(
   }
 }
 
-// ---------- helpers ----------
-
-function normalizeFrequency(f: string | undefined): Frequency {
-  switch ((f ?? "MONTHLY").toLowerCase()) {
-    case "weekly":
-      return "weekly";
-    case "biweekly":
-      return "biweekly";
-    case "semi_monthly":
-      return "semi_monthly";
-    case "monthly":
-      return "monthly";
-    case "annually":
-      return "annually";
-    default:
-      return "unknown";
-  }
-}
+// ---------------------------------------------------------------------------
+// Math helpers + concurrency cap.
+// ---------------------------------------------------------------------------
 
 export function monthlyEquivalentCents(
   amount_cents: number,
@@ -675,17 +603,13 @@ export function monthlyEquivalentCents(
       return Math.round((amount_cents * 26) / 12);
     case "semi_monthly":
       return amount_cents * 2;
+    case "quarterly":
+      return Math.round(amount_cents / 3);
     default:
       return 0;
   }
 }
 
-// Regret score: months since last charge × monthly equivalent × frequency
-// consistency. Bounded 0..100 so it sorts cleanly in SQL.
-//
-// Takes the scan's fixed `asOf` rather than calling Date.now() — that's
-// the whole point of the determinism contract. Two scans on the same
-// input + same asOf return the exact same number.
 function regretScore(args: {
   amount_cents: number;
   frequency: Frequency;
@@ -723,28 +647,16 @@ async function emit(scanId: string, event: ScanEvent): Promise<void> {
   await publishScanEvent(scanId, event);
 }
 
-// finalizeScan enforces the lifecycle state machine documented at the
-// top of this file. The order matters and is part of the public contract
-// the client depends on:
+// ---------------------------------------------------------------------------
+// finalizeScan.
 //
-//   1. Write status='finalizing' with the row counts. From this point
-//      onward, every subscription row for this scan is guaranteed to be
-//      visible to a fresh read against the primary.
-//   2. Mark the user has_completed_scan = true (idempotent).
-//   3. Invalidate the Next.js Route Cache for the dashboard so the next
-//      navigation to /app re-renders the Server Component against fresh
-//      DB data instead of serving a stale RSC payload. revalidatePath
-//      requires being called from a Next request context — when this
-//      runs inside a fire-and-forget webhook scan the context may be
-//      gone, so we swallow that case rather than failing the scan.
-//   4. Write the terminal status (done | error | timeout). Only after
-//      this does the SSE `complete` event fire and the polling status
-//      endpoint return a terminal value. Clients are contractually
-//      forbidden from rendering the snapshot until they see this state.
-//
-// If step 3 fails (transient cache-bus error, no request context), we
-// log and continue. The client-side router.refresh() in StreamingList
-// and the tab-focus check on the dashboard recover from that case.
+// Lifecycle state machine (migration 008):
+//   running → finalizing → done | error | timeout
+// Snapshot writes happen at `finalizing`; cache invalidation + terminal
+// status happen after. The client treats `done` as the safe-to-read
+// signal.
+// ---------------------------------------------------------------------------
+
 async function finalizeScan(
   scanId: string,
   userId: string,
@@ -756,12 +668,12 @@ async function finalizeScan(
     asOfIso: string;
     snapshotRows: SnapshotRow[];
     monthlyUpkeepCents: number;
-  } = { asOfIso: new Date().toISOString(), snapshotRows: [], monthlyUpkeepCents: 0 }
+    metrics: Record<string, unknown>;
+  }
 ) {
   const duration = Date.now() - startedAtMs;
 
   if (supabaseAdmin) {
-    // Step 1: finalizing. Rows are persisted; status reflects that.
     await supabaseAdmin
       .from("scan_runs")
       .update({
@@ -770,16 +682,10 @@ async function finalizeScan(
         failed_items: failedItems,
         duration_ms: duration,
         status: "finalizing",
+        metrics: snapshot.metrics,
       })
       .eq("id", scanId);
 
-    // Step 1b: write the immutable scan_snapshot. THIS is what the
-    // dashboard reads from — not the mutable subscriptions table. Count,
-    // list, and monthly upkeep all derive from this single payload so
-    // they cannot disagree.
-    //
-    // Confirmed-only counts here mirror what the UI shows; the raw
-    // payload also carries needs_review rows for audit.
     const confirmedRows = snapshot.snapshotRows.filter(
       (r) => r.classification === "confirmed"
     );
@@ -794,15 +700,13 @@ async function finalizeScan(
       payload: { rows: snapshot.snapshotRows },
       detected_count: confirmedRows.length,
       monthly_upkeep_cents: confirmedUpkeep,
+      scanner_version: SCANNER_VERSION,
     });
     if (snapErr) {
       // eslint-disable-next-line no-console
       console.error("[scan] snapshot insert failed", snapErr);
     }
 
-    // Step 2: user-level flag. Safe to flip now because the row set is
-    // queryable; the dashboard will route to the list view instead of
-    // the "connect a bank" empty state.
     if (detected > 0 || failedItems === 0) {
       await supabaseAdmin
         .from("app_users")
@@ -811,26 +715,16 @@ async function finalizeScan(
     }
   }
 
-  // Step 3: invalidate the dashboard's RSC cache so the next /app
-  // navigation re-renders with fresh data. This is what fixes the
-  // "have to hard reload" symptom — Next's Router Cache would otherwise
-  // serve the pre-scan payload to router.push("/app") calls.
   try {
     revalidatePath("/app");
     revalidatePath("/app/scanning");
   } catch (e) {
-    // Out of request context (cron, fire-and-forget). The client-side
-    // fallbacks (router.refresh on SSE complete, tab-focus check on the
-    // dashboard) will catch this case.
     observeError(e, {
       route: "scan.finalize.revalidate",
       tags: { scanId, userId },
     });
   }
 
-  // Step 4: terminal status. Only AFTER this do we emit `complete` —
-  // the client treats this as the signal that the snapshot is safe to
-  // read.
   if (supabaseAdmin) {
     await supabaseAdmin
       .from("scan_runs")
@@ -845,37 +739,6 @@ async function finalizeScan(
     failed: failedItems,
     duration_ms: duration,
   });
-}
-
-// ---------- non-subscription filter (LEGACY — kept for now) ----------
-//
-// Plaid's recurring detector returns any consistent outflow, including
-// things that aren't really "subscriptions" — credit card auto-pays,
-// loan repayments, internal transfers, payroll-related items. We filter
-// them out before they ever reach the AI normalizer or the dashboard.
-// Conservative: only drop on strong signal so we never hide a real sub.
-
-const NON_SUBSCRIPTION_PATTERNS: RegExp[] = [
-  /credit\s*card.*payment/i,        // "CREDIT CARD 3333 PAYMENT"
-  /automatic\s*payment/i,            // "AUTOMATIC PAYMENT - THANK"
-  /\bcc\s*payment\b/i,
-  /loan\s*payment/i,
-  /mortgage\s*payment/i,
-  /auto\s*loan/i,
-  /transfer\s*(to|from)/i,
-  /\bpayroll\b/i,
-  /\bach\s*deposit\b/i,
-  /\bvenmo\s*cashout\b/i,
-  /\bzelle\b/i,
-];
-
-function isProbablySubscription(s: PlaidStreamLike): boolean {
-  const haystack = `${s.merchant_name ?? ""} ${s.description ?? ""}`.trim();
-  if (!haystack) return false;
-  for (const pattern of NON_SUBSCRIPTION_PATTERNS) {
-    if (pattern.test(haystack)) return false;
-  }
-  return true;
 }
 
 export type { ScanRow, ScanPhase };
