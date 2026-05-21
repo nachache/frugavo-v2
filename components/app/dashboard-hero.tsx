@@ -5,21 +5,17 @@ import { Loader2, RefreshCw } from "lucide-react";
 import {
   Area,
   AreaChart,
-  Cell,
-  Pie,
-  PieChart,
   ResponsiveContainer,
   Tooltip,
 } from "recharts";
 import { formatCurrency } from "@/lib/utils";
-import { CATEGORY_COLOR, CATEGORY_LABEL } from "@/lib/categories";
 import {
-  categoryBreakdown,
   totalMonthlyCents,
   trailingTwelveMonths,
   type ChargeRow,
   type SubLike,
 } from "@/lib/subscription-math";
+import { CategoryDonut } from "./category-donut";
 
 type Props = {
   subs: SubLike[];
@@ -34,17 +30,11 @@ export function DashboardHero({ subs, charges = [], onRescan, rescanning }: Prop
     () => trailingTwelveMonths(subs, charges),
     [subs, charges]
   );
-  const breakdown = useMemo(() => categoryBreakdown(subs), [subs]);
   const activeCount = subs.filter((s) => s.status === "active").length;
 
   const chartData = months.map((m) => ({
     label: m.label,
     value: m.totalCents / 100,
-  }));
-  const donutData = breakdown.map((b) => ({
-    name: CATEGORY_LABEL[b.category],
-    value: b.monthlyCents,
-    color: CATEGORY_COLOR[b.category],
   }));
 
   return (
@@ -159,34 +149,12 @@ export function DashboardHero({ subs, charges = [], onRescan, rescanning }: Prop
             </div>
           </div>
 
-          {/* Donut */}
-          {donutData.length > 0 && (
-            <div className="md:w-[140px] shrink-0 flex md:flex-col items-center md:items-start gap-3">
-              <div className="relative h-[96px] w-[96px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={donutData}
-                      dataKey="value"
-                      innerRadius={32}
-                      outerRadius={46}
-                      stroke="none"
-                      paddingAngle={2}
-                    >
-                      {donutData.map((d) => (
-                        <Cell key={d.name} fill={d.color} />
-                      ))}
-                    </Pie>
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
-              <div className="text-[11px] text-ink-muted leading-snug">
-                Spending split across{" "}
-                <span className="text-ink font-medium">{donutData.length}</span>{" "}
-                {donutData.length === 1 ? "category" : "categories"}
-              </div>
-            </div>
-          )}
+          {/* Interactive category donut — hover/tap to see each
+              category's share and dollar amount. All data derived from
+              the same `subs` prop the rest of the card uses. */}
+          <div className="md:w-[200px] shrink-0">
+            <CategoryDonut subs={subs} />
+          </div>
         </div>
       </div>
     </div>
