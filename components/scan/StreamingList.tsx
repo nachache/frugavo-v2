@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ShieldCheck } from "lucide-react";
 import { cn, formatCurrency } from "@/lib/utils";
@@ -8,17 +8,32 @@ import type { ScanEvent, ScanRow } from "@/lib/types/scan";
 import { ProgressArc } from "./ProgressArc";
 import { FallbackCard } from "./FallbackCard";
 
-// Client component that subscribes to /api/plaid/scan/stream and renders
-// rows as they arrive. Stagger is 120ms between rows; running total at
-// the top is the loss-aversion anchor described in the spec.
+// Scanning state machine.
 //
-// State machine:
-//   - waiting   (no rows yet, < 8s)
-//   - streaming (at least one row, scan not complete)
-//   - fallback  (8s elapsed with zero rows; user can navigate away)
-//   - complete  (received `complete` event)
+// State derivation (no hardcoded transitions):
+//   scanning  — initial; no rows, no complete event, error null, elapsed < SLOW_THRESHOLD
+//   ready     — at least one row arrived OR complete event received
+//   slow      — elapsed > SLOW_THRESHOLD AND still no rows AND not complete
+//   error     — error event received (non-recoverable)
+//
+// Critical guarantees:
+//   1. We NEVER navigate based on a timer. Navigation happens only when
+//      `isReady` becomes true, which requires either real data or a
+//      definitive "complete" event from the engine.
+//   2. The slow card is interruptible — `isSlow` AND `!isReady` are
+//      required to render it. The moment ANY row or the complete event
+//      arrives, `isReady` flips and the card vanishes.
+//   3. SSE is the primary feed. A backup poll against /api/scan/status
+//      runs every POLL_INTERVAL — if the DB shows the scan finished but
+//      SSE missed the event, the poll handler flips `isComplete` so the
+//      user still moves forward.
+//   4. Empty scans (complete with 0 rows) are distinct from slow. They
+//      route to the dashboard immediately, where the empty-state UI
+//      handles the "no subscriptions found" case honestly.
 
-const FALLBACK_AFTER_MS = 8_000;
+const SLOW_THRESHOLD_MS = 25_000;
+const POLL_INTERVAL_MS = 3_000;
+const POST_COMPLETE_REDIRECT_MS = 900;
 
 type Props = {
   scanId: string;
@@ -31,31 +46,35 @@ export function StreamingList({ scanId }: Props) {
   const [rows, setRows] = useState<ScanRow[]>([]);
   const [totalCents, setTotalCents] = useState(0);
   const [phase, setPhase] = useState<Phase | null>(null);
-  const [complete, setComplete] = useState(false);
-  const [showFallback, setShowFallback] = useState(false);
-  const fallbackTimer = useRef<NodeJS.Timeout | null>(null);
+  const [isComplete, setIsComplete] = useState(false);
+  const [isSlow, setIsSlow] = useState(false);
+  const [error, setError] = useState<{ code: string; recoverable: boolean } | null>(null);
+
+  // Derived UI state. Order matters: error > ready > slow > scanning.
+  // The "ready" guard ALWAYS beats slow, so a card that's already
+  // showing "slow account" disappears the moment any data arrives.
+  const isReady = isComplete || rows.length > 0;
+  const uiState: "scanning" | "slow" | "ready" | "error" = error
+    ? "error"
+    : isReady
+    ? "ready"
+    : isSlow
+    ? "slow"
+    : "scanning";
+
+  // ---------- SSE subscription ----------
 
   useEffect(() => {
     const es = new EventSource(
       `/api/plaid/scan/stream?scan_id=${encodeURIComponent(scanId)}`
     );
 
-    // Detach to FallbackCard at 8s if nothing has arrived yet.
-    fallbackTimer.current = setTimeout(() => {
-      setShowFallback((prev) => (rows.length === 0 ? true : prev));
-    }, FALLBACK_AFTER_MS);
-
     const handle = (raw: MessageEvent) => {
       try {
         const ev = JSON.parse(raw.data) as ScanEvent;
         if (ev.type === "row") {
-          // 120ms stagger — we don't apply this with setTimeout because
-          // SSE events already arrive serialized; the CSS transition on
-          // the row handles the visual stagger.
           setRows((prev) => {
             if (prev.some((r) => r.stream_id === ev.row.stream_id)) return prev;
-            // Sort by regret_score desc on insert so the most-likely-forgotten
-            // rows climb to the top of the list as they arrive.
             const next = [...prev, ev.row];
             next.sort((a, b) => b.regret_score - a.regret_score);
             return next;
@@ -65,20 +84,18 @@ export function StreamingList({ scanId }: Props) {
         } else if (ev.type === "progress") {
           setPhase(ev.phase);
         } else if (ev.type === "complete") {
-          setComplete(true);
+          setIsComplete(true);
           es.close();
-          if (fallbackTimer.current) clearTimeout(fallbackTimer.current);
         } else if (ev.type === "error") {
-          // eslint-disable-next-line no-console
-          console.error("[sse] error event", ev);
+          if (!ev.recoverable) {
+            setError({ code: ev.code, recoverable: ev.recoverable });
+          }
         }
       } catch {
         // ignore malformed
       }
     };
 
-    // EventSource fires `message` for un-typed events; we use named events
-    // so listen on each type to catch all.
     for (const type of [
       "row",
       "total",
@@ -90,32 +107,83 @@ export function StreamingList({ scanId }: Props) {
       es.addEventListener(type, handle as EventListener);
     }
     es.onmessage = handle;
-    es.onerror = () => {
-      // EventSource auto-reconnects. We don't tear down on transient errors.
-    };
 
-    return () => {
-      es.close();
-      if (fallbackTimer.current) clearTimeout(fallbackTimer.current);
-    };
-    // We deliberately exclude rows.length from deps — the fallback timer
-    // is a fire-once one-shot driven by elapsed wall clock, not by state.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    return () => es.close();
   }, [scanId]);
 
-  // After complete, send the user to the dashboard which renders the
-  // full ranked list from Postgres.
-  useEffect(() => {
-    if (!complete) return;
-    const t = setTimeout(() => router.push("/app"), 1_200);
-    return () => clearTimeout(t);
-  }, [complete, router]);
+  // ---------- polling fallback ----------
 
-  if (showFallback && rows.length === 0) {
-    return <FallbackCard />;
+  // If SSE drops or Redis loses an event, the DB still knows. Poll the
+  // scan_runs row every 3 seconds while we're not yet ready, and flip
+  // isComplete on our own when the DB confirms.
+  useEffect(() => {
+    if (isReady) return; // stop polling once we have data
+    let cancelled = false;
+
+    const poll = async () => {
+      try {
+        const res = await fetch(`/api/scan/status?id=${encodeURIComponent(scanId)}`);
+        if (!res.ok) return;
+        const data = (await res.json()) as {
+          status: "running" | "done" | "error" | "timeout";
+          detected: number;
+        };
+        if (cancelled) return;
+        if (data.status === "done" || data.status === "error" || data.status === "timeout") {
+          setIsComplete(true);
+        }
+      } catch {
+        // network blip — next interval retries
+      }
+    };
+
+    const interval = setInterval(poll, POLL_INTERVAL_MS);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [scanId, isReady]);
+
+  // ---------- slow threshold ----------
+
+  useEffect(() => {
+    if (isReady) return;
+    const t = setTimeout(() => setIsSlow(true), SLOW_THRESHOLD_MS);
+    return () => clearTimeout(t);
+  }, [isReady]);
+
+  // ---------- forward navigation ----------
+
+  // Single navigation source of truth: only when we're "ready." A short
+  // beat after complete fires so the user sees the final total tick up
+  // before the route swap.
+  useEffect(() => {
+    if (!isComplete) return;
+    const t = setTimeout(() => router.push("/app"), POST_COMPLETE_REDIRECT_MS);
+    return () => clearTimeout(t);
+  }, [isComplete, router]);
+
+  // Memoized navigation handler for the "I'll wait" recovery flow.
+  const goToDashboard = useCallback(() => router.push("/app"), [router]);
+
+  // ---------- render ----------
+
+  if (uiState === "error" && error) {
+    return (
+      <ScanError
+        code={error.code}
+        onContinue={goToDashboard}
+      />
+    );
   }
 
-  if (rows.length === 0) {
+  if (uiState === "slow") {
+    // Interruptible — the moment isReady flips, this card unmounts.
+    return <FallbackCard onContinue={goToDashboard} />;
+  }
+
+  // scanning OR ready — same shell, different content.
+  if (rows.length === 0 && !isComplete) {
     return (
       <div className="flex flex-col items-center gap-12">
         <ProgressArc phase={phase} />
@@ -124,6 +192,8 @@ export function StreamingList({ scanId }: Props) {
     );
   }
 
+  // ready with rows (or zero-row complete — we still show the empty
+  // skeleton briefly before the redirect fires).
   return (
     <div>
       <div className="rounded-3xl bg-brand-light p-6">
@@ -150,18 +220,20 @@ export function StreamingList({ scanId }: Props) {
         ))}
       </ul>
 
-      {complete && (
+      {isComplete && (
         <p className="mt-8 text-center text-[13px] text-ink-muted">
-          Scan complete — sorting your subscriptions…
+          {rows.length === 0
+            ? "Scan complete — no recurring charges yet. Taking you to your dashboard…"
+            : "Scan complete — sorting your subscriptions…"}
         </p>
       )}
     </div>
   );
 }
 
+// ---------- subcomponents ----------
+
 function StreamRow({ row, index }: { row: ScanRow; index: number }) {
-  // CSS-driven 120ms stagger using transition-delay. Each row starts at
-  // opacity 0 / translateY 6px, then settles. No JS animation loop.
   const delay = Math.min(index, 9) * 120;
   return (
     <li
@@ -216,6 +288,35 @@ function TrustBar() {
       Read-only access · We can&apos;t move money
       <span className="text-ink/30">·</span>
       <span className="font-medium text-ink/70">via Plaid</span>
+    </div>
+  );
+}
+
+function ScanError({
+  code,
+  onContinue,
+}: {
+  code: string;
+  onContinue: () => void;
+}) {
+  const message =
+    code === "item_login_required"
+      ? "Your bank needs you to re-authorize the connection. You can do that from Settings."
+      : code === "rate_limited"
+      ? "Plaid asked us to slow down. We'll retry automatically — give it a minute."
+      : "Something went wrong on our end. You can still visit your dashboard while we look into it.";
+  return (
+    <div className="rounded-3xl bg-white border border-hairline/60 p-8 max-w-[520px] mx-auto text-center">
+      <div className="text-[12px] uppercase tracking-[0.14em] font-semibold text-danger">
+        Scan error
+      </div>
+      <p className="mt-3 text-[15px] text-ink-body">{message}</p>
+      <button
+        onClick={onContinue}
+        className="mt-5 inline-flex h-11 items-center gap-2 rounded-full bg-ink px-5 text-[14px] font-medium text-white hover:bg-ink/85 transition"
+      >
+        Go to dashboard
+      </button>
     </div>
   );
 }

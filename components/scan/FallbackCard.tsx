@@ -1,14 +1,22 @@
 "use client";
 
-import Link from "next/link";
-import { Mail } from "lucide-react";
+import { Loader2, Mail } from "lucide-react";
 
-// Rendered when 8s have elapsed without a first row landing. The user is
-// detached from the request and routed back to the dashboard with the
-// promise of an email when the scan completes (spec section 1, fallback
-// detach UX).
+// Slow-account interstitial. Reached only when the SLOW_THRESHOLD_MS
+// (25s by default) has elapsed AND no scan data has arrived yet AND
+// the scan hasn't reported complete.
+//
+// Interruptible: this card never owns navigation. The parent
+// StreamingList unmounts it the instant data arrives, even partially.
+// The "Go to dashboard" button is a recovery path for users who don't
+// want to keep waiting — the scan keeps running in the background and
+// the dashboard will refresh once it finishes.
 
-export function FallbackCard() {
+type Props = {
+  onContinue?: () => void;
+};
+
+export function FallbackCard({ onContinue }: Props) {
   return (
     <div className="rounded-3xl bg-white border border-hairline/60 p-8 max-w-[520px] mx-auto">
       <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-light text-brand">
@@ -18,23 +26,27 @@ export function FallbackCard() {
         This one&apos;s a slow account
       </h2>
       <p className="mt-3 text-[15px] leading-relaxed text-ink-body">
-        Some banks take a few minutes to release their transaction history.
-        We&apos;ll keep working in the background and email you the moment
-        your subscriptions are ready — no need to wait here.
+        Some banks take longer to release their transaction history. We&apos;re
+        still working on it in the background — the dashboard will populate
+        the moment it finishes, even if you navigate away.
       </p>
+      <div className="mt-5 inline-flex items-center gap-2 text-[12.5px] text-ink-muted">
+        <Loader2 size={13} className="animate-spin text-brand" />
+        Still scanning…
+      </div>
       <div className="mt-6 flex flex-wrap gap-3">
-        <Link
-          href="/app"
+        <button
+          onClick={onContinue}
           className="inline-flex h-11 items-center gap-2 rounded-full bg-ink px-5 text-[14px] font-medium text-white hover:bg-ink/85 transition"
         >
-          Back to dashboard
-        </Link>
-        <Link
+          Go to dashboard
+        </button>
+        <a
           href="/learn"
           className="inline-flex h-11 items-center gap-2 rounded-full px-5 text-[14px] font-medium text-ink hover:bg-ink/[0.04] transition"
         >
           Read about how it works
-        </Link>
+        </a>
       </div>
     </div>
   );
