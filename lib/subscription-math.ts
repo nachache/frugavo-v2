@@ -23,6 +23,12 @@ export type SubLike = {
   next_expected_charge_at: string | null;
   regret_score?: number | null;
   status: string;
+  // Tracks user intent independent of provider confirmation:
+  //   - 'keep'   — user explicitly said keep, never surface as candidate
+  //   - 'cancel' — user clicked "I cancelled it", watcher is pending
+  //   - 'unsure' — watcher saw a charge after cancellation, needs retry
+  //   - null     — no decision yet, eligible for the candidates list
+  user_decision?: string | null;
 };
 
 export function monthlyEquivalentCents(amount_cents: number, frequency: string): number {
@@ -142,13 +148,21 @@ export function categoryBreakdown(subs: SubLike[]): CategorySlice[] {
   return Array.from(map.values()).sort((a, b) => b.monthlyCents - a.monthlyCents);
 }
 
-// Cancel candidates. Conservative — never returns more than 3 so the
-// strip stays focused. We surface:
-//   - biggest:  most expensive active sub
-//   - forgotten: high regret_score (default threshold 60)
-//   - silent:   no charge in the past 35 days but still active
+// Cancel candidates — single source of truth for both the dashboard
+// "Worth a look" strip and the recommendation banner's count. Returns
+// EVERY actionable candidate (no fixed cap); the UI decides how many
+// to render and offers a "show all" toggle for the rest.
 //
-// We dedupe so the same sub doesn't appear under two reasons.
+// Three reasons, in priority order. A sub only ever appears once
+// (deduped by id), tagged by its highest-priority reason.
+//   - biggest:   the single most-expensive active sub (always 1)
+//   - forgotten: regret_score >= 60
+//   - silent:    no charge in 35+ days
+//
+// Filtered out:
+//   - status !== 'active'
+//   - user_decision === 'keep' (user opted out)
+//   - user_decision === 'cancel' (already pending)
 export type CandidateReason = "biggest" | "forgotten" | "silent";
 
 export type CancelCandidate = {
@@ -157,61 +171,87 @@ export type CancelCandidate = {
   caption: string;
 };
 
-export function cancelCandidates(subs: SubLike[], now = new Date()): CancelCandidate[] {
-  const active = subs.filter((s) => s.status === "active");
-  if (active.length === 0) return [];
+const FORGOTTEN_REGRET_THRESHOLD = 60;
+const SILENT_DAYS_THRESHOLD = 35;
 
-  const out: CancelCandidate[] = [];
-  const seen = new Set<string>();
+export function cancelCandidates(
+  subs: SubLike[],
+  now = new Date()
+): CancelCandidate[] {
+  // Only actionable subs reach the candidates pool.
+  const actionable = subs.filter(
+    (s) =>
+      s.status === "active" &&
+      s.user_decision !== "keep" &&
+      s.user_decision !== "cancel"
+  );
+  if (actionable.length === 0) return [];
 
-  const biggest = [...active].sort(
+  const seen = new Map<string, CancelCandidate>();
+
+  // 1) biggest — exactly one sub.
+  const biggest = [...actionable].sort(
     (a, b) =>
       monthlyEquivalentCents(b.amount_cents, b.frequency) -
       monthlyEquivalentCents(a.amount_cents, a.frequency)
   )[0];
   if (biggest) {
-    out.push({
+    seen.set(biggest.id, {
       sub: biggest,
       reason: "biggest",
       caption: "Biggest line item",
     });
-    seen.add(biggest.id);
   }
 
-  const forgotten = active
-    .filter(
-      (s) =>
-        !seen.has(s.id) && (s.regret_score ?? 0) >= 60
-    )
-    .sort((a, b) => (b.regret_score ?? 0) - (a.regret_score ?? 0));
-  if (forgotten[0]) {
-    out.push({
-      sub: forgotten[0],
-      reason: "forgotten",
-      caption: "Might be forgotten",
-    });
-    seen.add(forgotten[0].id);
+  // 2) forgotten — every sub above the regret threshold not already seen.
+  for (const s of actionable) {
+    if (seen.has(s.id)) continue;
+    if ((s.regret_score ?? 0) >= FORGOTTEN_REGRET_THRESHOLD) {
+      seen.set(s.id, {
+        sub: s,
+        reason: "forgotten",
+        caption: "Might be forgotten",
+      });
+    }
   }
 
-  const silent = active
-    .filter((s) => !seen.has(s.id))
-    .filter((s) => {
-      if (!s.last_charged_at) return false;
-      const days = (now.getTime() - new Date(s.last_charged_at).getTime()) / 86_400_000;
-      return days > 35;
-    })
-    .sort(
-      (a, b) =>
-        monthlyEquivalentCents(b.amount_cents, b.frequency) -
-        monthlyEquivalentCents(a.amount_cents, a.frequency)
+  // 3) silent — every sub with no charge in 35+ days.
+  for (const s of actionable) {
+    if (seen.has(s.id)) continue;
+    if (!s.last_charged_at) continue;
+    const days =
+      (now.getTime() - new Date(s.last_charged_at).getTime()) / 86_400_000;
+    if (days > SILENT_DAYS_THRESHOLD) {
+      seen.set(s.id, {
+        sub: s,
+        reason: "silent",
+        caption: "No recent charge",
+      });
+    }
+  }
+
+  // Final order: biggest first, then by annual cost desc within
+  // remaining reasons. Stable so the dashboard renders the same order
+  // every time.
+  return Array.from(seen.values()).sort((a, b) => {
+    if (a.reason === "biggest" && b.reason !== "biggest") return -1;
+    if (a.reason !== "biggest" && b.reason === "biggest") return 1;
+    return (
+      monthlyEquivalentCents(b.sub.amount_cents, b.sub.frequency) -
+      monthlyEquivalentCents(a.sub.amount_cents, a.sub.frequency)
     );
-  if (silent[0]) {
-    out.push({
-      sub: silent[0],
-      reason: "silent",
-      caption: "No recent charge",
-    });
-  }
+  });
+}
 
-  return out.slice(0, 3);
+// Annual savings across an entire candidates list. Used by the banner
+// for "Up to $X/yr in potential savings" — never hardcoded.
+export function candidatesAnnualSavingsCents(
+  candidates: CancelCandidate[]
+): number {
+  return candidates.reduce(
+    (sum, c) =>
+      sum +
+      monthlyEquivalentCents(c.sub.amount_cents, c.sub.frequency) * 12,
+    0
+  );
 }

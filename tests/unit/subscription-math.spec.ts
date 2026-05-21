@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   annualCents,
   cancelCandidates,
+  candidatesAnnualSavingsCents,
   categoryBreakdown,
   monthlyEquivalentCents,
   totalMonthlyCents,
@@ -158,21 +159,75 @@ describe("cancelCandidates", () => {
     expect(new Set(ids).size).toBe(ids.length);
   });
 
-  it("returns no more than 3", () => {
+  it("returns ALL actionable candidates, not capped at 3", () => {
     const subs = Array.from({ length: 10 }, (_, i) =>
       sub({
         id: `s${i}`,
         amount_cents: 1000 * (i + 1),
         regret_score: 90,
-        last_charged_at: "2024-01-01", // silent
+        last_charged_at: "2024-01-01", // also silent
       })
     );
-    expect(cancelCandidates(subs).length).toBeLessThanOrEqual(3);
+    const out = cancelCandidates(subs);
+    // 10 active subs, all flagged — every one becomes a candidate.
+    expect(out.length).toBe(10);
+  });
+
+  it("filters out user_decision='keep' (user opted out)", () => {
+    const subs = [
+      sub({ id: "kept", amount_cents: 9999, user_decision: "keep" }),
+      sub({ id: "active", amount_cents: 5000 }),
+    ];
+    const out = cancelCandidates(subs);
+    expect(out.find((c) => c.sub.id === "kept")).toBeUndefined();
+    expect(out.find((c) => c.sub.id === "active")).toBeDefined();
+  });
+
+  it("filters out user_decision='cancel' (already pending)", () => {
+    const subs = [
+      sub({ id: "pending", amount_cents: 9999, user_decision: "cancel" }),
+      sub({ id: "active", amount_cents: 5000 }),
+    ];
+    const out = cancelCandidates(subs);
+    expect(out.find((c) => c.sub.id === "pending")).toBeUndefined();
+    expect(out.find((c) => c.sub.id === "active")).toBeDefined();
+  });
+
+  it("biggest always sorts first in the returned list", () => {
+    const subs = [
+      sub({ id: "forgotten", amount_cents: 2000, regret_score: 90 }),
+      sub({ id: "biggest", amount_cents: 9999 }),
+      sub({
+        id: "silent",
+        amount_cents: 1500,
+        last_charged_at: "2024-01-01",
+      }),
+    ];
+    const out = cancelCandidates(subs);
+    expect(out[0].reason).toBe("biggest");
+    expect(out[0].sub.id).toBe("biggest");
   });
 
   it("returns nothing when there are no active subs", () => {
     expect(cancelCandidates([])).toEqual([]);
     const cancelled = [sub({ status: "cancelled" })];
     expect(cancelCandidates(cancelled)).toEqual([]);
+  });
+});
+
+describe("candidatesAnnualSavingsCents", () => {
+  it("sums annual equivalents across the candidates list", () => {
+    const subs = [
+      sub({ id: "a", amount_cents: 1000, frequency: "monthly", regret_score: 90 }),
+      sub({ id: "b", amount_cents: 5000, frequency: "monthly" }),
+    ];
+    const candidates = cancelCandidates(subs);
+    const total = candidatesAnnualSavingsCents(candidates);
+    // 1000 + 5000 monthly → 6000 monthly → 72000 annual.
+    expect(total).toBe(72_000);
+  });
+
+  it("returns 0 for an empty candidates list", () => {
+    expect(candidatesAnnualSavingsCents([])).toBe(0);
   });
 });

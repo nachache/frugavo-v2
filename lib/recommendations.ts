@@ -1,5 +1,7 @@
 import { supabaseAdmin } from "./supabase";
 import {
+  cancelCandidates,
+  candidatesAnnualSavingsCents,
   monthlyEquivalentCents,
   type SubLike,
 } from "./subscription-math";
@@ -51,40 +53,34 @@ export async function nextRecommendation(
     };
   }
 
-  // Load current active subs for the rest of the rules.
+  // Load current active subs for the rest of the rules. We bring in
+  // every column cancelCandidates() reads so the SAME function powers
+  // both this banner's count and the "Worth a look" cards on the page.
   const { data: subs } = await supabaseAdmin
     .from("subscriptions")
     .select(
-      "id, amount_cents, frequency, last_charged_at, next_expected_charge_at, regret_score, status, user_decision, merchant_name"
+      "id, merchant_name, normalized_name, category, amount_cents, currency, frequency, last_charged_at, next_expected_charge_at, regret_score, status, user_decision"
     )
-    .eq("user_id", userId)
-    .eq("status", "active");
+    .eq("user_id", userId);
 
-  const active = (subs ?? []) as (SubLike & {
-    regret_score?: number | null;
-    user_decision?: string | null;
-  })[];
+  const allSubs = (subs ?? []) as SubLike[];
 
-  // 2) Cancel candidates the user hasn't acted on.
-  const candidates = active.filter(
-    (s) =>
-      (s.regret_score ?? 0) >= 60 &&
-      s.user_decision !== "keep" &&
-      s.user_decision !== "cancel"
-  );
+  // 2) Cancel candidates — derived from the same shared function the
+  // CancelCandidates UI uses. Guaranteed to match the rendered count.
+  const candidates = cancelCandidates(allSubs);
   if (candidates.length > 0) {
-    const totalAnnual = candidates.reduce(
-      (sum, s) => sum + monthlyEquivalentCents(s.amount_cents, s.frequency) * 12,
-      0
-    );
+    const totalAnnualCents = candidatesAnnualSavingsCents(candidates);
     return {
       kind: "review_candidates",
       headline: `${candidates.length} subscription${candidates.length === 1 ? "" : "s"} worth a look`,
-      body: `Up to $${Math.round(totalAnnual / 100).toLocaleString()}/yr in potential savings if you cancel.`,
+      body: `Up to ${dollars(totalAnnualCents)}/yr in potential savings if you cancel.`,
       cta: { label: "See candidates", href: "/app#worth-a-look" },
-      amount_cents: totalAnnual,
+      amount_cents: totalAnnualCents,
     };
   }
+
+  // Active subs only, for the remaining rule branches.
+  const active = allSubs.filter((s) => s.status === "active");
 
   // 3) Silent subs — no charge in 35+ days.
   const now = Date.now();
