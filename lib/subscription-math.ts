@@ -105,8 +105,26 @@ export function trailingTwelveMonths(
 
   const haveHistory = realByMonth.size > 0;
 
+  // Anchor the window to "latest activity," not today's calendar.
+  // For a real user with fresh Plaid data, the latest charge is in the
+  // past few days so the anchor is effectively today. For demo data
+  // or for users whose accounts went silent months ago, the chart
+  // still shows the 12 months ending at their last real activity
+  // instead of a mostly-empty calendar window.
+  let anchor = now;
+  if (charges.length > 0) {
+    const latest = charges
+      .map((c) => new Date(c.charged_at))
+      .reduce((a, b) => (a > b ? a : b));
+    if (latest > anchor) anchor = latest;          // future-dated? respect it
+    else if (latest < anchor) {
+      const daysOld = (anchor.getTime() - latest.getTime()) / 86_400_000;
+      if (daysOld > 45) anchor = latest;            // stale data → re-anchor
+    }
+  }
+
   for (let i = 11; i >= 0; i--) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const d = new Date(anchor.getFullYear(), anchor.getMonth() - i, 1);
     const yearMonth = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
 
     let totalCents = 0;
