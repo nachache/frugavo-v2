@@ -22,6 +22,7 @@ import { DashboardHero } from "./dashboard-hero";
 import { CancelCandidates } from "./cancel-candidates";
 import { CancelModal } from "./cancel-modal";
 import { PendingCancellations } from "./pending-cancellations";
+import { CancelCelebration } from "./cancel-celebration";
 
 // Row shape exposed to the dashboard page. Mirrors the DB columns we
 // select in app/app/page.tsx; matches the SubLike shape from the math
@@ -43,6 +44,10 @@ export function SubscriptionList({
   const [items, setItems] = useState(initial);
   const [rescanning, startRescan] = useTransition();
   const [cancelTarget, setCancelTarget] = useState<SubLike | null>(null);
+  const [celebrate, setCelebrate] = useState<{
+    annualSaved: number;
+    merchant: string;
+  } | null>(null);
   const [openCategories, setOpenCategories] = useState<Set<Category>>(() => {
     // Open only the most expensive category by default — the rest stay
     // collapsed so the page lands at a calm vertical height.
@@ -119,12 +124,23 @@ export function SubscriptionList({
   const openCancel = (s: SubLike) => setCancelTarget(s);
   const closeCancel = () => setCancelTarget(null);
   const onCancelConfirmed = (subId: string) => {
+    const target = items.find((s) => s.id === subId);
     setItems((prev) =>
       prev.map((s) =>
         s.id === subId ? { ...s, user_decision: "cancel" as const } : s
       )
     );
     setCancelTarget(null);
+
+    // Fire the celebration with the annual saved amount.
+    if (target) {
+      const annual =
+        monthlyEquivalentCents(target.amount_cents, target.frequency) * 12;
+      setCelebrate({
+        annualSaved: annual / 100,
+        merchant: target.merchant_name,
+      });
+    }
   };
 
   const toggleCategory = (cat: Category) => {
@@ -260,6 +276,13 @@ export function SubscriptionList({
         sub={cancelTarget}
         onClose={closeCancel}
         onConfirmed={onCancelConfirmed}
+      />
+
+      <CancelCelebration
+        visible={celebrate !== null}
+        annualSaved={celebrate?.annualSaved ?? 0}
+        merchant={celebrate?.merchant ?? ""}
+        onDone={() => setCelebrate(null)}
       />
     </div>
   );

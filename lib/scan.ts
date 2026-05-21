@@ -1,5 +1,6 @@
 import { plaidClient, PLAID_ENV } from "./plaid";
 import { supabaseAdmin } from "./supabase";
+import { decryptToken } from "./crypto";
 import { normalizeMerchant } from "@/lib/ai/normalize";
 import {
   publishScanEvent,
@@ -219,7 +220,7 @@ async function scanOneItem(args: {
   const { userId, scanId, plaidItemRowId, accessToken, onRow } = args;
 
   const recurring = await plaidClient!.transactionsRecurringGet({
-    access_token: accessToken,
+    access_token: decryptToken(accessToken),
   });
 
   let streams = (recurring.data.outflow_streams ?? []) as PlaidStreamLike[];

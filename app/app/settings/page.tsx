@@ -2,6 +2,10 @@ import { redirect } from "next/navigation";
 import { currentUser } from "@clerk/nextjs/server";
 import Link from "next/link";
 import { supabaseAdmin } from "@/lib/supabase";
+import {
+  DeleteAccountCard,
+  DisconnectBankButton,
+} from "@/components/app/danger-zone";
 
 // /app/settings — minimal account + connection management.
 // Real disconnect, billing, and data-export controls land in week 5.
@@ -44,10 +48,10 @@ export default async function SettingsPage() {
             {items.map((it) => (
               <li
                 key={it.id}
-                className="flex items-center justify-between py-3"
+                className="flex items-center justify-between py-3 gap-3"
               >
-                <div>
-                  <div className="text-[14px] font-medium text-ink">
+                <div className="min-w-0">
+                  <div className="text-[14px] font-medium text-ink truncate">
                     {it.institution_name ?? "Unknown institution"}
                   </div>
                   <div className="text-[12px] text-ink-muted tnum">
@@ -55,13 +59,13 @@ export default async function SettingsPage() {
                     {new Date(it.created_at).toLocaleDateString()}
                   </div>
                 </div>
-                <button
-                  disabled
-                  className="text-[13px] text-ink-muted cursor-not-allowed"
-                  title="Disconnect ships in week 5"
-                >
-                  Disconnect
-                </button>
+                {it.status === "removed" ? (
+                  <span className="text-[12px] text-ink-muted">
+                    Disconnected
+                  </span>
+                ) : (
+                  <DisconnectBankButton itemId={it.id} />
+                )}
               </li>
             ))}
           </ul>
@@ -82,7 +86,7 @@ export default async function SettingsPage() {
       <Section title="Billing">
         <p className="text-[14px] text-ink-body">
           Frugavo&apos;s $5/month subscription is currently free during the
-          early-access beta. Billing ships in week 4 of the build.
+          early-access beta. Billing ships when production launches.
         </p>
       </Section>
 
@@ -95,15 +99,12 @@ export default async function SettingsPage() {
           >
             privacy policy
           </Link>
-          . To request account deletion, email{" "}
-          <a
-            href="mailto:hello@frugavo.com?subject=Delete%20my%20Frugavo%20account"
-            className="text-brand underline decoration-brand/30 underline-offset-4 hover:decoration-brand"
-          >
-            hello@frugavo.com
-          </a>
-          . We&apos;ll remove your records within 30 days.
+          . You can delete every piece of data we hold about you below — the
+          action is immediate and unrecoverable.
         </p>
+        <div className="mt-4">
+          <DeleteAccountCard />
+        </div>
       </Section>
     </section>
   );

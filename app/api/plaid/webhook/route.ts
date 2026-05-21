@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import { createHmac, timingSafeEqual } from "crypto";
 import { supabaseAdmin } from "@/lib/supabase";
 import { runScanForUser } from "@/lib/scan";
+import { verifyPlaidWebhookJwt } from "@/lib/plaid-webhook";
 
 // Plaid webhook receiver.
 //
@@ -33,7 +33,8 @@ export async function POST(req: Request) {
   const raw = await req.text();
   const sigHeader = req.headers.get("plaid-verification") ?? "";
 
-  if (!verifyPlaidWebhook(raw, sigHeader)) {
+  const ok = await verifyPlaidWebhookJwt(raw, sigHeader);
+  if (!ok) {
     return NextResponse.json({ error: "bad_signature" }, { status: 401 });
   }
 
@@ -112,27 +113,6 @@ export async function POST(req: Request) {
   return NextResponse.json({ ok: true });
 }
 
-// Plaid signs webhooks with a JWT; the body's sha256 must match the
-// JWT's request_body_sha256 claim. Production hardening will also verify
-// the JWT signature against Plaid's published key (fetched + cached 24h).
-function verifyPlaidWebhook(rawBody: string, jwt: string): boolean {
-  if (!jwt) return false;
-  const parts = jwt.split(".");
-  if (parts.length !== 3) return false;
-  const [, payloadB64] = parts;
-  try {
-    const claims = JSON.parse(
-      Buffer.from(payloadB64, "base64url").toString("utf-8")
-    ) as { request_body_sha256?: string };
-    if (!claims.request_body_sha256) return false;
-
-    const expected = createHmac("sha256", "")
-      .update(rawBody)
-      .digest();
-    const actual = Buffer.from(claims.request_body_sha256, "hex");
-    if (expected.length !== actual.length) return false;
-    return timingSafeEqual(expected, actual);
-  } catch {
-    return false;
-  }
-}
+// Verification logic lives in lib/plaid-webhook.ts — full ES256 JWS
+// verify against Plaid's fetched public key, plus body sha256 match
+// and 5-minute replay window.

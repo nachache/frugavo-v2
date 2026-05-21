@@ -134,11 +134,27 @@ export function DashboardHero({ subs, charges = [], onRescan, rescanning }: Prop
                 </AreaChart>
               </ResponsiveContainer>
             </div>
+            {/* Month labels — fewer on mobile so they don't squish. */}
             <div className="mt-2 flex justify-between text-[10.5px] text-ink-muted tnum px-1">
+              {chartData
+                .filter((_, i, arr) => {
+                  // On small screens, hide everything except 4 anchor months;
+                  // on md+ we show every other month via the responsive
+                  // hidden classes below.
+                  const total = arr.length;
+                  return i === 0 || i === total - 1 ||
+                    i === Math.floor(total / 3) ||
+                    i === Math.floor((2 * total) / 3);
+                })
+                .map((m) => (
+                  <span key={m.label} className="md:hidden">{m.label}</span>
+                ))}
               {chartData
                 .filter((_, i) => i % 2 === 0)
                 .map((m) => (
-                  <span key={m.label}>{m.label}</span>
+                  <span key={`md-${m.label}`} className="hidden md:inline">
+                    {m.label}
+                  </span>
                 ))}
             </div>
           </div>

@@ -14,7 +14,7 @@ export const nav = {
 
 export const hero = {
   eyebrow: "Pre-launch preview · Early access · Sample data shown",
-  headline: "You think you pay $86. It's really $219.",
+  headline: "You think you pay $86 in subscriptions. It's really $219.",
   sourceCitation: "Source: C+R Research, 2026",
   subhead:
     "89% of people guess too low. We find the ones you forgot you're paying for.",

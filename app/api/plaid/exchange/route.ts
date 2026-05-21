@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { currentUser } from "@clerk/nextjs/server";
 import { plaidClient } from "@/lib/plaid";
 import { supabaseAdmin } from "@/lib/supabase";
+import { encryptToken } from "@/lib/crypto";
 
 // POST /api/plaid/exchange
 // Body: { public_token: string, institution?: { name, institution_id } }
@@ -63,7 +64,7 @@ export async function POST(req: Request) {
         {
           user_id: user.id,
           plaid_item_id: itemId,
-          plaid_access_token: accessToken, // TODO: encrypt before prod
+          plaid_access_token: encryptToken(accessToken),
           institution_name: body.institution?.name ?? null,
           institution_id: body.institution?.institution_id ?? null,
           status: "active",

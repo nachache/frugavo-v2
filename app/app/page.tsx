@@ -3,10 +3,12 @@ import { currentUser } from "@clerk/nextjs/server";
 import Link from "next/link";
 import { supabaseAdmin } from "@/lib/supabase";
 import { runScanForUser } from "@/lib/scan";
+import { nextRecommendation } from "@/lib/recommendations";
 import {
   SubscriptionList,
   type Subscription,
 } from "@/components/app/subscription-list";
+import { RecommendationBanner } from "@/components/app/recommendation-banner";
 
 // /app — the authenticated dashboard root.
 //
@@ -96,6 +98,7 @@ export default async function AppHome() {
   }
 
   const charges = await fetchCharges(user.id);
+  const recommendation = await nextRecommendation(user.id);
 
   return (
     <section className="container-page py-12 md:py-16 max-w-[860px]">
@@ -109,6 +112,7 @@ export default async function AppHome() {
       </p>
 
       <div className="mt-10">
+        <RecommendationBanner rec={recommendation} />
         <SubscriptionList initial={subs} charges={charges} />
       </div>
     </section>

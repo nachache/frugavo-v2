@@ -83,8 +83,10 @@ export function CancelModal({ sub, onClose, onConfirmed }: Props) {
     >
       <div
         ref={dialogRef}
-        className="w-full sm:max-w-[520px] bg-white rounded-t-3xl sm:rounded-3xl shadow-lift overflow-hidden"
+        className="w-full sm:max-w-[520px] bg-white rounded-t-3xl sm:rounded-3xl shadow-lift overflow-hidden max-h-[92vh] overflow-y-auto"
       >
+        {/* Mobile drag-handle so the sheet reads as a sheet, not a card. */}
+        <div className="sm:hidden h-1 w-12 rounded-full bg-ink/15 mx-auto mt-3" />
         {/* Header */}
         <div className="relative p-6 pb-4 border-b border-hairline/60">
           <button
