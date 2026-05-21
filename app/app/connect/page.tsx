@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { ConnectBankButton } from "@/components/plaid/connect-bank-button";
+import { ConnectFlow } from "@/components/plaid/connect-flow";
 
 export const metadata: Metadata = {
   title: "Connect your bank · Frugavo",
@@ -30,7 +30,7 @@ export default function ConnectPage() {
       </p>
 
       <div className="mt-8">
-        <ConnectBankButton />
+        <ConnectFlow />
       </div>
 
       <div className="mt-12 rounded-2xl bg-white border border-hairline/60 p-5">

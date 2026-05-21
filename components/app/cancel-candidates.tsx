@@ -6,6 +6,7 @@ import { BrandLogo } from "./brand-logo";
 import { formatCurrency } from "@/lib/utils";
 import {
   annualCents,
+  candidateNarrative,
   candidatesAnnualSavingsCents,
   monthlyEquivalentCents,
   type CancelCandidate,
@@ -160,6 +161,12 @@ function CandidateCard({
           </span>
         </div>
       </div>
+
+      {/* Plain-English narrative derived from the real sub data. Tells
+          the user WHY this card is flagged in one sentence. */}
+      <p className="mt-3 text-[12.5px] text-ink-body leading-relaxed">
+        {candidateNarrative(candidate)}
+      </p>
 
       <div className="mt-3 flex items-baseline justify-between tnum">
         <div>

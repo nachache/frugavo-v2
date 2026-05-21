@@ -24,6 +24,7 @@ import { CancelModal } from "./cancel-modal";
 import { PendingCancellations } from "./pending-cancellations";
 import { CancelCelebration } from "./cancel-celebration";
 import { PrunedRail } from "./pruned-rail";
+import { SavingsCounter } from "./savings-counter";
 
 // Row shape exposed to the dashboard page. Mirrors the DB columns we
 // select in app/app/page.tsx; matches the SubLike shape from the math
@@ -53,6 +54,12 @@ export function SubscriptionList({
     annualSaved: number;
     merchant: string;
   } | null>(null);
+  // How "Currently running" is sorted/grouped. Drives the visible
+  // layout: "category" groups into collapsible category cards, the
+  // other two flatten the list and sort within a single card.
+  const [sortMode, setSortMode] = useState<"category" | "price" | "age">(
+    "category"
+  );
   const [openCategories, setOpenCategories] = useState<Set<Category>>(() => {
     const totals: Partial<Record<Category, number>> = {};
     for (const s of initial) {
@@ -203,6 +210,8 @@ export function SubscriptionList({
 
   return (
     <div>
+      <SavingsCounter subs={items} />
+
       <DashboardHero
         subs={items}
         charges={charges}
@@ -217,10 +226,22 @@ export function SubscriptionList({
       <div className="mt-10 grid gap-6 lg:grid-cols-[1fr_320px] lg:items-start">
         {/* MAIN COLUMN — currently running */}
         <section>
-          <h2 className="text-[12px] uppercase tracking-[0.14em] font-semibold text-ink-muted">
-            Currently running
-          </h2>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h2 className="text-[12px] uppercase tracking-[0.14em] font-semibold text-ink-muted">
+              Currently running
+            </h2>
+            <SortToggle value={sortMode} onChange={setSortMode} />
+          </div>
 
+          {sortMode !== "category" && (
+            <FlatList
+              subs={flatSorted(items, sortMode)}
+              onCancel={openCancel}
+              onKeep={onKeep}
+            />
+          )}
+
+          {sortMode === "category" && (
           <div className="mt-4 grid gap-3">
             {grouped.map(({ category, subs, subtotal }) => {
               const open = openCategories.has(category);
@@ -269,6 +290,7 @@ export function SubscriptionList({
               );
             })}
           </div>
+          )}
         </section>
 
         {/* SIDE RAIL — wins + pending watcher */}
@@ -291,6 +313,95 @@ export function SubscriptionList({
         onDone={() => setCelebrate(null)}
       />
     </div>
+  );
+}
+
+// ---------- sort + flat-list helpers ----------
+
+// Flat active subs sorted by the chosen mode. Pending cancellations
+// stay filtered out — they live in the side rail. Kept subs stay
+// visible (just with a "Kept" chip) so the active list shows
+// everything the user is still paying for.
+function flatSorted(
+  items: Subscription[],
+  mode: "price" | "age"
+): Subscription[] {
+  const active = items.filter(
+    (s) => s.status === "active" && s.user_decision !== "cancel"
+  );
+  return active.sort((a, b) => {
+    if (mode === "price") {
+      return (
+        monthlyEquivalentCents(b.amount_cents, b.frequency) -
+        monthlyEquivalentCents(a.amount_cents, a.frequency)
+      );
+    }
+    // age — most-stale charge first (largest gap since last_charged_at)
+    const aT = a.last_charged_at ? new Date(a.last_charged_at).getTime() : 0;
+    const bT = b.last_charged_at ? new Date(b.last_charged_at).getTime() : 0;
+    return aT - bT; // older first
+  });
+}
+
+function SortToggle({
+  value,
+  onChange,
+}: {
+  value: "category" | "price" | "age";
+  onChange: (v: "category" | "price" | "age") => void;
+}) {
+  const opts: { value: "category" | "price" | "age"; label: string }[] = [
+    { value: "category", label: "Category" },
+    { value: "price", label: "Most expensive" },
+    { value: "age", label: "Oldest charge" },
+  ];
+  return (
+    <div className="inline-flex rounded-full border border-hairline bg-white p-0.5">
+      {opts.map((o) => (
+        <button
+          key={o.value}
+          onClick={() => onChange(o.value)}
+          className={cn(
+            "h-7 px-3 rounded-full text-[11.5px] font-medium transition",
+            value === o.value
+              ? "bg-ink text-white"
+              : "text-ink-muted hover:text-ink"
+          )}
+        >
+          {o.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function FlatList({
+  subs,
+  onCancel,
+  onKeep,
+}: {
+  subs: Subscription[];
+  onCancel: (s: Subscription) => void;
+  onKeep: (s: Subscription) => void;
+}) {
+  if (subs.length === 0) {
+    return (
+      <p className="mt-4 rounded-2xl border border-hairline/60 bg-white p-5 text-[14px] text-ink-muted">
+        Nothing to show here.
+      </p>
+    );
+  }
+  return (
+    <ul className="mt-4 grid gap-3 sm:grid-cols-1 lg:grid-cols-2">
+      {subs.map((s) => (
+        <SubscriptionRow
+          key={s.id}
+          sub={s}
+          onCancel={onCancel}
+          onKeep={onKeep}
+        />
+      ))}
+    </ul>
   );
 }
 

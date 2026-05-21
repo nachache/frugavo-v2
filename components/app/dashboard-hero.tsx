@@ -67,6 +67,17 @@ export function DashboardHero({ subs, charges = [], onRescan, rescanning }: Prop
               {formatCurrency((monthly / 100) * 12, false)}/yr ·{" "}
               {activeCount} currently running
             </div>
+            {/* 5-year anchor — same math as the cancel modal, applied
+                to the whole footprint. Pure derivation, no fudging. */}
+            {monthly > 0 && (
+              <div className="mt-2 text-[12px] text-ink-muted tnum">
+                ≈{" "}
+                <span className="font-semibold text-ink">
+                  {formatCurrency((monthly / 100) * 12 * 5, false)}
+                </span>{" "}
+                over 5 years
+              </div>
+            )}
 
             <button
               onClick={onRescan}

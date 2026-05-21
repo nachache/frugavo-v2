@@ -255,3 +255,41 @@ export function candidatesAnnualSavingsCents(
     0
   );
 }
+
+// Per-candidate plain-English narrative. Every value comes from the
+// real subscription row — last_charged_at, regret_score, amount. Never
+// generic, always specific. Drives the "why is this flagged?" answer
+// inside each candidate card.
+export function candidateNarrative(
+  c: CancelCandidate,
+  now = new Date()
+): string {
+  const annual =
+    monthlyEquivalentCents(c.sub.amount_cents, c.sub.frequency) * 12;
+  const annualDollars = `$${Math.round(annual / 100).toLocaleString()}`;
+
+  const monthsSince = c.sub.last_charged_at
+    ? Math.max(
+        0,
+        Math.round(
+          (now.getTime() - new Date(c.sub.last_charged_at).getTime()) /
+            (1000 * 60 * 60 * 24 * 30)
+        )
+      )
+    : null;
+
+  switch (c.reason) {
+    case "biggest":
+      return `Your biggest line item. ${annualDollars} a year.`;
+    case "forgotten":
+      if (monthsSince !== null && monthsSince >= 1) {
+        return `Last charged ${monthsSince} ${monthsSince === 1 ? "month" : "months"} ago. You'd save ${annualDollars}/year.`;
+      }
+      return `Flagged as likely forgotten. You'd save ${annualDollars}/year.`;
+    case "silent":
+      if (monthsSince !== null && monthsSince >= 1) {
+        return `No charge in ${monthsSince} ${monthsSince === 1 ? "month" : "months"}. ${annualDollars}/year if it stays gone.`;
+      }
+      return `No recent charge. ${annualDollars}/year if it stays gone.`;
+  }
+}

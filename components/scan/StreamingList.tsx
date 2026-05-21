@@ -49,6 +49,12 @@ export function StreamingList({ scanId }: Props) {
   const [isComplete, setIsComplete] = useState(false);
   const [isSlow, setIsSlow] = useState(false);
   const [error, setError] = useState<{ code: string; recoverable: boolean } | null>(null);
+  // Trust receipt data — populated from the `complete` event. Real
+  // numbers, never invented: detected count + actual scan duration.
+  const [receipt, setReceipt] = useState<{
+    detected: number;
+    durationMs: number;
+  } | null>(null);
 
   // Derived UI state. Order matters: error > ready > slow > scanning.
   // The "ready" guard ALWAYS beats slow, so a card that's already
@@ -85,6 +91,7 @@ export function StreamingList({ scanId }: Props) {
           setPhase(ev.phase);
         } else if (ev.type === "complete") {
           setIsComplete(true);
+          setReceipt({ detected: ev.detected, durationMs: ev.duration_ms });
           es.close();
         } else if (ev.type === "error") {
           if (!ev.recoverable) {
@@ -194,6 +201,7 @@ export function StreamingList({ scanId }: Props) {
 
   // ready with rows (or zero-row complete — we still show the empty
   // skeleton briefly before the redirect fires).
+  const fiveYearCents = totalCents * 12 * 5;
   return (
     <div>
       <div className="rounded-3xl bg-brand-light p-6">
@@ -212,6 +220,18 @@ export function StreamingList({ scanId }: Props) {
           {rows.length} recurring{" "}
           {rows.length === 1 ? "charge" : "charges"} detected
         </div>
+        {/* 5-year emotional payoff — the loss-aversion punch. Pure math
+            off totalCents, never hardcoded. Only shown once at least
+            one row has arrived so the number is meaningful. */}
+        {rows.length > 0 && (
+          <div className="mt-4 inline-flex items-baseline gap-1 rounded-full bg-white/60 px-3 py-1.5 text-[12.5px] text-emerald-950 tnum">
+            That&apos;s{" "}
+            <span className="font-display font-bold text-brand">
+              {formatCurrency(fiveYearCents / 100, false)}
+            </span>{" "}
+            over 5 years
+          </div>
+        )}
       </div>
 
       <ul className="mt-8 grid gap-3">
@@ -221,13 +241,45 @@ export function StreamingList({ scanId }: Props) {
       </ul>
 
       {isComplete && (
-        <p className="mt-8 text-center text-[13px] text-ink-muted">
-          {rows.length === 0
-            ? "Scan complete — no recurring charges yet. Taking you to your dashboard…"
-            : "Scan complete — sorting your subscriptions…"}
-        </p>
+        <div className="mt-8 text-center space-y-3">
+          <p className="text-[13px] text-ink-muted">
+            {rows.length === 0
+              ? "Scan complete — no recurring charges yet. Taking you to your dashboard…"
+              : "Scan complete — sorting your subscriptions…"}
+          </p>
+          {receipt && rows.length > 0 && (
+            <TrustReceipt
+              detected={receipt.detected}
+              durationMs={receipt.durationMs}
+            />
+          )}
+        </div>
       )}
     </div>
+  );
+}
+
+// Trust receipt: a small, factual line shown after the scan completes.
+// Every value is real — `detected` and `durationMs` come from the
+// engine's `complete` event, no invented numbers.
+function TrustReceipt({
+  detected,
+  durationMs,
+}: {
+  detected: number;
+  durationMs: number;
+}) {
+  const seconds = (durationMs / 1000).toFixed(1);
+  return (
+    <p className="inline-flex flex-wrap items-center justify-center gap-1.5 text-[11.5px] text-ink-muted leading-relaxed max-w-[440px] mx-auto">
+      <ShieldCheck size={11} className="text-brand" />
+      Found {detected} recurring {detected === 1 ? "charge" : "charges"} in{" "}
+      <span className="tnum">{seconds}s</span>
+      <span className="text-ink/30">·</span>
+      Read-only access
+      <span className="text-ink/30">·</span>
+      No card numbers stored
+    </p>
   );
 }
 

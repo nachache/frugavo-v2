@@ -140,6 +140,15 @@ export function CancelModal({ sub, onClose, onConfirmed }: Props) {
               <div className="mt-0.5 text-[12.5px] text-ink-muted tnum truncate">
                 {sub.merchant_name} · {formatCurrency(monthly / 100)}/mo
               </div>
+              {/* 5-year compounded loss-aversion punch — pure math off
+                  the annual amount, no inflation guesswork. */}
+              <div className="mt-2 text-[11.5px] text-emerald-950/70 tnum">
+                ≈{" "}
+                <span className="font-semibold text-emerald-950">
+                  {formatCurrency((annual * 5) / 100, false)}
+                </span>{" "}
+                over 5 years
+              </div>
             </div>
           </div>
         </div>

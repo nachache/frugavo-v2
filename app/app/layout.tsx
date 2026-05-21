@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { UserButton } from "@clerk/nextjs";
 import { Wordmark } from "@/components/shared/wordmark";
+import { MobileBottomNav } from "@/components/app/mobile-nav";
 
 export const metadata: Metadata = {
   title: "Frugavo · Your subscriptions",
@@ -41,7 +42,10 @@ export default function AppLayout({
           </nav>
         </div>
       </header>
-      <main className="flex-1">{children}</main>
+      {/* Bottom padding on mobile so content doesn't hide behind the
+          fixed bottom nav (~64px tall + safe-area inset). */}
+      <main className="flex-1 pb-20 md:pb-0">{children}</main>
+      <MobileBottomNav />
     </div>
   );
 }
