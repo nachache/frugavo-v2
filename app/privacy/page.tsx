@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Nav } from "@/components/sections/nav";
 import { Footer } from "@/components/sections/footer";
 import { ToastProvider } from "@/components/shared/toast";
+import { LEGAL, formatAddressLine } from "@/lib/legal-config";
 
 export const metadata: Metadata = {
   title: "Privacy Policy · Frugavo",
@@ -280,9 +281,38 @@ export default function PrivacyPolicy() {
 
           <Section title="11. Contact">
             <p>
-              For privacy questions or to exercise your rights, email
-              hello@frugavo.com. We aim to respond within five business days
-              and to fulfil verified requests within 30 days.
+              For privacy questions or to exercise your rights, email{" "}
+              <a
+                href={`mailto:${LEGAL.privacyEmail}`}
+                className="text-brand underline decoration-brand/30 underline-offset-4 hover:decoration-brand"
+              >
+                {LEGAL.privacyEmail}
+              </a>
+              . For security or vulnerability disclosure, email{" "}
+              <a
+                href={`mailto:${LEGAL.securityEmail}`}
+                className="text-brand underline decoration-brand/30 underline-offset-4 hover:decoration-brand"
+              >
+                {LEGAL.securityEmail}
+              </a>
+              . For general support,{" "}
+              <a
+                href={`mailto:${LEGAL.supportEmail}`}
+                className="text-brand underline decoration-brand/30 underline-offset-4 hover:decoration-brand"
+              >
+                {LEGAL.supportEmail}
+              </a>
+              . We aim to respond within five business days and to fulfil
+              verified requests within 30 days.
+            </p>
+            <p>
+              Registered entity: <strong>{LEGAL.legalName}</strong>
+              {formatAddressLine() && (
+                <>
+                  <br />
+                  {formatAddressLine()}
+                </>
+              )}
             </p>
             <p className="text-[13px] text-ink-muted">
               See also our{" "}

@@ -1,6 +1,7 @@
 import { plaidClient, PLAID_ENV } from "./plaid";
 import { supabaseAdmin } from "./supabase";
 import { decryptToken } from "./crypto";
+import { observeError } from "./observe";
 import { normalizeMerchant } from "@/lib/ai/normalize";
 import {
   publishScanEvent,
@@ -149,8 +150,10 @@ export async function runScanForUser(
         },
       });
     } catch (e) {
-      // eslint-disable-next-line no-console
-      console.error("[scan] item failed", item.id, e);
+      observeError(e, {
+        route: "scan",
+        tags: { itemId: item.id, userId },
+      });
       failedItems += 1;
     }
   });

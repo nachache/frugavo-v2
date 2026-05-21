@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 import { runScanForUser } from "@/lib/scan";
 import { verifyPlaidWebhookJwt } from "@/lib/plaid-webhook";
+import { observeError } from "@/lib/observe";
 
 // Plaid webhook receiver.
 //
@@ -89,8 +90,10 @@ export async function POST(req: Request) {
     if (item?.user_id) {
       // Fire-and-forget. We must 200 before the 10s retry window.
       void runScanForUser(item.user_id, "webhook").catch((e) => {
-        // eslint-disable-next-line no-console
-        console.error("[webhook] scan failed", e);
+        observeError(e, {
+          route: "webhook.scan",
+          tags: { itemId: body.item_id },
+        });
       });
     }
   } else if (body.webhook_code === "ITEM_LOGIN_REQUIRED") {
