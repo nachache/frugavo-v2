@@ -10,7 +10,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:smoke": "vitest run --config vitest.smoke.config.ts"
+    "test:smoke": "vitest run --config vitest.smoke.config.ts",
+    "verify:scan": "tsx scripts/verify-scan.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.30.0",
@@ -46,6 +47,7 @@
     "eslint-config-next": "14.2.5",
     "postcss": "8.4.39",
     "tailwindcss": "3.4.7",
+    "tsx": "^4.19.0",
     "typescript": "5.5.4",
     "vitest": "^2.1.0"
   }

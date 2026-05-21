@@ -19,6 +19,14 @@ import {
   recurringStreamsFromRaw,
   type RawDetectedStream,
 } from "./raw-data-ingest";
+import {
+  classifyStream,
+  classifyUserPrompt,
+  CLASSIFY_SYSTEM_PROMPT,
+  type ClassifyInput,
+  type LlmClassifyResponse,
+} from "./classify";
+import Anthropic from "@anthropic-ai/sdk";
 
 // ---------------------------------------------------------------------------
 // Scan orchestrator.
@@ -47,18 +55,24 @@ export type ScanResult = {
   error?: string;
 };
 
-const SANDBOX_FALLBACK_SUBS = [
-  { merchant: "Netflix", amount_cents: 2299, frequency: "monthly" as const },
-  { merchant: "Spotify", amount_cents: 1199, frequency: "monthly" as const },
-  { merchant: "Adobe Creative Cloud", amount_cents: 5999, frequency: "monthly" as const },
-  { merchant: "The New York Times", amount_cents: 2500, frequency: "monthly" as const },
-  { merchant: "Peloton", amount_cents: 4400, frequency: "monthly" as const },
-  { merchant: "LinkedIn Premium", amount_cents: 3999, frequency: "monthly" as const },
-  { merchant: "iCloud+", amount_cents: 999, frequency: "monthly" as const },
-  { merchant: "Audible", amount_cents: 1495, frequency: "monthly" as const },
-  { merchant: "Dropbox", amount_cents: 1199, frequency: "monthly" as const },
-  { merchant: "HelloFresh", amount_cents: 8994, frequency: "monthly" as const },
-];
+// The old SANDBOX_FALLBACK_SUBS array and seedSandboxFallback function
+// were removed in the tenant-isolation pass: they injected the same 10
+// hardcoded subscriptions into EVERY user's scan when Plaid sandbox
+// returned 0 streams. That meant one user's "scan" leaked the same
+// demo names into another user's dashboard.
+
+// The raw-data ingest path (lib/raw-data-ingest.ts) is now strictly
+// gated. The xlsx-derived demo data only loads when:
+//   - PLAID_ENV === "sandbox"
+//   - FRUGAVO_SANDBOX_DEMO_USER_ID env var is set
+//   - the running scan's Clerk userId exactly matches it
+// Any other user — even in sandbox mode — sees only the streams Plaid
+// actually returns for their own connected items. No fixtures, no
+// fallback, no leakage.
+function isDemoUser(userId: string): boolean {
+  const allowed = process.env.FRUGAVO_SANDBOX_DEMO_USER_ID;
+  return PLAID_ENV === "sandbox" && !!allowed && allowed === userId;
+}
 
 export type ScanSource = "plaid" | "webhook" | "manual" | "first_connect";
 
@@ -157,16 +171,9 @@ export async function runScanForUser(
     }
   });
 
-  if (detected === 0 && PLAID_ENV === "sandbox" && items.length > 0) {
-    detected = await seedSandboxFallback(
-      userId,
-      items[0].id,
-      scanId,
-      (cents) => {
-        monthlyTotalCents += cents;
-      }
-    );
-  }
+  // No more demo-data fallback. If Plaid returned zero streams, the
+  // user sees the empty state — they're not silently filled with other
+  // people's data.
 
   await emit(scanId, { type: "progress", scan_id: scanId, phase: "spotting" });
   await emit(scanId, {
@@ -210,6 +217,19 @@ type PlaidStreamLike = {
   frequency?: string;
   last_date?: string;
   is_active?: boolean;
+  // Extended for the layered classifier — Plaid returns these on
+  // outflow streams in production. Optional so sandbox-injected streams
+  // can omit them safely.
+  status?: string;
+  personal_finance_category?: {
+    primary?: string;
+    detailed?: string;
+  };
+  // Some streams expose a small array of recent charge amounts; when
+  // present we use it for the CV signal. The Plaid SDK ships these
+  // under different keys across versions, so we treat it as opaque.
+  recent_amount_cents?: number[];
+  predicted_next_date?: string | null;
 };
 
 async function scanOneItem(args: {
@@ -227,12 +247,11 @@ async function scanOneItem(args: {
 
   let streams = (recurring.data.outflow_streams ?? []) as PlaidStreamLike[];
 
-  // Filter out streams that are clearly not subscriptions — credit card
-  // pay-downs, automatic transfers, payroll/loan repayments. Plaid's
-  // recurring detector flags these as outflow streams because they ARE
-  // recurring outflows, but they belong on a different surface (debts,
-  // not subscriptions) and they confuse users when shown as cancellable.
-  streams = streams.filter((s) => isProbablySubscription(s));
+  // NOTE: the old isProbablySubscription regex is preserved below for
+  // reference but no longer applied here. The layered classifier in
+  // lib/classify.ts (Gate A → Gate B scoring → optional LLM tiebreak)
+  // does this rejection plus much more, and runs per stream below
+  // after we know all the Plaid metadata. See classifyStream().
 
   // Sandbox-only: ingest the raw bank transactions in
   // tests/fixtures/raw-transactions.json. The recurrence-detection rule
@@ -240,8 +259,13 @@ async function scanOneItem(args: {
   // downstream pipeline (filter, AI normalize, category assignment) is
   // what we're actually testing. We do NOT hand-pick subscriptions or
   // hand-clean merchant names here. Production never enters this branch.
+  // Demo data injection — ONLY for the explicitly allowlisted demo user
+  // in sandbox mode. Every other user (including other sandbox users)
+  // sees only the streams Plaid returned for their own connected items.
+  // This is the gate that prevents the xlsx fixture from leaking across
+  // accounts.
   let rawStreams: RawDetectedStream[] = [];
-  if (PLAID_ENV === "sandbox") {
+  if (isDemoUser(userId)) {
     rawStreams = recurringStreamsFromRaw();
     streams = [
       ...streams,
@@ -279,6 +303,47 @@ async function scanOneItem(args: {
       },
       { userId, scanRunId: scanId }
     );
+
+    // ------------- Layered classifier -------------
+    //
+    // Run Gate A → Gate B → optional LLM tiebreak. If the result is
+    // 'reject' we never persist this stream. If 'review' we persist
+    // with classification='needs_review' so it's auditable but never
+    // counted in totals or surfaced as a cancel candidate. Only
+    // 'confirm' lands as a confirmed subscription.
+
+    // Pull real charge amounts for the CV signal. For the demo-user
+    // sandbox path we have every historical transaction; for live
+    // Plaid streams we read recent_amount_cents if present.
+    let recentCharges: number[] | undefined;
+    if (stream.stream_id.startsWith("raw-")) {
+      const raw = rawStreams.find((r) => r.stream_id === stream.stream_id);
+      recentCharges = raw?.transactions.map((t) =>
+        Math.round(Math.abs(t.amount_dollars) * 100)
+      );
+    } else if (stream.recent_amount_cents) {
+      recentCharges = stream.recent_amount_cents;
+    }
+
+    const classifyInput: ClassifyInput = {
+      descriptor: rawDescriptor,
+      merchantName: norm.merchant_name,
+      pfcPrimary: stream.personal_finance_category?.primary ?? null,
+      pfcDetailed: stream.personal_finance_category?.detailed ?? null,
+      frequency: (stream.frequency ?? "").toUpperCase(),
+      status: stream.status ?? null,
+      isActive: stream.is_active !== false,
+      avgAmountCents: amountCents,
+      recentChargeCents: recentCharges,
+      domain: null, // populated by future logo-resolver patch
+    };
+
+    const verdict = await classifyStream(classifyInput, llmTiebreak);
+
+    if (verdict.decision === "reject") {
+      // Never persist — this stream is definitively not a subscription.
+      return;
+    }
 
     const predictedNext =
       (stream as { predicted_next_date?: string | null }).predicted_next_date ??
@@ -329,6 +394,11 @@ async function scanOneItem(args: {
           ai_source: row.ai_source,
           last_ai_run_at: new Date().toISOString(),
           status: isActive ? "active" : "cancelled",
+          // Classifier verdict. The dashboard filters on this so only
+          // 'confirmed' rows count toward totals and candidate lists.
+          classification: verdict.classification,
+          classification_signals: verdict.signals,
+          classification_score: verdict.score,
           updated_at: new Date().toISOString(),
         },
         { onConflict: "user_id,plaid_stream_id" }
@@ -370,14 +440,68 @@ async function scanOneItem(args: {
       }
     }
 
-    onRow(monthlyEquivalentCents(row.amount_cents, row.frequency));
-    await emit(scanId, { type: "row", scan_id: scanId, row });
+    // Only confirmed subs hit the SSE stream + the running total. The
+    // 'needs_review' rows are stored silently — they appear in nothing
+    // user-facing until someone explicitly builds a review queue UI.
+    if (verdict.classification === "confirmed") {
+      onRow(monthlyEquivalentCents(row.amount_cents, row.frequency));
+      await emit(scanId, { type: "row", scan_id: scanId, row });
+    }
   });
 
   await supabaseAdmin!
     .from("plaid_items")
     .update({ last_synced_at: new Date().toISOString(), needs_refresh: false })
     .eq("id", plaidItemRowId);
+}
+
+// ---------- LLM tiebreak callback for the classifier ----------
+//
+// Wraps the Haiku call with the strict-JSON classify contract. 800ms
+// timeout — same as the merchant-name normalizer. Returns null on any
+// failure so the classifier routes to needs_review instead of
+// accidentally confirming on a malformed response.
+
+const tiebreakClient = process.env.ANTHROPIC_API_KEY
+  ? new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+  : null;
+
+async function llmTiebreak(
+  input: ClassifyInput
+): Promise<LlmClassifyResponse | null> {
+  if (!tiebreakClient) return null;
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort("llm_timeout"), 800);
+  try {
+    const res = await tiebreakClient.messages.create(
+      {
+        model: "claude-haiku-4-5-20251001",
+        max_tokens: 200,
+        system: CLASSIFY_SYSTEM_PROMPT,
+        messages: [{ role: "user", content: classifyUserPrompt(input) }],
+      },
+      { signal: ctrl.signal }
+    );
+    const text = res.content
+      .filter((b): b is Anthropic.TextBlock => b.type === "text")
+      .map((b) => b.text)
+      .join("")
+      .trim()
+      .replace(/^```(?:json)?\s*/i, "")
+      .replace(/\s*```$/i, "");
+    const parsed = JSON.parse(text) as LlmClassifyResponse;
+    if (
+      typeof parsed.is_subscription !== "boolean" ||
+      typeof parsed.confidence !== "number"
+    ) {
+      return null;
+    }
+    return parsed;
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 // ---------- helpers ----------
@@ -494,72 +618,7 @@ async function finalizeScan(
   });
 }
 
-async function seedSandboxFallback(
-  userId: string,
-  plaidItemRowId: string,
-  scanId: string,
-  onRow: (cents: number) => void
-): Promise<number> {
-  let detected = 0;
-  const today = new Date();
-  for (const sample of SANDBOX_FALLBACK_SUBS) {
-    const lastCharged = new Date(today);
-    lastCharged.setDate(today.getDate() - Math.floor(Math.random() * 28));
-    const nextExpected = new Date(lastCharged);
-    nextExpected.setMonth(lastCharged.getMonth() + 1);
-
-    const row: ScanRow = {
-      stream_id: `sandbox-fallback-${sample.merchant
-        .toLowerCase()
-        .replace(/\s+/g, "-")}`,
-      merchant_name: sample.merchant,
-      raw_descriptor: sample.merchant,
-      amount_cents: sample.amount_cents,
-      currency: "USD",
-      frequency: sample.frequency,
-      last_charged_at: lastCharged.toISOString().slice(0, 10),
-      next_expected_charge_at: nextExpected.toISOString().slice(0, 10),
-      regret_score: regretScore({
-        amount_cents: sample.amount_cents,
-        frequency: sample.frequency,
-        last_charged_at: lastCharged.toISOString().slice(0, 10),
-      }),
-      category: "streaming",
-      ai_source: "plaid",
-    };
-
-    const { error } = await supabaseAdmin!.from("subscriptions").upsert(
-      {
-        user_id: userId,
-        plaid_item_id: plaidItemRowId,
-        plaid_stream_id: row.stream_id,
-        merchant_name: row.merchant_name,
-        normalized_name: row.merchant_name,
-        category: row.category,
-        amount_cents: row.amount_cents,
-        currency: row.currency,
-        frequency: row.frequency,
-        last_charged_at: row.last_charged_at,
-        next_expected_charge_at: row.next_expected_charge_at,
-        regret_score: row.regret_score,
-        ai_source: row.ai_source,
-        last_ai_run_at: new Date().toISOString(),
-        status: "active",
-        updated_at: new Date().toISOString(),
-      },
-      { onConflict: "user_id,plaid_stream_id" }
-    );
-
-    if (!error) {
-      detected += 1;
-      onRow(monthlyEquivalentCents(row.amount_cents, row.frequency));
-      await emit(scanId, { type: "row", scan_id: scanId, row });
-    }
-  }
-  return detected;
-}
-
-// ---------- non-subscription filter ----------
+// ---------- non-subscription filter (LEGACY — kept for now) ----------
 //
 // Plaid's recurring detector returns any consistent outflow, including
 // things that aren't really "subscriptions" — credit card auto-pays,

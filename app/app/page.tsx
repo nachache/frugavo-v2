@@ -147,7 +147,7 @@ async function fetchSubscriptions(userId: string): Promise<Subscription[]> {
   const { data } = await supabaseAdmin
     .from("subscriptions")
     .select(
-      "id, merchant_name, normalized_name, category, amount_cents, currency, frequency, last_charged_at, next_expected_charge_at, regret_score, status, user_decision"
+      "id, merchant_name, normalized_name, category, amount_cents, currency, frequency, last_charged_at, next_expected_charge_at, regret_score, status, user_decision, classification"
     )
     .eq("user_id", userId)
     .order("status", { ascending: true })

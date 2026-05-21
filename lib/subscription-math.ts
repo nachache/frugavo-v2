@@ -29,7 +29,17 @@ export type SubLike = {
   //   - 'unsure' — watcher saw a charge after cancellation, needs retry
   //   - null     — no decision yet, eligible for the candidates list
   user_decision?: string | null;
+  // Classifier verdict. Only 'confirmed' rows count toward totals or
+  // candidates. Defaults treated as 'confirmed' for backward compat
+  // with rows written before the classifier rollout.
+  classification?: string | null;
 };
+
+function isConfirmed(s: SubLike): boolean {
+  // Rows missing the column (pre-classifier writes) count as confirmed
+  // so existing data isn't silently hidden. New writes always set it.
+  return s.classification == null || s.classification === "confirmed";
+}
 
 export function monthlyEquivalentCents(amount_cents: number, frequency: string): number {
   switch (frequency) {
@@ -55,7 +65,7 @@ export function annualCents(amount_cents: number, frequency: string): number {
 export function totalMonthlyCents(subs: SubLike[]): number {
   return subs.reduce(
     (sum, s) =>
-      s.status === "active"
+      s.status === "active" && isConfirmed(s)
         ? sum + monthlyEquivalentCents(s.amount_cents, s.frequency)
         : sum,
     0
@@ -139,6 +149,7 @@ export function categoryBreakdown(subs: SubLike[]): CategorySlice[] {
   const map = new Map<Category, CategorySlice>();
   for (const s of subs) {
     if (s.status !== "active") continue;
+    if (!isConfirmed(s)) continue;
     const cat = asCategory(s.category);
     const cur = map.get(cat) ?? { category: cat, monthlyCents: 0, count: 0 };
     cur.monthlyCents += monthlyEquivalentCents(s.amount_cents, s.frequency);
@@ -178,10 +189,13 @@ export function cancelCandidates(
   subs: SubLike[],
   now = new Date()
 ): CancelCandidate[] {
-  // Only actionable subs reach the candidates pool.
+  // Only actionable subs reach the candidates pool. Classification
+  // must be 'confirmed' — needs_review rows are stored but never
+  // surfaced as cancel candidates.
   const actionable = subs.filter(
     (s) =>
       s.status === "active" &&
+      isConfirmed(s) &&
       s.user_decision !== "keep" &&
       s.user_decision !== "cancel"
   );
