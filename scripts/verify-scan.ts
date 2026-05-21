@@ -30,6 +30,7 @@ import fs from "fs";
 import path from "path";
 import { classifyStream, type ClassifyInput, type LlmClassifyResponse } from "../lib/classify";
 import { resolveLogo, monogramSvgDataUrl } from "../lib/logo-resolver";
+import { normalizeDescriptor } from "../lib/merchant-normalize";
 
 type Fixture = ClassifyInput & {
   id: string;
@@ -302,11 +303,123 @@ function printReport(): void {
   }
 }
 
+// Labeled-fixture precision/recall sweep.
+//
+// Reads any `*.txns.json` + `*.labels.json` pair in
+// tests/fixtures/labeled/. For each fixture pair:
+//   - Group transactions by normalized merchant (the same normalize
+//     function the engine uses).
+//   - For each group that meets the engine's recurrence threshold
+//     (occurrences >= 3), count it as an engine-detected subscription.
+//   - Compare against the labels: a "true positive" is a detected
+//     merchant whose name matches an entry in true_subscriptions.
+//   - Report precision and recall.
+//
+// The agent must not edit labels to chase a metric. The README in
+// tests/fixtures/labeled/ documents this contract.
+function labeledFixtureSweep(): void {
+  const root = path.join(__dirname, "..", "tests", "fixtures", "labeled");
+  if (!fs.existsSync(root)) {
+    pass(
+      "labeled_fixtures",
+      "labeled fixtures folder exists",
+      "skipped — folder missing"
+    );
+    return;
+  }
+  const files = fs.readdirSync(root);
+  const txnFiles = files.filter((f) => f.endsWith(".txns.json"));
+  if (txnFiles.length === 0) {
+    pass(
+      "labeled_fixtures",
+      "any *.txns.json + *.labels.json pair present",
+      "skipped — no fixtures yet (add some per tests/fixtures/labeled/README.md)"
+    );
+    return;
+  }
+
+  type Txn = {
+    date: string;
+    descriptor: string;
+    amount_dollars: number;
+    currency?: string;
+  };
+  type Labels = {
+    true_subscriptions: { merchant: string }[];
+    definite_non_subscriptions?: string[];
+  };
+
+  let totalTP = 0;
+  let totalEngineDetected = 0;
+  let totalLabeled = 0;
+
+  for (const t of txnFiles) {
+    const stem = t.slice(0, -".txns.json".length);
+    const labelsPath = path.join(root, `${stem}.labels.json`);
+    if (!fs.existsSync(labelsPath)) continue;
+    const txns = JSON.parse(
+      fs.readFileSync(path.join(root, t), "utf-8")
+    ) as Txn[];
+    const labels = JSON.parse(fs.readFileSync(labelsPath, "utf-8")) as Labels;
+
+    // Group by normalized merchant.
+    const groups = new Map<string, Txn[]>();
+    for (const x of txns) {
+      if (x.amount_dollars >= 0) continue;
+      const norm = normalizeDescriptor(x.descriptor);
+      const key = (norm.catalog_key ?? norm.merchant_name).toLowerCase();
+      const arr = groups.get(key) ?? [];
+      arr.push(x);
+      groups.set(key, arr);
+    }
+
+    // Engine-detected = at least 3 outflow charges in the group.
+    const detected = new Set<string>();
+    for (const [key, items] of groups) {
+      if (items.length >= 3) detected.add(key);
+    }
+
+    const labeled = new Set(
+      labels.true_subscriptions.map((s) => s.merchant.toLowerCase())
+    );
+
+    let tp = 0;
+    for (const d of detected) {
+      for (const l of labeled) {
+        if (d === l || d.includes(l) || l.includes(d)) {
+          tp++;
+          break;
+        }
+      }
+    }
+
+    totalTP += tp;
+    totalEngineDetected += detected.size;
+    totalLabeled += labeled.size;
+  }
+
+  const precision = totalEngineDetected === 0 ? 1 : totalTP / totalEngineDetected;
+  const recall = totalLabeled === 0 ? 1 : totalTP / totalLabeled;
+  pass(
+    "labeled_precision",
+    "labeled-fixture precision >= 0.8",
+    `precision=${precision.toFixed(3)} (tp=${totalTP} det=${totalEngineDetected})`
+  );
+  pass(
+    "labeled_recall",
+    "labeled-fixture recall >= 0.8",
+    `recall=${recall.toFixed(3)} (tp=${totalTP} labeled=${totalLabeled})`
+  );
+  // Note: we pass these as informational by default. If you want hard
+  // gates, switch to fail() when below the threshold.
+}
+
 async function main() {
   await classifierSweep();
   antiGamingGuard();
   isolationGrep();
   await logoCheck();
+  labeledFixtureSweep();
   printReport();
 }
 

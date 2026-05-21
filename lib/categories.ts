@@ -13,6 +13,7 @@ export type Category =
   | "insurance"
   | "gaming"
   | "education"
+  | "bank_fees"
   | "other";
 
 export const CATEGORY_LIST: Category[] = [
@@ -27,6 +28,7 @@ export const CATEGORY_LIST: Category[] = [
   "insurance",
   "gaming",
   "education",
+  "bank_fees",
   "other",
 ];
 
@@ -42,6 +44,7 @@ export const CATEGORY_LABEL: Record<Category, string> = {
   insurance: "Insurance",
   gaming: "Gaming",
   education: "Education",
+  bank_fees: "Bank & account fees",
   other: "Other",
 };
 
@@ -60,6 +63,7 @@ export const CATEGORY_COLOR: Record<Category, string> = {
   insurance: "#14B8A6",
   gaming: "#EC4899",
   education: "#A78BFA",
+  bank_fees: "#DC2626",
   other: "#94A3B8",
 };
 
@@ -77,6 +81,7 @@ export const CATEGORY_WASH: Record<Category, string> = {
   insurance: "#14B8A61A",
   gaming: "#EC48991A",
   education: "#A78BFA1A",
+  bank_fees: "#DC26261A",
   other: "#94A3B81A",
 };
 

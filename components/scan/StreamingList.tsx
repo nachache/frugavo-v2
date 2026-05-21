@@ -122,7 +122,12 @@ export function StreamingList({ scanId }: Props) {
 
   // If SSE drops or Redis loses an event, the DB still knows. Poll the
   // scan_runs row every 3 seconds while we're not yet ready, and flip
-  // isComplete on our own when the DB confirms.
+  // isComplete on our own when the DB confirms a TERMINAL state.
+  //
+  // 'finalizing' is explicitly non-terminal — rows are persisted but
+  // cache invalidation may not have propagated, so we keep polling
+  // until status becomes done/error/timeout (or `is_terminal` is true).
+  // This is the contract documented in app/api/scan/status/route.ts.
   useEffect(() => {
     if (isReady) return; // stop polling once we have data
     let cancelled = false;
@@ -132,11 +137,12 @@ export function StreamingList({ scanId }: Props) {
         const res = await fetch(`/api/scan/status?id=${encodeURIComponent(scanId)}`);
         if (!res.ok) return;
         const data = (await res.json()) as {
-          status: "running" | "done" | "error" | "timeout";
+          status: "running" | "finalizing" | "done" | "error" | "timeout";
+          is_terminal: boolean;
           detected: number;
         };
         if (cancelled) return;
-        if (data.status === "done" || data.status === "error" || data.status === "timeout") {
+        if (data.is_terminal) {
           setIsComplete(true);
         }
       } catch {
@@ -164,14 +170,30 @@ export function StreamingList({ scanId }: Props) {
   // Single navigation source of truth: only when we're "ready." A short
   // beat after complete fires so the user sees the final total tick up
   // before the route swap.
+  //
+  // CRITICAL: router.refresh() is called BEFORE router.push("/app").
+  // Without refresh(), Next.js's client-side Router Cache serves the
+  // pre-scan RSC payload to the push and the dashboard renders stale
+  // data until the user hard-reloads. The server-side revalidatePath
+  // inside finalizeScan covers cross-tab and cron-initiated scans;
+  // refresh() is the in-tab guarantee that this navigation sees fresh
+  // data.
   useEffect(() => {
     if (!isComplete) return;
-    const t = setTimeout(() => router.push("/app"), POST_COMPLETE_REDIRECT_MS);
+    const t = setTimeout(() => {
+      router.refresh();
+      router.push("/app");
+    }, POST_COMPLETE_REDIRECT_MS);
     return () => clearTimeout(t);
   }, [isComplete, router]);
 
   // Memoized navigation handler for the "I'll wait" recovery flow.
-  const goToDashboard = useCallback(() => router.push("/app"), [router]);
+  // Same refresh-before-push contract so the dashboard never shows
+  // stale data after a fallback navigation.
+  const goToDashboard = useCallback(() => {
+    router.refresh();
+    router.push("/app");
+  }, [router]);
 
   // ---------- render ----------
 

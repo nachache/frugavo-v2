@@ -10,9 +10,16 @@ import { supabaseAdmin } from "@/lib/supabase";
 // scan_runs row is the canonical truth.
 //
 // Returns:
-//   status: 'running' | 'done' | 'error' | 'timeout'
+//   status: 'running' | 'finalizing' | 'done' | 'error' | 'timeout'
 //   detected: number of subscriptions found so far
 //   duration_ms: scan duration if finished
+//
+// State-machine contract (mirrors lib/scan.ts):
+//   - 'running' and 'finalizing' are non-terminal. The client must NOT
+//     render the snapshot yet — rows may be in flight (running) or the
+//     cache invalidation may not have propagated (finalizing).
+//   - 'done', 'error', 'timeout' are terminal. The client is free to
+//     refetch and render.
 //
 // Authorization: the scan must belong to the current Clerk user.
 
@@ -46,8 +53,19 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
+  const status = run.status as
+    | "running"
+    | "finalizing"
+    | "done"
+    | "error"
+    | "timeout";
+
   return NextResponse.json({
-    status: run.status as "running" | "done" | "error" | "timeout",
+    status,
+    // The client uses `is_terminal` rather than string-matching so a
+    // future status name (e.g. "cancelled" if we add user-aborted scans)
+    // doesn't silently get treated as terminal by stale clients.
+    is_terminal: status === "done" || status === "error" || status === "timeout",
     detected: (run.detected_count ?? 0) as number,
     started_at: run.started_at as string,
     finished_at: run.finished_at as string | null,

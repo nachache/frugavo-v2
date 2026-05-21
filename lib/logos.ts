@@ -61,6 +61,14 @@ const KNOWN_DOMAINS: Record<string, string> = {
   "1password": "1password.com",
   bitwarden: "bitwarden.com",
   evernote: "evernote.com",
+  jotform: "jotform.com",
+  "jotform canada": "jotform.com",
+  talentlms: "talentlms.com",
+  n8n: "n8n.io",
+  "n8n cloud": "n8n.io",
+  scotiaconnect: "scotiabank.com",
+  scotiabank: "scotiabank.com",
+  expressvpn: "expressvpn.com",
 
   // news & reading
   "the new york times": "nytimes.com",
@@ -116,6 +124,13 @@ const KNOWN_DOMAINS: Record<string, string> = {
   rogers: "rogers.com",
   bell: "bell.ca",
   telus: "telus.com",
+  chatr: "chatrwireless.com",
+  "chatr wireless": "chatrwireless.com",
+  ebox: "ebox.ca",
+  "hydro ottawa": "hydroottawa.com",
+  enbridge: "enbridge.com",
+  "reliance home comfort": "reliancehomecomfort.com",
+  reliance: "reliancehomecomfort.com",
   "google fi": "fi.google.com",
   mint: "mintmobile.com",
   "mint mobile": "mintmobile.com",
@@ -132,6 +147,25 @@ const KNOWN_DOMAINS: Record<string, string> = {
   "epic games": "epicgames.com",
   "ea play": "ea.com",
   "ubisoft+": "ubisoft.com",
+
+  // commerce / shopping (recurring orders)
+  iherb: "iherb.com",
+
+  // financial / fintech
+  koho: "koho.ca",
+  "koho extra": "koho.ca",
+  "koho extra plan": "koho.ca",
+
+  // donations / non-profits
+  nccm: "nccm.ca",
+  "national council of canadian muslims": "nccm.ca",
+  "sos children's villages": "sosvillages.ca",
+  "sos childrens villages": "sosvillages.ca",
+  "ottawa humane society": "ottawahumane.ca",
+
+  // professional dues
+  "ontario dental association": "oda.ca",
+  oda: "oda.ca",
 
   // other recurring
   linkedin: "linkedin.com",

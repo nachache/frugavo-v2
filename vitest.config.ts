@@ -10,7 +10,10 @@ export default defineConfig({
   test: {
     environment: "node",
     globals: false,
-    include: ["tests/**/*.spec.ts"],
+    include: ["tests/**/*.spec.ts", "tests/unit/**/*.spec.ts"],
+    // Smoke tests are slow + hit the network; they run via their own
+    // config (npm run test:smoke).
+    exclude: ["node_modules/**", "tests/smoke/**"],
     setupFiles: [],
   },
 });

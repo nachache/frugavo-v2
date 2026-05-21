@@ -93,6 +93,48 @@ CRON_SECRET                     # openssl rand -hex 32
 - Stripe paywall when monetization is ready.
 - Sentry / error tracking before paid ads.
 
+## Testing roadmap (deferred)
+
+What's shipped:
+- Unit tests for pure functions (lib/subscription-math, lib/ai/prompt, lib/categories, lib/logos, lib/cancel-providers, lib/crypto). Run with `npm test`.
+- Smoke tests against the deployed URL (landing, auth gates, API auth gates, security headers). Run with `npm run test:smoke`, configurable via `FRUGAVO_URL` env var.
+- Manual pre-launch QA checklist at `docs/pre-launch-qa.md`.
+
+Track 1 — Playwright E2E (1-2 hours)
+- Real Chromium driving full sign-up → connect bank → scan → cancel → email flow.
+- File layout: `tests/e2e/full-flow.spec.ts`, `tests/e2e/cancel-flow.spec.ts`, `tests/e2e/account-deletion.spec.ts`.
+- Run headless on CI, headed locally for visual debugging.
+- Trigger: after first 50 signups, or before any visual redesign that touches the scan flow.
+
+Track 2 — Accessibility audit (20 minutes)
+- Add `@axe-core/playwright`, run a11y scan on each public + authenticated page.
+- Block deploys with WCAG 2.1 AA violations.
+- Trigger: before paid Google or Meta ads. Personal-finance vertical attracts ADA lawsuits.
+
+Track 3 — Real-DB integration tests (3-4 hours)
+- Spin up Postgres + Redis in CI containers.
+- Run the 7 `it.todo` cases in `tests/scan.spec.ts` against the real DB — turns them into real passing tests.
+- Trigger: when a second engineer joins the project.
+
+Track 4 — Bundle size + Lighthouse (30 minutes)
+- CI step that builds and reports JS payload size + Lighthouse perf score.
+- Threshold: fail the PR if JS payload grows >10% or Lighthouse perf score drops below 90.
+- Trigger: as soon as you stop iterating on the marketing site daily.
+
+Track 5 — Load tests (1 hour)
+- k6 or Artillery script hitting `/api/plaid/scan/stream` with 100 simulated concurrent users.
+- Validates Redis Stream pub/sub holds up + Plaid rate limits aren't tripped.
+- Trigger: a week before a paid traffic spike (Black Friday, big launch).
+
+Track 6 — npm audit cadence
+- Run `npm audit` every Monday. File issues for any `high` or `critical` CVE.
+- Re-run after every dependency upgrade.
+
+Track 7 — Synthetic monitoring (alternative to smoke tests)
+- Move the smoke test set to Checkly / Better Stack so they run every 5 minutes from multiple regions.
+- Pages you on outage. Replaces ad-hoc post-deploy smoke runs.
+- Trigger: when you have paying customers.
+
 ## Schedules
 
 | When | What | Endpoint |

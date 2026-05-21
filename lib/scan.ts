@@ -1,3 +1,4 @@
+import { revalidatePath } from "next/cache";
 import { plaidClient, PLAID_ENV } from "./plaid";
 import { supabaseAdmin } from "./supabase";
 import { decryptToken } from "./crypto";
@@ -26,6 +27,8 @@ import {
   type ClassifyInput,
   type LlmClassifyResponse,
 } from "./classify";
+import { normalizeDescriptor } from "./merchant-normalize";
+import type { SnapshotRow } from "./types/snapshot";
 import Anthropic from "@anthropic-ai/sdk";
 
 // ---------------------------------------------------------------------------
@@ -54,6 +57,27 @@ import Anthropic from "@anthropic-ai/sdk";
 //     temperature: 0.
 //   - `updated_at` and `last_ai_run_at` use `asOf`, not the current wall
 //     clock — so an idempotent re-run doesn't churn timestamps.
+//
+// Lifecycle state machine (migration 008):
+//
+//   running ──► finalizing ──► done       (success)
+//                          └─► error      (terminal failure)
+//                          └─► timeout    (budget exceeded)
+//
+//   - `running`    every per-stream upsert is still in flight
+//   - `finalizing` every row has been persisted; cache invalidation and
+//                  downstream notifications are dispatching. Today this
+//                  window is short because every upsert is awaited before
+//                  finalize, but the state exists so future async
+//                  post-write work (Plaid /transactions/sync cursor
+//                  completion, MRR rollups, push notifications) has a
+//                  well-named home. Clients must NOT treat this as final.
+//   - `done`       rows visible, caches invalidated. Safe to read.
+//
+// The SSE `complete` event and the polling `/api/scan/status` endpoint
+// only report `done` after the rows are queryable and `revalidatePath`
+// has been called. That is the contract the dashboard relies on to
+// avoid the stale-data race.
 // ---------------------------------------------------------------------------
 
 const ITEM_CONCURRENCY = 6;
@@ -176,6 +200,11 @@ export async function runScanForUser(
   let failedItems = 0;
   let monthlyTotalCents = 0;
 
+  // Collected by every per-stream worker; flushed into scan_snapshots
+  // at finalize. This is the canonical record of what the engine
+  // decided this scan — count, list, totals all derive from this array.
+  const snapshotRows: SnapshotRow[] = [];
+
   await runWithCap(items, ITEM_CONCURRENCY, async (item) => {
     try {
       await scanOneItem({
@@ -188,6 +217,7 @@ export async function runScanForUser(
           monthlyTotalCents += cents;
           detected += 1;
         },
+        onSnapshotRow: (row) => snapshotRows.push(row),
       });
     } catch (e) {
       observeError(e, {
@@ -216,7 +246,12 @@ export async function runScanForUser(
     detected,
     failedItems,
     t0,
-    failedItems > 0 && detected === 0 ? "error" : "done"
+    failedItems > 0 && detected === 0 ? "error" : "done",
+    {
+      asOfIso,
+      snapshotRows,
+      monthlyUpkeepCents: monthlyTotalCents,
+    }
   );
 
   await cacheDel(cacheKey.userScan(userId));
@@ -266,8 +301,17 @@ async function scanOneItem(args: {
   plaidItemRowId: string;
   accessToken: string;
   onRow: (monthlyEquivalentCents: number) => void;
+  onSnapshotRow: (row: SnapshotRow) => void;
 }): Promise<void> {
-  const { userId, scanId, asOf, plaidItemRowId, accessToken, onRow } = args;
+  const {
+    userId,
+    scanId,
+    asOf,
+    plaidItemRowId,
+    accessToken,
+    onRow,
+    onSnapshotRow,
+  } = args;
   const asOfIso = asOf.toISOString();
 
   const recurring = await plaidClient!.transactionsRecurringGet({
@@ -384,6 +428,19 @@ async function scanOneItem(args: {
       return;
     }
 
+    // Catalog override. The external merchant catalog
+    // (lib/data/merchant-catalog.json) takes precedence over the AI
+    // normalizer for any merchant we know — that's what makes results
+    // deterministic across users and Haiku versions. Bank fees route
+    // to their dedicated category instead of falling into "other."
+    const catalogHit = normalizeDescriptor(rawDescriptor);
+    const useCatalog =
+      catalogHit.catalog_key !== null ||
+      catalogHit.category === "bank_fees" ||
+      catalogHit.domain !== null;
+    const merchantName = useCatalog ? catalogHit.merchant_name : norm.merchant_name;
+    const category = useCatalog ? catalogHit.category : norm.category;
+
     const predictedNext =
       (stream as { predicted_next_date?: string | null }).predicted_next_date ??
       null;
@@ -403,7 +460,7 @@ async function scanOneItem(args: {
 
     const row: ScanRow = {
       stream_id: stream.stream_id,
-      merchant_name: norm.merchant_name,
+      merchant_name: merchantName,
       raw_descriptor: rawDescriptor,
       amount_cents: amountCents,
       currency,
@@ -411,7 +468,7 @@ async function scanOneItem(args: {
       last_charged_at: stream.last_date ?? null,
       next_expected_charge_at: predictedNext,
       regret_score: regret,
-      category: norm.category,
+      category,
       ai_source: norm.ai_source,
     };
 
@@ -480,11 +537,49 @@ async function scanOneItem(args: {
       }
     }
 
+    // Push to the snapshot regardless of classification — needs_review
+    // rows are part of the audit trail. The dashboard filters on
+    // classification === 'confirmed' at read time.
+    const monthlyEq = monthlyEquivalentCents(row.amount_cents, row.frequency);
+    // Tighten types for the snapshot row. We've already returned on
+    // verdict.decision === "reject", so verdict.classification here is
+    // one of "confirmed" | "needs_review". row.category may be null
+    // when the AI normalizer didn't pick one and the catalog missed —
+    // default to "other".
+    const snapshotClassification =
+      (verdict.classification ?? "needs_review") as
+        | "confirmed"
+        | "needs_review";
+    onSnapshotRow({
+      plaid_stream_id: stream.stream_id,
+      merchant_name: row.merchant_name,
+      category: row.category ?? "other",
+      amount_cents: row.amount_cents,
+      currency: row.currency,
+      frequency: row.frequency,
+      monthly_equivalent_cents: monthlyEq,
+      last_charged_at: row.last_charged_at,
+      next_expected_charge_at: row.next_expected_charge_at,
+      classification: snapshotClassification,
+      classification_score: verdict.score,
+      regret_score: row.regret_score,
+      status: isActive ? "active" : "cancelled",
+      source: {
+        catalog_key: catalogHit.catalog_key,
+        matched_alias: catalogHit.signals.matched_alias,
+        matched_domain: catalogHit.signals.matched_domain,
+        biller: catalogHit.biller,
+        raw_descriptor: rawDescriptor,
+        plaid_merchant_name: stream.merchant_name ?? null,
+        ai_source: norm.ai_source,
+      },
+    });
+
     // Only confirmed subs hit the SSE stream + the running total. The
     // 'needs_review' rows are stored silently — they appear in nothing
     // user-facing until someone explicitly builds a review queue UI.
     if (verdict.classification === "confirmed") {
-      onRow(monthlyEquivalentCents(row.amount_cents, row.frequency));
+      onRow(monthlyEq);
       await emit(scanId, { type: "row", scan_id: scanId, row });
     }
   });
@@ -628,16 +723,45 @@ async function emit(scanId: string, event: ScanEvent): Promise<void> {
   await publishScanEvent(scanId, event);
 }
 
+// finalizeScan enforces the lifecycle state machine documented at the
+// top of this file. The order matters and is part of the public contract
+// the client depends on:
+//
+//   1. Write status='finalizing' with the row counts. From this point
+//      onward, every subscription row for this scan is guaranteed to be
+//      visible to a fresh read against the primary.
+//   2. Mark the user has_completed_scan = true (idempotent).
+//   3. Invalidate the Next.js Route Cache for the dashboard so the next
+//      navigation to /app re-renders the Server Component against fresh
+//      DB data instead of serving a stale RSC payload. revalidatePath
+//      requires being called from a Next request context — when this
+//      runs inside a fire-and-forget webhook scan the context may be
+//      gone, so we swallow that case rather than failing the scan.
+//   4. Write the terminal status (done | error | timeout). Only after
+//      this does the SSE `complete` event fire and the polling status
+//      endpoint return a terminal value. Clients are contractually
+//      forbidden from rendering the snapshot until they see this state.
+//
+// If step 3 fails (transient cache-bus error, no request context), we
+// log and continue. The client-side router.refresh() in StreamingList
+// and the tab-focus check on the dashboard recover from that case.
 async function finalizeScan(
   scanId: string,
   userId: string,
   detected: number,
   failedItems: number,
   startedAtMs: number,
-  status: "done" | "error" | "timeout"
+  status: "done" | "error" | "timeout",
+  snapshot: {
+    asOfIso: string;
+    snapshotRows: SnapshotRow[];
+    monthlyUpkeepCents: number;
+  } = { asOfIso: new Date().toISOString(), snapshotRows: [], monthlyUpkeepCents: 0 }
 ) {
   const duration = Date.now() - startedAtMs;
+
   if (supabaseAdmin) {
+    // Step 1: finalizing. Rows are persisted; status reflects that.
     await supabaseAdmin
       .from("scan_runs")
       .update({
@@ -645,10 +769,40 @@ async function finalizeScan(
         detected_count: detected,
         failed_items: failedItems,
         duration_ms: duration,
-        status,
+        status: "finalizing",
       })
       .eq("id", scanId);
 
+    // Step 1b: write the immutable scan_snapshot. THIS is what the
+    // dashboard reads from — not the mutable subscriptions table. Count,
+    // list, and monthly upkeep all derive from this single payload so
+    // they cannot disagree.
+    //
+    // Confirmed-only counts here mirror what the UI shows; the raw
+    // payload also carries needs_review rows for audit.
+    const confirmedRows = snapshot.snapshotRows.filter(
+      (r) => r.classification === "confirmed"
+    );
+    const confirmedUpkeep = confirmedRows.reduce(
+      (sum, r) => sum + r.monthly_equivalent_cents,
+      0
+    );
+    const { error: snapErr } = await supabaseAdmin.from("scan_snapshots").insert({
+      user_id: userId,
+      scan_run_id: scanId,
+      as_of_date: snapshot.asOfIso,
+      payload: { rows: snapshot.snapshotRows },
+      detected_count: confirmedRows.length,
+      monthly_upkeep_cents: confirmedUpkeep,
+    });
+    if (snapErr) {
+      // eslint-disable-next-line no-console
+      console.error("[scan] snapshot insert failed", snapErr);
+    }
+
+    // Step 2: user-level flag. Safe to flip now because the row set is
+    // queryable; the dashboard will route to the list view instead of
+    // the "connect a bank" empty state.
     if (detected > 0 || failedItems === 0) {
       await supabaseAdmin
         .from("app_users")
@@ -656,6 +810,34 @@ async function finalizeScan(
         .eq("id", userId);
     }
   }
+
+  // Step 3: invalidate the dashboard's RSC cache so the next /app
+  // navigation re-renders with fresh data. This is what fixes the
+  // "have to hard reload" symptom — Next's Router Cache would otherwise
+  // serve the pre-scan payload to router.push("/app") calls.
+  try {
+    revalidatePath("/app");
+    revalidatePath("/app/scanning");
+  } catch (e) {
+    // Out of request context (cron, fire-and-forget). The client-side
+    // fallbacks (router.refresh on SSE complete, tab-focus check on the
+    // dashboard) will catch this case.
+    observeError(e, {
+      route: "scan.finalize.revalidate",
+      tags: { scanId, userId },
+    });
+  }
+
+  // Step 4: terminal status. Only AFTER this do we emit `complete` —
+  // the client treats this as the signal that the snapshot is safe to
+  // read.
+  if (supabaseAdmin) {
+    await supabaseAdmin
+      .from("scan_runs")
+      .update({ status })
+      .eq("id", scanId);
+  }
+
   await emit(scanId, {
     type: "complete",
     scan_id: scanId,

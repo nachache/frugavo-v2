@@ -1,0 +1,1016 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Frugavo motion preview</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Inter+Tight:wght@500;600;700&display=swap" />
+<style>
+  :root {
+    --emerald-50: #ECFDF5;
+    --emerald-100: #D1FAE5;
+    --emerald-300: #6EE7B7;
+    --emerald-600: #059669;
+    --emerald-700: #047857;
+    --emerald-900: #064E3B;
+    --canvas: #FAF8F4;
+    --ink: #0A0A0A;
+    --ink-body: #404040;
+    --ink-muted: #737373;
+    --hairline: #E7E5E0;
+    --hairline-soft: #EDEBE5;
+    --accent: #EA580C;
+    --accent-hover: #C2410C;
+    --coral: #FB7185;
+    --coral-wash: #FB71851A;
+    --amber: #F59E0B;
+    --violet: #8B5CF6;
+    --pink: #EC4899;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: var(--canvas); color: var(--ink); }
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-feature-settings: "ss01","cv11","tnum";
+    -webkit-font-smoothing: antialiased;
+    min-height: 100vh;
+    padding: 24px 16px 48px;
+  }
+  .display { font-family: 'Inter Tight', 'Inter', sans-serif; letter-spacing: -0.02em; }
+  .tnum { font-variant-numeric: tabular-nums; }
+
+  .shell { max-width: 900px; margin: 0 auto; }
+  .head {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    margin-bottom: 18px;
+  }
+  .brand {
+    display: inline-flex; align-items: center; gap: 10px;
+    font-size: 12.5px; color: var(--ink-muted); font-weight: 500;
+    letter-spacing: 0.04em; text-transform: uppercase;
+  }
+  .brand .leaf {
+    width: 22px; height: 22px; border-radius: 999px;
+    background: var(--emerald-100); color: var(--emerald-700);
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 12px;
+  }
+  .head-btn {
+    appearance: none; -webkit-appearance: none;
+    height: 34px; padding: 0 14px;
+    font-size: 12.5px; font-weight: 500;
+    background: var(--ink); color: white; border: none;
+    border-radius: 999px; cursor: pointer;
+    transition: opacity 180ms;
+    font-family: inherit;
+  }
+  .head-btn:hover { opacity: 0.88; }
+
+  .mod {
+    border: 1px solid var(--hairline);
+    border-radius: 18px;
+    background: var(--canvas);
+    overflow: hidden;
+    margin-bottom: 18px;
+  }
+  .mod-bar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 18px;
+    background: white;
+    border-bottom: 1px solid var(--hairline);
+  }
+  .mod-bar .label {
+    display: inline-flex; align-items: center; gap: 10px;
+    font-size: 11.5px; letter-spacing: 0.14em;
+    color: var(--ink-muted); text-transform: uppercase; font-weight: 500;
+  }
+  .mod-bar .num {
+    width: 22px; height: 22px; border-radius: 6px;
+    background: var(--emerald-50); color: var(--emerald-700);
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 500; letter-spacing: 0;
+  }
+  .replay {
+    appearance: none;
+    height: 28px; padding: 0 12px; font-size: 11px; font-weight: 500;
+    background: transparent; color: var(--ink); cursor: pointer;
+    border: 1px solid var(--hairline); border-radius: 999px;
+    display: inline-flex; align-items: center; gap: 5px;
+    transition: background 140ms;
+    font-family: inherit;
+  }
+  .replay:hover { background: rgba(10,10,10,0.04); }
+  .replay::before {
+    content: ""; width: 11px; height: 11px;
+    background: currentColor;
+    -webkit-mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'><polyline points='23 4 23 10 17 10'/><path d='M20.49 15a9 9 0 1 1-2.12-9.36L23 10'/></svg>") center/contain no-repeat;
+    mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'><polyline points='23 4 23 10 17 10'/><path d='M20.49 15a9 9 0 1 1-2.12-9.36L23 10'/></svg>") center/contain no-repeat;
+  }
+
+  .stage {
+    position: relative;
+    padding: 22px;
+    overflow: hidden;
+  }
+  .stage::before {
+    content: "";
+    position: absolute; inset: auto 0 0 0; height: 140px;
+    background: radial-gradient(ellipse at 50% 100%, rgba(16,185,129,0.10), transparent 65%);
+    pointer-events: none; z-index: 0;
+  }
+
+  /* ============================== */
+  /* MODULE 1 — SCAN                */
+  /* ============================== */
+  .scan-grid {
+    position: relative; z-index: 1;
+    display: grid;
+    grid-template-columns: 200px 1fr;
+    gap: 24px;
+    align-items: start;
+  }
+  .scan-left { display: flex; flex-direction: column; align-items: center; gap: 14px; }
+  .scan-arc-wrap { position: relative; width: 132px; height: 132px; }
+  .scan-arc { width: 100%; height: 100%; transform: rotate(-90deg); }
+  .scan-arc .track { stroke: rgba(10,10,10,0.07); }
+  .scan-arc .sweep {
+    stroke: var(--emerald-700);
+    stroke-linecap: round;
+    stroke-dasharray: 70 360;
+    animation: arc-sweep 2.4s linear infinite;
+  }
+  @keyframes arc-sweep { to { stroke-dashoffset: -430; } }
+  .scan-arc-center {
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .scan-arc-center .dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--emerald-700);
+    animation: pulse 1.6s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%,100% { opacity: 0.4; transform: scale(0.85); }
+    50% { opacity: 1; transform: scale(1.15); }
+  }
+  .phase-stack {
+    text-align: center; min-height: 38px;
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
+  }
+  .phase-step {
+    font-size: 10.5px; letter-spacing: 0.18em; text-transform: uppercase;
+    color: var(--ink-muted); font-weight: 500;
+  }
+  .phase-label {
+    font-size: 14.5px; font-weight: 500; color: var(--ink);
+    transition: opacity 280ms cubic-bezier(.16,1,.3,1), transform 280ms cubic-bezier(.16,1,.3,1);
+  }
+  .phase-label.entering { opacity: 0; transform: translateY(4px); }
+
+  .scan-right { min-width: 0; }
+  .scan-total-card {
+    background: var(--emerald-50);
+    border: 1px solid var(--emerald-100);
+    border-radius: 14px;
+    padding: 16px 18px;
+  }
+  .scan-lbl {
+    font-size: 10.5px; letter-spacing: 0.16em; text-transform: uppercase;
+    color: var(--emerald-900); opacity: 0.7; font-weight: 500;
+  }
+  .scan-total {
+    font-size: 36px; font-weight: 700; letter-spacing: -0.02em;
+    color: var(--emerald-700); margin-top: 4px; line-height: 1;
+    font-variant-numeric: tabular-nums;
+  }
+  .scan-total .unit {
+    font-size: 13px; color: var(--emerald-900); opacity: 0.75; margin-left: 4px;
+    font-weight: 500;
+  }
+  .scan-meta {
+    margin-top: 6px;
+    font-size: 11.5px; color: var(--emerald-900); opacity: 0.65;
+    font-variant-numeric: tabular-nums;
+  }
+  .scan-5yr {
+    margin-top: 10px;
+    display: inline-flex; align-items: baseline; gap: 4px;
+    background: rgba(255,255,255,0.6);
+    padding: 6px 12px; border-radius: 999px;
+    font-size: 12px; color: var(--emerald-900);
+  }
+  .scan-5yr b { color: var(--emerald-700); font-weight: 700; font-variant-numeric: tabular-nums; }
+
+  .row-list { list-style: none; padding: 0; margin: 14px 0 0; display: grid; gap: 8px; }
+  .row {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 12px;
+    background: white;
+    border: 1px solid var(--hairline-soft);
+    border-radius: 12px;
+    opacity: 0; transform: translateY(8px);
+    transition: opacity 480ms cubic-bezier(.16,1,.3,1), transform 480ms cubic-bezier(.16,1,.3,1);
+  }
+  .row.in { opacity: 1; transform: translateY(0); }
+  .row .glyph {
+    width: 30px; height: 30px; border-radius: 9px;
+    display: inline-flex; align-items: center; justify-content: center;
+    color: white; font-size: 12px; font-weight: 600;
+    letter-spacing: -0.01em; flex-shrink: 0;
+  }
+  .row .nm { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+  .row .name {
+    font-size: 13.5px; font-weight: 500; color: var(--ink);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .row .cat {
+    font-size: 10.5px; color: var(--ink-muted); letter-spacing: 0.02em;
+    margin-top: 1px; display: flex; align-items: center; gap: 6px;
+  }
+  .row .cat .cdot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+  .row .amt {
+    font-size: 13px; font-weight: 500; color: var(--ink);
+    font-variant-numeric: tabular-nums; flex-shrink: 0;
+  }
+  .scan-receipt {
+    margin-top: 14px; text-align: center;
+    font-size: 11.5px; color: var(--ink-muted);
+    opacity: 0; transform: translateY(4px);
+    transition: opacity 420ms ease, transform 420ms ease;
+  }
+  .scan-receipt.in { opacity: 1; transform: translateY(0); }
+  .scan-receipt .shield {
+    display: inline-block; width: 8px; height: 8px; border-radius: 50%;
+    background: var(--emerald-700); margin-right: 6px;
+    vertical-align: 1px;
+  }
+
+  /* ============================== */
+  /* MODULE 2 — CANCEL              */
+  /* ============================== */
+  .cancel-grid {
+    position: relative; z-index: 1;
+    display: grid;
+    grid-template-columns: 1fr 240px;
+    gap: 18px;
+    align-items: start;
+  }
+  .worth-col {
+    position: relative;
+    border: 1px solid var(--hairline);
+    border-radius: 14px;
+    background: linear-gradient(180deg, rgba(251,113,133,0.06), transparent 70%);
+    padding: 14px;
+    min-height: 360px;
+    /* Establishes the bottom-sheet viewport for the modal */
+    overflow: hidden;
+  }
+  .worth-col h4 {
+    margin: 0 4px 12px; font-weight: 500;
+    font-size: 10.5px; letter-spacing: 0.14em; text-transform: uppercase;
+    color: var(--ink-muted);
+  }
+
+  .sub-card {
+    background: white; border: 1px solid var(--hairline);
+    border-radius: 14px; padding: 14px;
+    position: relative; z-index: 1;
+    transition:
+      transform 560ms cubic-bezier(.16,1,.3,1),
+      opacity 480ms ease;
+  }
+  .sub-card.fade-out { opacity: 0; transform: scale(0.96) translateY(-6px); }
+
+  .sub-card .head-row { display: flex; align-items: center; gap: 12px; }
+  .sub-card .glyph {
+    width: 40px; height: 40px; border-radius: 11px;
+    background: #E50914; color: white; font-weight: 600; font-size: 15px;
+    display: inline-flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .sub-card .title { font-size: 14.5px; font-weight: 600; color: var(--ink); }
+  .sub-card .reason {
+    display: inline-block; margin-top: 4px;
+    background: var(--coral-wash); color: #9F1239;
+    font-size: 10.5px; font-weight: 600; letter-spacing: 0.02em;
+    padding: 2px 9px; border-radius: 999px;
+  }
+  .sub-card .narr {
+    font-size: 12.5px; color: var(--ink-body); margin-top: 10px; line-height: 1.5;
+  }
+  .sub-card .prices {
+    display: flex; align-items: baseline; justify-content: space-between;
+    flex-wrap: wrap; gap: 6px;
+    margin-top: 10px;
+  }
+  .sub-card .price-main {
+    font-size: 18px; font-weight: 600; color: var(--ink);
+    font-variant-numeric: tabular-nums;
+  }
+  .sub-card .price-main .u { font-size: 11px; color: var(--ink-muted); margin-left: 2px; font-weight: 500; }
+  .sub-card .price-yr {
+    font-size: 11px; color: var(--ink-muted);
+    font-variant-numeric: tabular-nums;
+  }
+  .sub-card .actions { display: flex; gap: 6px; margin-top: 12px; }
+  .sub-card .actions button {
+    flex: 1; height: 34px; font-size: 12px; font-weight: 500;
+    border-radius: 999px; cursor: pointer;
+    border: 1px solid var(--hairline); background: white; color: var(--ink);
+    transition: background 160ms, border-color 160ms, color 160ms, transform 160ms;
+    font-family: inherit;
+    display: inline-flex; align-items: center; justify-content: center; gap: 5px;
+  }
+  .sub-card .actions .cancel-btn.armed {
+    background: var(--accent); border-color: var(--accent); color: white;
+    animation: btn-press 320ms ease;
+  }
+  @keyframes btn-press {
+    0% { transform: scale(1); }
+    35% { transform: scale(0.95); }
+    100% { transform: scale(1); }
+  }
+
+  /* Modal — bottom sheet inside the worth-col viewport */
+  .modal-card {
+    position: absolute; left: 12px; right: 12px; bottom: 12px;
+    background: white;
+    border: 1px solid var(--hairline);
+    border-radius: 16px;
+    padding: 16px;
+    transform: translateY(120%);
+    transition: transform 500ms cubic-bezier(.16,1,.3,1), opacity 260ms ease;
+    z-index: 3;
+    opacity: 0;
+  }
+  .modal-card.in { transform: translateY(0); opacity: 1; }
+  .modal-card .m-head { display: flex; align-items: center; gap: 12px; }
+  .modal-card .m-glyph {
+    width: 38px; height: 38px; border-radius: 11px;
+    background: #E50914; color: white; font-weight: 600; font-size: 14px;
+    display: inline-flex; align-items: center; justify-content: center;
+  }
+  .modal-card .m-savings {
+    font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase;
+    color: var(--emerald-700); font-weight: 600;
+  }
+  .modal-card .m-amount {
+    font-size: 24px; font-weight: 700; color: var(--emerald-700);
+    line-height: 1; font-variant-numeric: tabular-nums; letter-spacing: -0.02em;
+  }
+  .modal-card .m-amount .u {
+    font-size: 11px; color: var(--emerald-900); opacity: 0.7; margin-left: 4px; font-weight: 500;
+  }
+  .modal-card .m-paths {
+    margin-top: 12px;
+    display: grid; gap: 6px;
+  }
+  .m-path {
+    display: flex; align-items: center; gap: 10px;
+    padding: 9px 10px;
+    border: 1px solid var(--hairline);
+    border-radius: 10px;
+    background: white;
+    opacity: 0; transform: translateY(6px);
+    transition: opacity 320ms cubic-bezier(.16,1,.3,1), transform 320ms cubic-bezier(.16,1,.3,1);
+  }
+  .m-path.in { opacity: 1; transform: translateY(0); }
+  .m-path .ic {
+    width: 26px; height: 26px; border-radius: 8px; flex-shrink: 0;
+    background: var(--emerald-50); color: var(--emerald-700);
+    display: inline-flex; align-items: center; justify-content: center;
+  }
+  .m-path .ic svg { width: 14px; height: 14px; }
+  .m-path .lbl { font-size: 12px; font-weight: 500; color: var(--ink); }
+  .m-path .sub-lbl { font-size: 10.5px; color: var(--ink-muted); margin-top: 1px; }
+  .m-confirm {
+    margin-top: 12px;
+    height: 38px; width: 100%;
+    background: var(--ink); color: white; border: none;
+    border-radius: 999px; font-size: 12.5px; font-weight: 500;
+    cursor: pointer;
+    display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+    transition: opacity 180ms, transform 160ms;
+    font-family: inherit;
+  }
+  .m-confirm.armed { animation: btn-press 320ms ease; }
+  .m-confirm svg { width: 12px; height: 12px; }
+
+  /* Celebration over the worth-col */
+  .celebration {
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    pointer-events: none;
+    z-index: 4;
+    padding: 12px;
+  }
+  .celebration .cele-card {
+    background: white;
+    border: 1px solid var(--emerald-100);
+    border-radius: 20px;
+    padding: 20px 24px;
+    text-align: center;
+    opacity: 0;
+    transform: scale(0.7) translateY(12px);
+    transition:
+      opacity 420ms cubic-bezier(.16,1,.3,1),
+      transform 540ms cubic-bezier(.34,1.56,.64,1);
+    max-width: 260px;
+  }
+  .celebration.in .cele-card { opacity: 1; transform: scale(1) translateY(0); }
+  .celebration .cele-label {
+    font-size: 10.5px; letter-spacing: 0.16em; text-transform: uppercase;
+    color: var(--emerald-700); font-weight: 600; margin-top: 8px;
+  }
+  .celebration .cele-amt {
+    margin-top: 4px;
+    font-size: 30px; font-weight: 700; color: var(--emerald-700);
+    line-height: 1; font-variant-numeric: tabular-nums; letter-spacing: -0.02em;
+  }
+  .celebration .cele-amt .u {
+    font-size: 12px; color: var(--emerald-900); opacity: 0.7;
+    margin-left: 4px; font-weight: 500;
+  }
+  .seedling { width: 56px; height: 56px; margin: 0 auto; display: block; }
+  .seedling .stem {
+    stroke: var(--emerald-700); stroke-width: 2.6;
+    stroke-linecap: round; fill: none;
+    stroke-dasharray: 30; stroke-dashoffset: 30;
+    transition: stroke-dashoffset 540ms ease;
+  }
+  .celebration.in .seedling .stem { stroke-dashoffset: 0; }
+  .seedling .leaf-l, .seedling .leaf-r {
+    opacity: 0; transform-box: fill-box; transform-origin: center;
+    transform: scale(0);
+    transition:
+      transform 480ms cubic-bezier(.34,1.56,.64,1),
+      opacity 320ms ease;
+  }
+  .celebration.in .seedling .leaf-l {
+    transform: scale(1); opacity: 1; transition-delay: 360ms;
+  }
+  .celebration.in .seedling .leaf-r {
+    transform: scale(1); opacity: 1; transition-delay: 500ms;
+  }
+  .seedling .soil { opacity: 0.4; }
+
+  .confetti-host {
+    position: absolute; inset: 0;
+    pointer-events: none;
+    z-index: 5;
+    overflow: hidden;
+  }
+  .confetti-host span {
+    position: absolute;
+    left: 50%; top: 50%;
+    width: 8px; height: 3px;
+    border-radius: 1.5px;
+    opacity: 0;
+    will-change: transform, opacity;
+  }
+  .confetti-host.fire span {
+    animation: confetti 1500ms cubic-bezier(.16,1,.3,1) forwards;
+  }
+  @keyframes confetti {
+    0%   { opacity: 0; transform: translate(-50%, -50%) rotate(0deg); }
+    10%  { opacity: 1; }
+    70%  { opacity: 1; }
+    100% {
+      opacity: 0;
+      transform:
+        translate(calc(-50% + var(--dx)), calc(-50% + var(--dy) + 160px))
+        rotate(var(--rot));
+    }
+  }
+
+  /* Pruned rail */
+  .pruned-col {
+    background: rgba(16,185,129,0.06);
+    border: 1px solid rgba(4,120,87,0.2);
+    border-radius: 14px;
+    padding: 14px;
+  }
+  .pruned-col h4 {
+    margin: 0 4px 10px; font-weight: 500;
+    font-size: 10.5px; letter-spacing: 0.14em; text-transform: uppercase;
+    color: var(--emerald-700);
+  }
+  .pruned-total {
+    font-size: 26px; font-weight: 700; color: var(--emerald-700);
+    font-variant-numeric: tabular-nums; letter-spacing: -0.02em;
+    line-height: 1; transition: transform 380ms cubic-bezier(.16,1,.3,1);
+  }
+  .pruned-total .u {
+    font-size: 11px; color: var(--emerald-900); opacity: 0.7;
+    margin-left: 3px; font-weight: 500;
+  }
+  .pruned-total.bumped { transform: scale(1.1); }
+  .pruned-meta {
+    font-size: 11px; color: var(--emerald-900);
+    opacity: 0.7; margin-top: 4px;
+  }
+  .pruned-list { margin-top: 14px; display: grid; gap: 6px; }
+  .pruned-row {
+    display: flex; align-items: center; gap: 8px;
+    background: white; border: 1px solid rgba(4,120,87,0.18);
+    border-radius: 10px; padding: 8px 10px;
+    opacity: 0; transform: translateY(8px) scale(0.94);
+    transition:
+      opacity 420ms ease,
+      transform 540ms cubic-bezier(.34,1.56,.64,1);
+  }
+  .pruned-row.in { opacity: 1; transform: translateY(0) scale(1); }
+  .pruned-row .glyph {
+    width: 24px; height: 24px; border-radius: 7px; flex-shrink: 0;
+    background: #E50914; color: white; font-size: 11px; font-weight: 600;
+    display: inline-flex; align-items: center; justify-content: center;
+  }
+  .pruned-row .name {
+    font-size: 12px; font-weight: 500; color: var(--ink); flex: 1;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .pruned-row .save {
+    font-size: 10.5px; color: var(--emerald-700);
+    font-variant-numeric: tabular-nums; font-weight: 600;
+    flex-shrink: 0;
+  }
+
+  /* ============================== */
+  /* MOBILE / NARROW                 */
+  /* ============================== */
+  @media (max-width: 720px) {
+    body { padding: 16px 12px 60px; }
+    .stage { padding: 16px; }
+    .mod-bar { padding: 12px 14px; }
+    .head { flex-wrap: wrap; gap: 10px; }
+
+    /* Module 1: stack arc on top, list below */
+    .scan-grid {
+      grid-template-columns: 1fr;
+      gap: 18px;
+    }
+    .scan-left { flex-direction: row; justify-content: center; gap: 18px; }
+    .scan-arc-wrap { width: 96px; height: 96px; }
+    .scan-total { font-size: 30px; }
+
+    /* Module 2: stack columns; pruned rail full-width below */
+    .cancel-grid {
+      grid-template-columns: 1fr;
+      gap: 14px;
+    }
+    .worth-col {
+      min-height: 380px;
+    }
+    .pruned-total { font-size: 22px; }
+    .modal-card {
+      left: 8px; right: 8px; bottom: 8px;
+      border-radius: 18px 18px 14px 14px;
+      padding: 14px;
+    }
+    /* Drag handle visual cue on mobile */
+    .modal-card::before {
+      content: ""; display: block;
+      width: 36px; height: 3px; border-radius: 999px;
+      background: rgba(10,10,10,0.12);
+      margin: -4px auto 10px;
+    }
+    .modal-card .m-amount { font-size: 22px; }
+    .celebration .cele-card { padding: 16px 18px; }
+    .celebration .cele-amt { font-size: 26px; }
+    .seedling { width: 48px; height: 48px; }
+  }
+
+  @media (max-width: 420px) {
+    .sub-card .price-yr { width: 100%; }
+    .sub-card .actions button { font-size: 11.5px; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.001ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.001ms !important;
+    }
+  }
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <div class="head">
+    <span class="brand">
+      <span class="leaf">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M2 22c1.25-1.5 5-7 10-7s8.75 5.5 10 7"/>
+          <path d="M12 15c0-4 2-8 9-9-1 5-3 9-9 9z"/>
+        </svg>
+      </span>
+      Frugavo motion preview
+    </span>
+    <button class="head-btn" data-action="restart-all">Restart both</button>
+  </div>
+
+  <!-- ====================== -->
+  <!-- MODULE 1 — LIVE SCAN   -->
+  <!-- ====================== -->
+  <section class="mod">
+    <div class="mod-bar">
+      <span class="label"><span class="num">01</span> Live scan</span>
+      <button class="replay" data-action="restart-scan">Replay</button>
+    </div>
+
+    <div class="stage">
+      <div class="scan-grid">
+        <div class="scan-left">
+          <div class="scan-arc-wrap">
+            <svg class="scan-arc" viewBox="0 0 100 100">
+              <circle class="track" cx="50" cy="50" r="42" fill="none" stroke-width="5"></circle>
+              <circle class="sweep" cx="50" cy="50" r="42" fill="none" stroke-width="5"></circle>
+            </svg>
+            <div class="scan-arc-center"><span class="dot"></span></div>
+          </div>
+          <div class="phase-stack">
+            <span class="phase-step">Step <span id="phase-num">1</span> of 3</span>
+            <span class="phase-label display" id="phase-label">Connecting securely</span>
+          </div>
+        </div>
+
+        <div class="scan-right">
+          <div class="scan-total-card">
+            <div class="scan-lbl">Found so far</div>
+            <div class="scan-total display">
+              <span id="scan-amt">$0.00</span><span class="unit">/mo</span>
+            </div>
+            <div class="scan-meta tnum"><span id="scan-count">0 recurring charges detected</span></div>
+            <div class="scan-5yr" id="scan-5yr" style="opacity:0; transition:opacity 380ms ease;">
+              That's <b id="scan-5yr-amt">$0</b> over 5 years
+            </div>
+          </div>
+          <ul class="row-list" id="scan-rows"></ul>
+          <div class="scan-receipt" id="scan-receipt">
+            <span class="shield"></span><span id="receipt-text">Read-only access · No card numbers stored</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ====================== -->
+  <!-- MODULE 2 — CANCEL      -->
+  <!-- ====================== -->
+  <section class="mod">
+    <div class="mod-bar">
+      <span class="label"><span class="num">02</span> Cancel-assist</span>
+      <button class="replay" data-action="restart-cancel">Replay</button>
+    </div>
+
+    <div class="stage">
+      <div class="cancel-grid">
+        <div class="worth-col" id="worth-col">
+          <h4>Worth a look · 1</h4>
+
+          <div class="sub-card" id="sub-card">
+            <div class="head-row">
+              <div class="glyph">N</div>
+              <div style="flex:1; min-width:0;">
+                <div class="title">Netflix</div>
+                <span class="reason">Might be forgotten</span>
+              </div>
+            </div>
+            <div class="narr">Last charged 4 months ago. You'd save $275/year.</div>
+            <div class="prices">
+              <div class="price-main tnum">$22.99<span class="u">/mo</span></div>
+              <div class="price-yr tnum">$275/yr · $1,375 over 5 years</div>
+            </div>
+            <div class="actions">
+              <button class="cancel-btn" id="cancel-btn">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                Cancel
+              </button>
+              <button class="keep-btn">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                Keep
+              </button>
+            </div>
+          </div>
+
+          <!-- Modal: slides up from bottom of worth-col -->
+          <div class="modal-card" id="modal-card">
+            <div class="m-head">
+              <div class="m-glyph">N</div>
+              <div>
+                <div class="m-savings">You'd save</div>
+                <div class="m-amount display tnum">$275<span class="u">/year</span></div>
+              </div>
+            </div>
+            <div class="m-paths">
+              <div class="m-path" data-i="0">
+                <span class="ic">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                </span>
+                <div style="flex:1; min-width:0;">
+                  <div class="lbl">Open cancel page</div>
+                  <div class="sub-lbl">netflix.com/cancelplan</div>
+                </div>
+              </div>
+              <div class="m-path" data-i="1">
+                <span class="ic">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                </span>
+                <div style="flex:1; min-width:0;">
+                  <div class="lbl">Copy email template</div>
+                  <div class="sub-lbl">For services that need it</div>
+                </div>
+              </div>
+              <div class="m-path" data-i="2">
+                <span class="ic">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+                </span>
+                <div style="flex:1; min-width:0;">
+                  <div class="lbl">Call retention</div>
+                  <div class="sub-lbl">When phone-only</div>
+                </div>
+              </div>
+            </div>
+            <button class="m-confirm" id="m-confirm">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+              I cancelled it
+            </button>
+          </div>
+
+          <!-- Confetti host (above modal, below celebration card text) -->
+          <div class="confetti-host" id="confetti-host"></div>
+
+          <!-- Celebration overlay -->
+          <div class="celebration" id="celebration">
+            <div class="cele-card">
+              <svg class="seedling" viewBox="0 0 48 48" aria-hidden="true">
+                <ellipse class="soil" cx="24" cy="42" rx="14" ry="2.5" fill="#A78BFA"></ellipse>
+                <path class="stem" d="M24 42 L24 22"></path>
+                <path class="leaf-l" d="M24 28 C 16 24, 12 19, 16 15 C 20 19, 24 24, 24 28 Z" fill="#10B981"></path>
+                <path class="leaf-r" d="M24 22 C 32 18, 36 13, 32 9 C 28 13, 24 18, 24 22 Z" fill="#34D399"></path>
+              </svg>
+              <div class="cele-label">Pruned · Netflix</div>
+              <div class="cele-amt display">+$275<span class="u">/year saved</span></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="pruned-col">
+          <h4>Pruned</h4>
+          <div class="pruned-total display" id="pruned-total">
+            <span id="pruned-amt">$0</span><span class="u">/yr saved</span>
+          </div>
+          <div class="pruned-meta" id="pruned-meta">No cancellations yet</div>
+          <div class="pruned-list" id="pruned-list"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <p style="text-align:center; font-size:11.5px; color:var(--ink-muted); margin-top: 16px;">
+    Both modules auto-play and loop. Tap any Replay button to restart that module alone.
+  </p>
+</div>
+
+<script>
+(function() {
+  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const root = document;
+
+  // ============================
+  // Module 1 — scan
+  // ============================
+  const SCAN_SUBS = [
+    { name: 'Netflix', cat: 'Streaming', color: '#E50914', dot: '#8B5CF6', amt: 22.99 },
+    { name: 'Spotify', cat: 'Streaming', color: '#1DB954', dot: '#8B5CF6', amt: 11.99 },
+    { name: 'Adobe Creative Cloud', cat: 'Software', color: '#FA0F00', dot: '#3B82F6', amt: 59.99 },
+    { name: 'NYT Cooking', cat: 'News & reading', color: '#222', dot: '#F59E0B', amt: 5.00 },
+    { name: 'Peloton', cat: 'Fitness', color: '#181A1D', dot: '#10B981', amt: 44.00 },
+    { name: 'LinkedIn Premium', cat: 'Software', color: '#0A66C2', dot: '#3B82F6', amt: 39.99 },
+  ];
+  const FINAL_TOTAL = SCAN_SUBS.reduce((s, x) => s + x.amt, 0);
+  const PHASES = [
+    { num: 1, label: 'Connecting securely' },
+    { num: 2, label: 'Reading transactions' },
+    { num: 3, label: 'Spotting patterns' },
+  ];
+
+  const $ = (id) => document.getElementById(id);
+  const rowsEl = $('scan-rows');
+  const amtEl = $('scan-amt');
+  const countEl = $('scan-count');
+  const phaseLabel = $('phase-label');
+  const phaseNum = $('phase-num');
+  const receipt = $('scan-receipt');
+  const receiptText = $('receipt-text');
+  const fiveYrCard = $('scan-5yr');
+  const fiveYrAmt = $('scan-5yr-amt');
+
+  let scanTimers = [];
+  let scanRaf = null;
+
+  const fmt = (n) =>
+    '$' + n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const fmtWhole = (n) =>
+    '$' + Math.round(n).toLocaleString('en-US');
+
+  function setPhase(idx) {
+    phaseLabel.classList.add('entering');
+    setTimeout(() => {
+      phaseLabel.textContent = PHASES[idx].label;
+      phaseNum.textContent = PHASES[idx].num;
+      requestAnimationFrame(() => phaseLabel.classList.remove('entering'));
+    }, 160);
+  }
+
+  function counter(from, to, duration) {
+    if (scanRaf) cancelAnimationFrame(scanRaf);
+    if (reduce) {
+      amtEl.textContent = fmt(to);
+      return;
+    }
+    const t0 = performance.now();
+    const tick = (now) => {
+      const t = Math.min(1, (now - t0) / duration);
+      const eased = 1 - Math.pow(1 - t, 3); // easeOutCubic
+      const v = from + (to - from) * eased;
+      amtEl.textContent = fmt(v);
+      if (t < 1) scanRaf = requestAnimationFrame(tick);
+    };
+    scanRaf = requestAnimationFrame(tick);
+  }
+
+  function clearScan() {
+    scanTimers.forEach(clearTimeout); scanTimers = [];
+    if (scanRaf) cancelAnimationFrame(scanRaf);
+    rowsEl.innerHTML = '';
+    amtEl.textContent = '$0.00';
+    countEl.textContent = '0 recurring charges detected';
+    phaseLabel.classList.remove('entering');
+    phaseLabel.textContent = PHASES[0].label;
+    phaseNum.textContent = PHASES[0].num;
+    receipt.classList.remove('in');
+    fiveYrCard.style.opacity = '0';
+  }
+
+  function runScan() {
+    clearScan();
+    const t = (ms, fn) => scanTimers.push(setTimeout(fn, reduce ? 0 : ms));
+
+    t(1100, () => setPhase(1));
+
+    SCAN_SUBS.forEach((s, i) => {
+      t(2200 + i * 280, () => {
+        const li = document.createElement('li');
+        li.className = 'row';
+        li.innerHTML =
+          '<span class="glyph" style="background:' + s.color + '">' + s.name.charAt(0) + '</span>' +
+          '<div class="nm">' +
+            '<span class="name">' + s.name + '</span>' +
+            '<span class="cat"><span class="cdot" style="background:' + s.dot + '"></span>' + s.cat + '</span>' +
+          '</div>' +
+          '<span class="amt tnum">' + fmt(s.amt) + '</span>';
+        rowsEl.appendChild(li);
+        requestAnimationFrame(() => li.classList.add('in'));
+        countEl.textContent = (i + 1) + ' recurring charge' + (i ? 's' : '') + ' detected';
+      });
+    });
+
+    t(2200, () => counter(0, FINAL_TOTAL, 2000));
+    t(4000, () => setPhase(2));
+
+    // 5-year payoff card after last row
+    t(4400, () => {
+      fiveYrAmt.textContent = fmtWhole(FINAL_TOTAL * 12 * 5);
+      fiveYrCard.style.opacity = '1';
+    });
+
+    t(5200, () => {
+      const ms = (5.2).toFixed(1);
+      receiptText.innerHTML =
+        '<span class="shield"></span>Found 6 recurring charges in ' + ms + 's · Read-only access · No card numbers stored';
+      receipt.classList.add('in');
+    });
+
+    t(8500, () => runScan());
+  }
+
+  // ============================
+  // Module 2 — cancel
+  // ============================
+  const subCard = $('sub-card');
+  const cancelBtn = $('cancel-btn');
+  const modalCard = $('modal-card');
+  const modalPaths = modalCard.querySelectorAll('.m-path');
+  const confirmBtn = $('m-confirm');
+  const confetti = $('confetti-host');
+  const celebration = $('celebration');
+  const prunedList = $('pruned-list');
+  const prunedAmt = $('pruned-amt');
+  const prunedMeta = $('pruned-meta');
+  const prunedTotal = $('pruned-total');
+
+  let cancelTimers = [];
+
+  function clearCancel() {
+    cancelTimers.forEach(clearTimeout); cancelTimers = [];
+    subCard.classList.remove('fade-out');
+    subCard.style.display = '';
+    cancelBtn.classList.remove('armed');
+    confirmBtn.classList.remove('armed');
+    modalCard.classList.remove('in');
+    modalPaths.forEach((p) => p.classList.remove('in'));
+    confetti.classList.remove('fire');
+    confetti.innerHTML = '';
+    celebration.classList.remove('in');
+    prunedList.innerHTML = '';
+    prunedAmt.textContent = '$0';
+    prunedMeta.textContent = 'No cancellations yet';
+    prunedTotal.classList.remove('bumped');
+  }
+
+  function fireConfetti() {
+    confetti.innerHTML = '';
+    const colors = ['#047857','#10B981','#34D399','#F59E0B','#FB7185','#A78BFA','#EC4899'];
+    const N = 48;
+    for (let i = 0; i < N; i++) {
+      const span = document.createElement('span');
+      const angle = (Math.PI * 2 * i) / N + Math.random() * 0.3;
+      const dist = 100 + Math.random() * 80;
+      const dx = Math.cos(angle) * dist;
+      const dy = Math.sin(angle) * dist - 40;
+      const rot = (Math.random() * 720 - 360);
+      span.style.setProperty('--dx', dx + 'px');
+      span.style.setProperty('--dy', dy + 'px');
+      span.style.setProperty('--rot', rot + 'deg');
+      span.style.background = colors[i % colors.length];
+      span.style.animationDelay = (Math.random() * 80) + 'ms';
+      confetti.appendChild(span);
+    }
+    requestAnimationFrame(() => confetti.classList.add('fire'));
+  }
+
+  function runCancel() {
+    clearCancel();
+    const t = (ms, fn) => cancelTimers.push(setTimeout(fn, reduce ? 0 : ms));
+
+    // Cancel button arms, modal slides up
+    t(900, () => cancelBtn.classList.add('armed'));
+    t(1180, () => modalCard.classList.add('in'));
+    modalPaths.forEach((p, i) => t(1400 + i * 140, () => p.classList.add('in')));
+
+    // Confirm armed, modal drops
+    t(2700, () => confirmBtn.classList.add('armed'));
+    t(3020, () => modalCard.classList.remove('in'));
+
+    // Celebration + confetti
+    t(3100, () => {
+      fireConfetti();
+      celebration.classList.add('in');
+    });
+
+    // Hide source card cleanly while celebration is still up
+    t(3500, () => subCard.classList.add('fade-out'));
+
+    // Celebration fades and pruned row appears together
+    t(4600, () => celebration.classList.remove('in'));
+    t(4700, () => {
+      const row = document.createElement('div');
+      row.className = 'pruned-row';
+      row.innerHTML =
+        '<span class="glyph">N</span>' +
+        '<span class="name">Netflix</span>' +
+        '<span class="save tnum">+$275/yr</span>';
+      prunedList.appendChild(row);
+      requestAnimationFrame(() => row.classList.add('in'));
+      prunedAmt.textContent = '$275';
+      prunedMeta.textContent = '1 cancellation';
+      prunedTotal.classList.add('bumped');
+      setTimeout(() => prunedTotal.classList.remove('bumped'), 420);
+    });
+
+    // Hold the win state for a beat, then restart
+    t(8200, () => runCancel());
+  }
+
+  // ============================
+  // Wire buttons + kick off
+  // ============================
+  root.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-action]');
+    if (!btn) return;
+    const act = btn.getAttribute('data-action');
+    if (act === 'restart-scan') runScan();
+    else if (act === 'restart-cancel') runCancel();
+    else if (act === 'restart-all') { runScan(); runCancel(); }
+  });
+
+  runScan();
+  runCancel();
+})();
+</script>
+</body>
+</html>

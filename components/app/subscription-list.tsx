@@ -39,10 +39,16 @@ export function SubscriptionList({
   initial,
   charges = [],
   lastScannedAt = null,
+  latestScanId = null,
 }: {
   initial: Subscription[];
   charges?: ChargeRow[];
   lastScannedAt?: string | null;
+  // The scan_id this server-rendered payload was built against. The
+  // focus listener compares it to /api/scan/latest on every tab-focus
+  // and visibility-change event — if a newer scan finished elsewhere
+  // (second tab, webhook scan, cron) we refresh the route.
+  latestScanId?: string | null;
 }) {
   const router = useRouter();
   // Single source of truth for every section on this page. Worth a look,
@@ -139,6 +145,52 @@ export function SubscriptionList({
       router.push("/app/scanning");
     });
   };
+
+  // Tab-focus / visibility check. Catches the case where a newer scan
+  // finished outside this tab — another tab on /app, a webhook-driven
+  // scan, or a cron-triggered re-classification. Without this listener
+  // the user would see stale data until they manually re-scanned or
+  // hard-reloaded.
+  //
+  // Contract: on focus / visibility-visible, hit /api/scan/latest. If
+  // the returned id differs from the one this server-render was built
+  // against, call router.refresh() — that re-renders the Server
+  // Component against fresh DB data without losing client-side state
+  // like sort mode or expanded categories.
+  //
+  // Cheap: indexed single-row read (migration 008). Throttled by the
+  // browser's own focus/visibility-change events — no setInterval.
+  useEffect(() => {
+    if (!latestScanId) return;
+    let cancelled = false;
+
+    const check = async () => {
+      try {
+        const res = await fetch("/api/scan/latest", { cache: "no-store" });
+        if (!res.ok || cancelled) return;
+        const data = (await res.json()) as {
+          latest: { id: string; finished_at: string | null } | null;
+        };
+        if (cancelled) return;
+        if (data.latest && data.latest.id !== latestScanId) {
+          router.refresh();
+        }
+      } catch {
+        // network blip — next focus event retries
+      }
+    };
+
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") void check();
+    };
+    window.addEventListener("focus", check);
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      cancelled = true;
+      window.removeEventListener("focus", check);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, [latestScanId, router]);
 
   // Keyboard shortcut: 'R' triggers a re-scan. We guard against firing
   // while the user is typing in a form field, while the cancel modal

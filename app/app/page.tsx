@@ -9,6 +9,7 @@ import {
   type Subscription,
 } from "@/components/app/subscription-list";
 import { RecommendationBanner } from "@/components/app/recommendation-banner";
+import type { SnapshotRow } from "@/lib/types/snapshot";
 
 // /app — the authenticated dashboard root.
 //
@@ -84,22 +85,36 @@ export default async function AppHome() {
     );
   }
 
-  // Step 2 — are there existing subscriptions for this user?
-  let subs = await fetchSubscriptions(user.id);
+  // Step 2 — render from the latest immutable snapshot. The snapshot
+  // is the integrity source: count, list, and monthly upkeep all
+  // derive from the SAME persisted row, so they cannot disagree.
+  //
+  // The mutable `subscriptions` table is still queried, but only to
+  // resolve the DB row id + user_decision for each plaid_stream_id —
+  // those carry user state forward across scans.
 
-  // First scan: if there are connected items but no rows in `subscriptions`
-  // yet, run a synchronous scan now so the user sees data on first visit.
-  // Subsequent visits use the cached rows; the user can hit "Re-scan" in
-  // the UI to refresh.
+  let snapshotRows = await fetchLatestSnapshotRows(user.id);
+  const decisions = await fetchDecisionMap(user.id);
+
+  // First-scan path: no snapshot yet AND no prior scan has run. Kick
+  // the synchronous scan now so the user sees data on first visit.
   const noScanYet = items.every((i) => !i.last_synced_at);
-  if (subs.length === 0 && noScanYet) {
+  if (snapshotRows.length === 0 && noScanYet) {
     await runScanForUser(user.id);
-    subs = await fetchSubscriptions(user.id);
+    snapshotRows = await fetchLatestSnapshotRows(user.id);
   }
+
+  // Legacy fallback: a user whose last scan ran before migration 009
+  // has no snapshot yet. Read from `subscriptions` once more so they
+  // still see data; the next scan will write a snapshot and this branch
+  // stops being hit.
+  let subs = snapshotRows.length > 0
+    ? mergeSnapshotWithDecisions(snapshotRows, decisions)
+    : await fetchSubscriptions(user.id);
 
   const charges = await fetchCharges(user.id);
   const recommendation = await nextRecommendation(user.id);
-  const lastScannedAt = await fetchLastScanFinishedAt(user.id);
+  const latestScan = await fetchLatestScan(user.id);
 
   return (
     <section className="container-page py-12 md:py-16 max-w-[1200px]">
@@ -117,29 +132,108 @@ export default async function AppHome() {
         <SubscriptionList
           initial={subs}
           charges={charges}
-          lastScannedAt={lastScannedAt}
+          lastScannedAt={latestScan?.finished_at ?? null}
+          latestScanId={latestScan?.id ?? null}
         />
       </div>
     </section>
   );
 }
 
-// Most recent successful scan timestamp. Drives the "Last scanned X
-// ago" label next to the Re-scan button. Returns null if the user has
-// never had a successful scan.
-async function fetchLastScanFinishedAt(
+// Most recent successful (terminal `done`) scan for this user. Returns
+// both id and finished_at so the dashboard can:
+//   - render "Last scanned X ago" against finished_at
+//   - hand the id to SubscriptionList as the "baseline" the tab-focus
+//     check compares against /api/scan/latest. If a newer scan_id is
+//     ever observed, the dashboard refreshes itself.
+// Hits the partial index from migration 008, so this is a single-row
+// lookup even at scale.
+async function fetchLatestScan(
   userId: string
-): Promise<string | null> {
+): Promise<{ id: string; finished_at: string | null } | null> {
   if (!supabaseAdmin) return null;
   const { data } = await supabaseAdmin
     .from("scan_runs")
-    .select("finished_at")
+    .select("id, finished_at")
     .eq("user_id", userId)
     .eq("status", "done")
     .order("finished_at", { ascending: false })
     .limit(1)
     .maybeSingle();
-  return (data?.finished_at as string | null) ?? null;
+  if (!data) return null;
+  return {
+    id: data.id as string,
+    finished_at: (data.finished_at as string | null) ?? null,
+  };
+}
+
+// Reads the most recent scan snapshot's row array. This is the
+// integrity source — count, list, and totals all come from here. If
+// no snapshot exists yet (very first scan after migration 009, or a
+// fresh user) returns an empty array.
+async function fetchLatestSnapshotRows(userId: string): Promise<SnapshotRow[]> {
+  if (!supabaseAdmin) return [];
+  const { data } = await supabaseAdmin
+    .from("scan_snapshots")
+    .select("payload")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (!data) return [];
+  const payload = (data.payload ?? {}) as { rows?: SnapshotRow[] };
+  return payload.rows ?? [];
+}
+
+// Per-stream user decisions (keep / cancel) + DB row id, keyed by
+// plaid_stream_id. Carries user state across snapshots.
+async function fetchDecisionMap(
+  userId: string
+): Promise<
+  Map<string, { id: string; user_decision: Subscription["user_decision"] }>
+> {
+  const m = new Map<
+    string,
+    { id: string; user_decision: Subscription["user_decision"] }
+  >();
+  if (!supabaseAdmin) return m;
+  const { data } = await supabaseAdmin
+    .from("subscriptions")
+    .select("id, plaid_stream_id, user_decision")
+    .eq("user_id", userId);
+  for (const row of data ?? []) {
+    m.set(row.plaid_stream_id as string, {
+      id: row.id as string,
+      user_decision: (row.user_decision ?? null) as Subscription["user_decision"],
+    });
+  }
+  return m;
+}
+
+// Merge snapshot rows with the per-stream decision map. Snapshot wins
+// on every display field; decisions overlay only id + user_decision.
+function mergeSnapshotWithDecisions(
+  rows: SnapshotRow[],
+  decisions: Map<string, { id: string; user_decision: Subscription["user_decision"] }>
+): Subscription[] {
+  return rows.map((r) => {
+    const d = decisions.get(r.plaid_stream_id);
+    return {
+      id: d?.id ?? r.plaid_stream_id, // fall back to stream id if not yet upserted
+      merchant_name: r.merchant_name,
+      normalized_name: r.merchant_name,
+      category: r.category,
+      amount_cents: r.amount_cents,
+      currency: r.currency,
+      frequency: r.frequency,
+      last_charged_at: r.last_charged_at,
+      next_expected_charge_at: r.next_expected_charge_at,
+      regret_score: r.regret_score,
+      status: r.status,
+      user_decision: d?.user_decision ?? null,
+      classification: r.classification,
+    } as Subscription;
+  });
 }
 
 async function fetchSubscriptions(userId: string): Promise<Subscription[]> {
