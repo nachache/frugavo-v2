@@ -22,14 +22,32 @@ amount_cents: ${input.amount_cents}
 frequency: ${input.frequency}`;
 }
 
+// US state abbreviations — appear in nearly every Plaid descriptor as
+// the merchant's billing city/state. Stripping them lets the same brand
+// from different locations collapse to one cache key.
+const US_STATE_RE =
+  /\b(AL|AK|AZ|AR|CA|CO|CT|DE|FL|GA|HI|ID|IL|IN|IA|KS|KY|LA|ME|MD|MA|MI|MN|MS|MO|MT|NE|NV|NH|NJ|NM|NY|NC|ND|OH|OK|OR|PA|RI|SC|SD|TN|TX|UT|VT|VA|WA|WV|WI|WY)\b/g;
+
 // Normalize the cache key so trivial descriptor noise (transaction ids,
-// store numbers, casing, punctuation) collapses to one LLM call across
-// the entire user base. This is the lever that drives the 90%+ hit rate
-// target in the spec.
+// store numbers, phone area codes, state codes, casing, punctuation)
+// collapses to one LLM call across the entire user base. This is the
+// lever that drives the 90%+ hit rate target in the spec.
+//
+// What we strip:
+//   - 3+ digit runs (catches phone numbers, store IDs, txn IDs)
+//   - US state abbreviations (CA, NY, ...)
+//   - Punctuation
+//   - Case
+//
+// What we keep:
+//   - The brand stem (NETFLIX, SPOTIFY, etc.)
+//   - The processor prefix when present (SP AFF*, AMZN, SQ*) — these
+//     are deterministic per-merchant and help disambiguate.
 export function descriptorKey(raw: string): string {
   return raw
     .toUpperCase()
-    .replace(/\b\d{4,}\b/g, "#") // 4+ digit runs → placeholder
+    .replace(/\b\d{3,}\b/g, "#") // 3+ digit runs → placeholder
+    .replace(US_STATE_RE, "")
     .replace(/[^A-Z0-9# ]+/g, " ")
     .replace(/\s+/g, " ")
     .trim();
