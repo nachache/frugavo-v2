@@ -94,6 +94,9 @@ export function SubscriptionList({
     for (const s of items) {
       if (s.status !== "active") continue;
       if (s.user_decision === "cancel") continue;
+      // Classifier verdict gate — needs_review rows are stored for
+      // audit but must NOT appear in Currently Running.
+      if (s.classification && s.classification !== "confirmed") continue;
       const cat = asCategory(s.category);
       const arr = map.get(cat) ?? [];
       arr.push(s);
@@ -346,13 +349,17 @@ export function SubscriptionList({
 // Flat active subs sorted by the chosen mode. Pending cancellations
 // stay filtered out — they live in the side rail. Kept subs stay
 // visible (just with a "Kept" chip) so the active list shows
-// everything the user is still paying for.
+// everything the user is still paying for. needs_review rows are
+// filtered out so the dashboard only shows confirmed subscriptions.
 function flatSorted(
   items: Subscription[],
   mode: "price" | "age"
 ): Subscription[] {
   const active = items.filter(
-    (s) => s.status === "active" && s.user_decision !== "cancel"
+    (s) =>
+      s.status === "active" &&
+      s.user_decision !== "cancel" &&
+      (!s.classification || s.classification === "confirmed")
   );
   return active.sort((a, b) => {
     if (mode === "price") {

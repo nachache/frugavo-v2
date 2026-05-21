@@ -56,10 +56,13 @@ export async function nextRecommendation(
   // Load current active subs for the rest of the rules. We bring in
   // every column cancelCandidates() reads so the SAME function powers
   // both this banner's count and the "Worth a look" cards on the page.
+  // `classification` is critical: cancelCandidates filters on it via
+  // isConfirmed(); without it every row defaults to "confirmed" and the
+  // banner over-counts needs_review rows.
   const { data: subs } = await supabaseAdmin
     .from("subscriptions")
     .select(
-      "id, merchant_name, normalized_name, category, amount_cents, currency, frequency, last_charged_at, next_expected_charge_at, regret_score, status, user_decision"
+      "id, merchant_name, normalized_name, category, amount_cents, currency, frequency, last_charged_at, next_expected_charge_at, regret_score, status, user_decision, classification"
     )
     .eq("user_id", userId);
 

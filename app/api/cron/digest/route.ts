@@ -84,7 +84,7 @@ export async function GET(req: Request) {
     const { data: subs } = await supabaseAdmin
       .from("subscriptions")
       .select(
-        "amount_cents, frequency, status, user_decision, regret_score"
+        "amount_cents, frequency, status, user_decision, regret_score, classification"
       )
       .eq("user_id", u.id);
 
