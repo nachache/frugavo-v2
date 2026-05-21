@@ -35,13 +35,25 @@ import Anthropic from "@anthropic-ai/sdk";
 //   1. /transactions/recurring/get → outflow_streams
 //   2. For each stream (concurrency-capped fanout):
 //      a. AI normalize merchant (cache + 800ms timeout + fallback)
-//      b. Compute regret_score
+//      b. Compute regret_score against the scan's fixed as_of_date
 //      c. Upsert into subscriptions
 //      d. Publish a `row` SSE event
 //   3. Publish a final `total` then `complete` event.
 //
 // Multi-item fanout uses Promise.allSettled with a manual concurrency cap
 // of 6 so one slow/dead Item never blocks fresh ones (spec section 3).
+//
+// Determinism contract (Phase 1):
+//   - One `asOf` Date is captured at scan start and stored on scan_runs.
+//     EVERY time-dependent computation downstream reads `asOf` instead of
+//     calling Date.now() ad hoc. Two scans on the same Plaid response and
+//     the same asOf produce byte-identical subscription rows.
+//   - Streams are stable-sorted by descriptor before classification so
+//     row order is independent of Plaid's response ordering.
+//   - LLM calls (merchant normalize, classifier tiebreak) run with
+//     temperature: 0.
+//   - `updated_at` and `last_ai_run_at` use `asOf`, not the current wall
+//     clock — so an idempotent re-run doesn't churn timestamps.
 // ---------------------------------------------------------------------------
 
 const ITEM_CONCURRENCY = 6;
@@ -109,9 +121,23 @@ export async function runScanForUser(
     };
   }
 
+  // The one and only "now" this scan will ever observe. Stored on
+  // scan_runs and threaded through every downstream function that would
+  // otherwise call Date.now(): regretScore, classifier silent-window
+  // heuristics, updated_at timestamps. This is what makes the scan
+  // deterministic — two runs on the same input + same asOf produce
+  // identical output.
+  const asOf = new Date();
+  const asOfIso = asOf.toISOString();
+
   const { data: runRow, error: runErr } = await supabaseAdmin
     .from("scan_runs")
-    .insert({ user_id: userId, source, status: "running" })
+    .insert({
+      user_id: userId,
+      source,
+      status: "running",
+      as_of_date: asOfIso,
+    })
     .select("id")
     .single();
 
@@ -155,6 +181,7 @@ export async function runScanForUser(
       await scanOneItem({
         userId,
         scanId,
+        asOf,
         plaidItemRowId: item.id,
         accessToken: item.plaid_access_token,
         onRow: (cents) => {
@@ -235,11 +262,13 @@ type PlaidStreamLike = {
 async function scanOneItem(args: {
   userId: string;
   scanId: string;
+  asOf: Date;
   plaidItemRowId: string;
   accessToken: string;
   onRow: (monthlyEquivalentCents: number) => void;
 }): Promise<void> {
-  const { userId, scanId, plaidItemRowId, accessToken, onRow } = args;
+  const { userId, scanId, asOf, plaidItemRowId, accessToken, onRow } = args;
+  const asOfIso = asOf.toISOString();
 
   const recurring = await plaidClient!.transactionsRecurringGet({
     access_token: decryptToken(accessToken),
@@ -284,6 +313,16 @@ async function scanOneItem(args: {
       })),
     ];
   }
+
+  // Determinism: process streams in a fixed order regardless of how
+  // Plaid (or our raw ingest) happened to return them. Sorting by the
+  // descriptor + stream_id tuple guarantees identical input → identical
+  // upsert order → identical SSE event order across runs.
+  streams = [...streams].sort((a, b) => {
+    const ka = `${a.description ?? ""}|${a.merchant_name ?? ""}|${a.stream_id}`;
+    const kb = `${b.description ?? ""}|${b.merchant_name ?? ""}|${b.stream_id}`;
+    return ka.localeCompare(kb);
+  });
 
   await runWithCap(streams, ROW_CONCURRENCY, async (stream) => {
     const amount = stream.average_amount?.amount ?? 0;
@@ -359,6 +398,7 @@ async function scanOneItem(args: {
       amount_cents: amountCents,
       frequency,
       last_charged_at: stream.last_date ?? null,
+      asOf,
     });
 
     const row: ScanRow = {
@@ -392,14 +432,14 @@ async function scanOneItem(args: {
           next_expected_charge_at: row.next_expected_charge_at,
           regret_score: row.regret_score,
           ai_source: row.ai_source,
-          last_ai_run_at: new Date().toISOString(),
+          last_ai_run_at: asOfIso,
           status: isActive ? "active" : "cancelled",
           // Classifier verdict. The dashboard filters on this so only
           // 'confirmed' rows count toward totals and candidate lists.
           classification: verdict.classification,
           classification_signals: verdict.signals,
           classification_score: verdict.score,
-          updated_at: new Date().toISOString(),
+          updated_at: asOfIso,
         },
         { onConflict: "user_id,plaid_stream_id" }
       )
@@ -477,6 +517,8 @@ async function llmTiebreak(
       {
         model: "claude-haiku-4-5-20251001",
         max_tokens: 200,
+        // Pinned for determinism — same borderline input → same verdict.
+        temperature: 0,
         system: CLASSIFY_SYSTEM_PROMPT,
         messages: [{ role: "user", content: classifyUserPrompt(input) }],
       },
@@ -545,16 +587,21 @@ export function monthlyEquivalentCents(
 
 // Regret score: months since last charge × monthly equivalent × frequency
 // consistency. Bounded 0..100 so it sorts cleanly in SQL.
+//
+// Takes the scan's fixed `asOf` rather than calling Date.now() — that's
+// the whole point of the determinism contract. Two scans on the same
+// input + same asOf return the exact same number.
 function regretScore(args: {
   amount_cents: number;
   frequency: Frequency;
   last_charged_at: string | null;
+  asOf: Date;
 }): number {
   const monthly = monthlyEquivalentCents(args.amount_cents, args.frequency);
   const monthsSince = args.last_charged_at
     ? Math.max(
         0,
-        (Date.now() - new Date(args.last_charged_at).getTime()) /
+        (args.asOf.getTime() - new Date(args.last_charged_at).getTime()) /
           (1000 * 60 * 60 * 24 * 30)
       )
     : 1;
