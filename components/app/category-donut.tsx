@@ -162,6 +162,17 @@ export function CategoryDonut({ subs }: Props) {
           </li>
         )}
       </ul>
+
+      {/* "Other" explainer — appears only when the user focuses that
+          segment, telling them why some subs landed there. Count comes
+          from the real slice, never invented. */}
+      {focused?.category === "other" && (
+        <p className="mt-3 text-[10.5px] text-ink-muted leading-snug text-center max-w-[200px]">
+          {focused.count} {focused.count === 1 ? "subscription" : "subscriptions"}{" "}
+          our normalizer couldn&apos;t categorize. They still count toward
+          your total.
+        </p>
+      )}
     </div>
   );
 }

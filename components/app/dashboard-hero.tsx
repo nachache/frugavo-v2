@@ -9,6 +9,7 @@ import {
   Tooltip,
 } from "recharts";
 import { formatCurrency } from "@/lib/utils";
+import { relativeTime } from "@/lib/time";
 import {
   totalMonthlyCents,
   trailingTwelveMonths,
@@ -22,9 +23,16 @@ type Props = {
   charges?: ChargeRow[];
   onRescan: () => void;
   rescanning?: boolean;
+  lastScannedAt?: string | null;
 };
 
-export function DashboardHero({ subs, charges = [], onRescan, rescanning }: Props) {
+export function DashboardHero({
+  subs,
+  charges = [],
+  onRescan,
+  rescanning,
+  lastScannedAt = null,
+}: Props) {
   const monthly = totalMonthlyCents(subs);
   const months = useMemo(
     () => trailingTwelveMonths(subs, charges),
@@ -79,23 +87,33 @@ export function DashboardHero({ subs, charges = [], onRescan, rescanning }: Prop
               </div>
             )}
 
-            <button
-              onClick={onRescan}
-              disabled={rescanning}
-              className="mt-5 inline-flex h-10 items-center gap-1.5 rounded-full bg-ink px-4 text-[13px] font-medium text-white hover:bg-ink/85 transition disabled:opacity-50"
-            >
-              {rescanning ? (
-                <>
-                  <Loader2 size={14} className="animate-spin" />
-                  Watering…
-                </>
-              ) : (
-                <>
-                  <RefreshCw size={14} />
-                  Re-scan
-                </>
+            <div className="mt-5 flex flex-wrap items-center gap-x-3 gap-y-1">
+              <button
+                onClick={onRescan}
+                disabled={rescanning}
+                className="inline-flex h-10 items-center gap-1.5 rounded-full bg-ink px-4 text-[13px] font-medium text-white hover:bg-ink/85 transition disabled:opacity-50"
+              >
+                {rescanning ? (
+                  <>
+                    <Loader2 size={14} className="animate-spin" />
+                    Watering…
+                  </>
+                ) : (
+                  <>
+                    <RefreshCw size={14} />
+                    Re-scan
+                  </>
+                )}
+              </button>
+              {/* Honest freshness indicator. Computed from the real
+                  scan_runs row; never invented. Hidden if no
+                  successful scan has happened yet. */}
+              {lastScannedAt && (
+                <span className="text-[11.5px] text-ink-muted tnum">
+                  Last scanned {relativeTime(lastScannedAt)}
+                </span>
               )}
-            </button>
+            </div>
           </div>
 
           {/* 12-month area chart */}

@@ -6,6 +6,7 @@ import {
   DeleteAccountCard,
   DisconnectBankButton,
 } from "@/components/app/danger-zone";
+import { SoundToggle } from "@/components/app/sound-toggle";
 
 // /app/settings — minimal account + connection management.
 // Real disconnect, billing, and data-export controls land in week 5.
@@ -81,6 +82,10 @@ export default async function SettingsPage() {
             .
           </p>
         )}
+      </Section>
+
+      <Section title="Preferences">
+        <SoundToggle />
       </Section>
 
       <Section title="Billing">

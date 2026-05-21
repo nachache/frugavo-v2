@@ -3,6 +3,7 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useMemo, useRef } from "react";
 import { formatCurrency } from "@/lib/utils";
+import { playCelebrationChime } from "@/lib/celebration-sound";
 
 // The "you just cancelled something — feel good about it" moment.
 //
@@ -67,6 +68,9 @@ export function CancelCelebration({
   useEffect(() => {
     if (!visible) return;
     timer.current = setTimeout(onDone, 1_800);
+    // Optional chime, gated on the user's localStorage preference.
+    // No-op for users who haven't enabled it.
+    playCelebrationChime();
     return () => {
       if (timer.current) clearTimeout(timer.current);
     };

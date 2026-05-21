@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Check, X, ChevronDown, Sparkles } from "lucide-react";
 import { cn, formatCurrency } from "@/lib/utils";
@@ -38,9 +38,11 @@ export type Subscription = SubLike & {
 export function SubscriptionList({
   initial,
   charges = [],
+  lastScannedAt = null,
 }: {
   initial: Subscription[];
   charges?: ChargeRow[];
+  lastScannedAt?: string | null;
 }) {
   const router = useRouter();
   // Single source of truth for every section on this page. Worth a look,
@@ -125,6 +127,28 @@ export function SubscriptionList({
       router.refresh();
     });
   };
+
+  // Keyboard shortcut: 'R' triggers a re-scan. We guard against firing
+  // while the user is typing in a form field, while the cancel modal
+  // is open, or while the celebration is playing. Keeps the shortcut
+  // useful without surprising people in unrelated contexts.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "r" && e.key !== "R") return;
+      if (e.metaKey || e.ctrlKey || e.altKey) return; // let Cmd-R reload
+      const tag = (e.target as HTMLElement | null)?.tagName?.toLowerCase();
+      if (tag === "input" || tag === "textarea" || tag === "select") return;
+      if ((e.target as HTMLElement | null)?.isContentEditable) return;
+      if (cancelTarget || celebrate || rescanning) return;
+      e.preventDefault();
+      triggerRescan();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+    // triggerRescan is stable for our purposes (calls startTransition);
+    // the deps below cover the gating conditions.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cancelTarget, celebrate, rescanning]);
 
   // ---------- decision handlers ----------
 
@@ -217,6 +241,7 @@ export function SubscriptionList({
         charges={charges}
         onRescan={triggerRescan}
         rescanning={rescanning}
+        lastScannedAt={lastScannedAt}
       />
 
       <CancelCandidates candidates={candidates} onCancel={openCancel} />

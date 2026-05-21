@@ -99,6 +99,7 @@ export default async function AppHome() {
 
   const charges = await fetchCharges(user.id);
   const recommendation = await nextRecommendation(user.id);
+  const lastScannedAt = await fetchLastScanFinishedAt(user.id);
 
   return (
     <section className="container-page py-12 md:py-16 max-w-[1200px]">
@@ -113,10 +114,32 @@ export default async function AppHome() {
 
       <div className="mt-10">
         <RecommendationBanner rec={recommendation} />
-        <SubscriptionList initial={subs} charges={charges} />
+        <SubscriptionList
+          initial={subs}
+          charges={charges}
+          lastScannedAt={lastScannedAt}
+        />
       </div>
     </section>
   );
+}
+
+// Most recent successful scan timestamp. Drives the "Last scanned X
+// ago" label next to the Re-scan button. Returns null if the user has
+// never had a successful scan.
+async function fetchLastScanFinishedAt(
+  userId: string
+): Promise<string | null> {
+  if (!supabaseAdmin) return null;
+  const { data } = await supabaseAdmin
+    .from("scan_runs")
+    .select("finished_at")
+    .eq("user_id", userId)
+    .eq("status", "done")
+    .order("finished_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  return (data?.finished_at as string | null) ?? null;
 }
 
 async function fetchSubscriptions(userId: string): Promise<Subscription[]> {
