@@ -125,9 +125,18 @@ export function SubscriptionList({
   );
 
   const triggerRescan = () => {
-    startRescan(async () => {
-      await fetch("/api/plaid/scan", { method: "POST" });
-      router.refresh();
+    // Route to /app/scanning instead of firing a background fetch.
+    // Two reasons:
+    //   1. The /app/scanning page kicks off the real scan via
+    //      runScanForUser and renders the StreamingList component
+    //      with a progress arc + row-by-row reveal — proper loading
+    //      UX. The dashboard's in-place "Watering…" label is too
+    //      subtle and users can't tell anything is happening.
+    //   2. Avoids hitting /api/plaid/scan (which was a 404 — the
+    //      route lives at /api/scan/rescan now). The 404 silently
+    //      failed and left the dashboard in a stale state.
+    startRescan(() => {
+      router.push("/app/scanning");
     });
   };
 
