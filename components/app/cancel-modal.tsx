@@ -11,13 +11,32 @@ import {
   X,
 } from "lucide-react";
 import { cn, formatCurrency } from "@/lib/utils";
-import { cancelMethodFor, type CancelMethod } from "@/lib/cancel-providers";
+import {
+  cancelMethodFor,
+  hasAnyChannel,
+  type CancelMethod,
+  type EmailMethod,
+  type PhoneMethod,
+  type WebMethod,
+} from "@/lib/cancel-providers";
 import { BrandLogo } from "./brand-logo";
 import {
   annualCents,
   monthlyEquivalentCents,
   type SubLike,
 } from "@/lib/subscription-math";
+
+// Cancel-assist modal.
+//
+// Source-of-truth rules:
+//   - All channel data (urls, emails, phone numbers, templates) come
+//     from lib/cancel-providers.ts. Nothing in this file invents or
+//     guesses values.
+//   - When the lookup returns null OR hasAnyChannel(method) is false,
+//     we render the "we don't have verified contact info for this
+//     service yet" empty state honestly, not a fake link.
+//   - Each channel renders only if its specific field exists. The user
+//     can always see what's available and what isn't.
 
 type Props = {
   sub: SubLike | null;
@@ -26,7 +45,8 @@ type Props = {
 };
 
 export function CancelModal({ sub, onClose, onConfirmed }: Props) {
-  const [copied, setCopied] = useState(false);
+  const [emailCopied, setEmailCopied] = useState(false);
+  const [messageCopied, setMessageCopied] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
@@ -50,6 +70,7 @@ export function CancelModal({ sub, onClose, onConfirmed }: Props) {
   const method = cancelMethodFor(sub.merchant_name);
   const monthly = monthlyEquivalentCents(sub.amount_cents, sub.frequency);
   const annual = annualCents(sub.amount_cents, sub.frequency);
+  const hasData = hasAnyChannel(method);
 
   const recordCancellation = async (kind: "assist" | "manual") => {
     setSubmitting(true);
@@ -83,10 +104,11 @@ export function CancelModal({ sub, onClose, onConfirmed }: Props) {
     >
       <div
         ref={dialogRef}
-        className="w-full sm:max-w-[520px] bg-white rounded-t-3xl sm:rounded-3xl shadow-lift overflow-hidden max-h-[92vh] overflow-y-auto"
+        className="w-full sm:max-w-[560px] bg-white rounded-t-3xl sm:rounded-3xl shadow-lift overflow-hidden max-h-[92vh] overflow-y-auto"
       >
-        {/* Mobile drag-handle so the sheet reads as a sheet, not a card. */}
+        {/* Mobile drag handle */}
         <div className="sm:hidden h-1 w-12 rounded-full bg-ink/15 mx-auto mt-3" />
+
         {/* Header */}
         <div className="relative p-6 pb-4 border-b border-hairline/60">
           <button
@@ -122,15 +144,23 @@ export function CancelModal({ sub, onClose, onConfirmed }: Props) {
           </div>
         </div>
 
-        {/* Action body */}
-        <div className="p-6 space-y-4">
-          {method ? (
-            <CancelAction
-              method={method}
-              merchant={sub.merchant_name}
-              onCopied={() => setCopied(true)}
-              copied={copied}
-            />
+        {/* Body */}
+        <div className="p-6 space-y-5">
+          {hasData ? (
+            <>
+              <DeepLinkSection web={method!.web} merchant={sub.merchant_name} />
+
+              <EmailSection
+                email={method!.email}
+                merchant={sub.merchant_name}
+                onCopyEmail={() => setEmailCopied(true)}
+                onCopyMessage={() => setMessageCopied(true)}
+                emailCopied={emailCopied}
+                messageCopied={messageCopied}
+              />
+
+              <PhoneSection phone={method!.phone} merchant={sub.merchant_name} />
+            </>
           ) : (
             <UnknownProvider merchant={sub.merchant_name} />
           )}
@@ -150,10 +180,9 @@ export function CancelModal({ sub, onClose, onConfirmed }: Props) {
             </p>
           )}
 
-          {/* Confirmation row */}
-          <div className="flex flex-col sm:flex-row gap-2 pt-2">
+          <div className="flex flex-col sm:flex-row gap-2 pt-1">
             <button
-              onClick={() => recordCancellation(method ? "assist" : "manual")}
+              onClick={() => recordCancellation(hasData ? "assist" : "manual")}
               disabled={submitting}
               className="flex-1 inline-flex h-11 items-center justify-center gap-2 rounded-full bg-ink px-5 text-[14px] font-medium text-white hover:bg-ink/85 transition disabled:opacity-50"
             >
@@ -173,104 +202,166 @@ export function CancelModal({ sub, onClose, onConfirmed }: Props) {
   );
 }
 
-function CancelAction({
-  method,
+// --- channel sections -------------------------------------------------
+
+function SectionLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="text-[11.5px] uppercase tracking-[0.14em] font-semibold text-ink-muted">
+      {children}
+    </div>
+  );
+}
+
+function DeepLinkSection({
+  web,
   merchant,
-  onCopied,
-  copied,
 }: {
-  method: CancelMethod;
+  web?: WebMethod;
   merchant: string;
-  onCopied: () => void;
-  copied: boolean;
 }) {
-  if (method.type === "web") {
-    return (
-      <div>
-        <p className="text-[14px] text-ink-body leading-relaxed">
-          We know where {merchant} hides their cancel button. Click below and
-          you&apos;ll land directly on the cancellation page.
-        </p>
-        <a
-          href={method.url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="mt-3 inline-flex h-11 items-center justify-center gap-2 rounded-full bg-accent px-5 text-[14px] font-medium text-white hover:bg-accent-hover transition w-full"
-        >
-          <ExternalLink size={14} />
-          Open {merchant} cancellation page
-        </a>
-        {method.tip && (
-          <p className="mt-3 text-[12.5px] text-ink-muted leading-relaxed">
-            <span className="font-medium text-ink">Tip — </span>
-            {method.tip}
-          </p>
-        )}
-      </div>
-    );
-  }
-
-  if (method.type === "email") {
-    const fullEmail = `To: ${method.recipient}\nSubject: ${method.subject}\n\n${method.body}`;
-    return (
-      <div>
-        <p className="text-[14px] text-ink-body leading-relaxed">
-          {merchant} requires email cancellation. We drafted it for you —
-          fill in the bracketed fields and send from your own email client.
-        </p>
-        <div className="mt-3 rounded-2xl bg-ink/[0.03] border border-hairline/60 p-4 font-mono text-[12px] text-ink leading-relaxed whitespace-pre-wrap max-h-[240px] overflow-auto">
-          {fullEmail}
-        </div>
-        <button
-          onClick={async () => {
-            await navigator.clipboard.writeText(fullEmail);
-            onCopied();
-          }}
-          className="mt-3 inline-flex h-11 items-center justify-center gap-2 rounded-full bg-accent px-5 text-[14px] font-medium text-white hover:bg-accent-hover transition w-full"
-        >
-          {copied ? <Check size={14} /> : <Copy size={14} />}
-          {copied ? "Copied" : "Copy email"}
-        </button>
-        <a
-          href={`mailto:${method.recipient}?subject=${encodeURIComponent(method.subject)}&body=${encodeURIComponent(method.body)}`}
-          className="mt-2 inline-flex h-10 items-center justify-center gap-2 rounded-full border border-hairline bg-white px-5 text-[13px] font-medium text-ink hover:bg-ink/[0.04] transition w-full"
-        >
-          <Mail size={13} />
-          Open in mail app
-        </a>
-        {method.tip && (
-          <p className="mt-3 text-[12.5px] text-ink-muted leading-relaxed">
-            <span className="font-medium text-ink">Tip — </span>
-            {method.tip}
-          </p>
-        )}
-      </div>
-    );
-  }
-
-  // phone
   return (
     <div>
-      <p className="text-[14px] text-ink-body leading-relaxed">
-        {merchant} only accepts cancellations by phone. Call the number
-        below — total hold time is usually under 15 minutes.
-      </p>
-      <a
-        href={`tel:${method.number.replace(/[^0-9+]/g, "")}`}
-        className="mt-3 inline-flex h-11 items-center justify-center gap-2 rounded-full bg-accent px-5 text-[14px] font-medium text-white hover:bg-accent-hover transition w-full"
-      >
-        <Phone size={14} />
-        Call {method.number}
-      </a>
-      {method.hours && (
-        <p className="mt-2 text-[12.5px] text-ink-muted">
-          Hours: {method.hours}
+      <SectionLabel>Direct cancel link</SectionLabel>
+      {web ? (
+        <>
+          <a
+            href={web.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-2 inline-flex h-11 items-center justify-center gap-2 rounded-full bg-accent px-5 text-[14px] font-medium text-white hover:bg-accent-hover transition w-full"
+          >
+            <ExternalLink size={14} />
+            Open {merchant} cancellation page
+          </a>
+          {web.tip && (
+            <p className="mt-2 text-[12.5px] text-ink-muted leading-relaxed">
+              <span className="font-medium text-ink">Tip — </span>
+              {web.tip}
+            </p>
+          )}
+        </>
+      ) : (
+        <p className="mt-2 text-[13px] text-ink-muted">
+          Direct cancel link not available for {merchant}. Use the email
+          path below.
         </p>
       )}
-      {method.tip && (
-        <p className="mt-3 text-[12.5px] text-ink-muted leading-relaxed">
+    </div>
+  );
+}
+
+function EmailSection({
+  email,
+  merchant,
+  onCopyEmail,
+  onCopyMessage,
+  emailCopied,
+  messageCopied,
+}: {
+  email?: EmailMethod;
+  merchant: string;
+  onCopyEmail: () => void;
+  onCopyMessage: () => void;
+  emailCopied: boolean;
+  messageCopied: boolean;
+}) {
+  if (!email) {
+    // Honest empty state — we don't have a verified support email for
+    // this service. Don't fabricate one.
+    return (
+      <div>
+        <SectionLabel>Contact email</SectionLabel>
+        <p className="mt-2 text-[13px] text-ink-muted">
+          We don&apos;t have a verified support email for {merchant} yet.
+        </p>
+      </div>
+    );
+  }
+
+  const fullMessage = `Subject: ${email.subject}\n\n${email.body}`;
+
+  return (
+    <div>
+      <SectionLabel>Contact email</SectionLabel>
+
+      <div className="mt-2 flex items-center gap-2 rounded-full bg-ink/[0.04] border border-hairline pl-4 pr-1 py-1">
+        <span className="flex-1 text-[13px] font-medium text-ink truncate tnum">
+          {email.recipient}
+        </span>
+        <button
+          onClick={async () => {
+            await navigator.clipboard.writeText(email.recipient);
+            onCopyEmail();
+          }}
+          className="inline-flex h-8 items-center gap-1 rounded-full bg-white border border-hairline px-3 text-[12px] font-medium text-ink hover:bg-ink/[0.04] transition"
+        >
+          {emailCopied ? <Check size={12} /> : <Copy size={12} />}
+          {emailCopied ? "Copied" : "Copy"}
+        </button>
+      </div>
+
+      <div className="mt-3">
+        <SectionLabel>Pre-written cancellation message</SectionLabel>
+        <div className="mt-2 rounded-2xl bg-ink/[0.03] border border-hairline/60 p-4 font-mono text-[12px] text-ink leading-relaxed whitespace-pre-wrap max-h-[200px] overflow-auto">
+          {fullMessage}
+        </div>
+
+        <div className="mt-2 flex flex-col sm:flex-row gap-2">
+          <button
+            onClick={async () => {
+              await navigator.clipboard.writeText(fullMessage);
+              onCopyMessage();
+            }}
+            className="flex-1 inline-flex h-10 items-center justify-center gap-2 rounded-full bg-ink px-4 text-[13px] font-medium text-white hover:bg-ink/85 transition"
+          >
+            {messageCopied ? <Check size={13} /> : <Copy size={13} />}
+            {messageCopied ? "Copied" : "Copy message"}
+          </button>
+          <a
+            href={`mailto:${email.recipient}?subject=${encodeURIComponent(email.subject)}&body=${encodeURIComponent(email.body)}`}
+            className="flex-1 inline-flex h-10 items-center justify-center gap-2 rounded-full border border-hairline bg-white px-4 text-[13px] font-medium text-ink hover:bg-ink/[0.04] transition"
+          >
+            <Mail size={13} />
+            Open in mail app
+          </a>
+        </div>
+
+        {email.tip && (
+          <p className="mt-2 text-[12.5px] text-ink-muted leading-relaxed">
+            <span className="font-medium text-ink">Tip — </span>
+            {email.tip}
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function PhoneSection({
+  phone,
+  merchant,
+}: {
+  phone?: PhoneMethod;
+  merchant: string;
+}) {
+  if (!phone) return null;
+  return (
+    <div>
+      <SectionLabel>Phone {merchant}</SectionLabel>
+      <a
+        href={`tel:${phone.number.replace(/[^0-9+]/g, "")}`}
+        className="mt-2 inline-flex h-11 items-center justify-center gap-2 rounded-full border border-hairline bg-white px-5 text-[14px] font-medium text-ink hover:bg-ink/[0.04] transition w-full"
+      >
+        <Phone size={14} />
+        Call {phone.number}
+      </a>
+      {phone.hours && (
+        <p className="mt-2 text-[12.5px] text-ink-muted">{phone.hours}</p>
+      )}
+      {phone.tip && (
+        <p className="mt-1 text-[12.5px] text-ink-muted leading-relaxed">
           <span className="font-medium text-ink">Tip — </span>
-          {method.tip}
+          {phone.tip}
         </p>
       )}
     </div>
@@ -279,29 +370,20 @@ function CancelAction({
 
 function UnknownProvider({ merchant }: { merchant: string }) {
   return (
-    <div>
-      <p className="text-[14px] text-ink-body leading-relaxed">
-        We don&apos;t have a direct cancellation link for {merchant} yet.
-        Look for an &quot;Account&quot; or &quot;Subscription&quot; section on
-        their website, or contact their support.
+    <div className="rounded-2xl bg-ink/[0.03] border border-hairline p-5">
+      <SectionLabel>No verified cancel info yet</SectionLabel>
+      <p className="mt-2 text-[14px] text-ink-body leading-relaxed">
+        We don&apos;t have a verified cancellation link or support email
+        for {merchant} in our database. Look for an &quot;Account&quot;
+        or &quot;Subscription&quot; section on their website, or contact
+        their support directly.
       </p>
       <p className="mt-3 text-[12.5px] text-ink-muted leading-relaxed">
         Hit &quot;I cancelled it&quot; once you&apos;re done. We&apos;ll
-        watch your next bill the same way.
+        watch your next bill the same way to confirm it stopped.
       </p>
     </div>
   );
 }
 
-export function useCancelDialog() {
-  // Tiny hook so callers can manage open-state without thinking about it.
-  const [target, setTarget] = useState<SubLike | null>(null);
-  return {
-    target,
-    open: (s: SubLike) => setTarget(s),
-    close: () => setTarget(null),
-  };
-}
-
-// Re-export so call sites only import from this file.
 export { cn };

@@ -101,7 +101,7 @@ export default async function AppHome() {
   const recommendation = await nextRecommendation(user.id);
 
   return (
-    <section className="container-page py-12 md:py-16 max-w-[860px]">
+    <section className="container-page py-12 md:py-16 max-w-[1200px]">
       <span className="text-[13px] font-medium text-brand">Dashboard</span>
       <h1 className="mt-2 font-display text-[36px] md:text-[44px] font-bold tracking-[-0.03em] leading-[1.05] text-ink">
         Your subscriptions
