@@ -117,6 +117,9 @@
     {"key": "linear", "display": "Linear", "category": "software", "aliases": ["linear", "linear.app"], "domains": ["linear.app"]},
     {"key": "1password", "display": "1Password", "category": "software", "aliases": ["1password", "1password.com"], "domains": ["1password.com"]},
     {"key": "lastpass", "display": "LastPass", "category": "software", "aliases": ["lastpass"], "domains": ["lastpass.com"]},
+    {"key": "expressvpn", "display": "ExpressVPN", "category": "software", "aliases": ["expressvpn", "express vpn"], "domains": ["expressvpn.com"]},
+    {"key": "talentlms", "display": "TalentLMS", "category": "software", "aliases": ["talentlms", "talent lms", "epignosis"], "domains": ["talentlms.com"]},
+    {"key": "apple_services", "display": "Apple", "category": "software", "aliases": ["apple inc", "apple services"], "domains": ["apple.com"]},
     {"key": "dropbox", "display": "Dropbox", "category": "cloud_storage", "aliases": ["dropbox"], "domains": ["dropbox.com"]},
     {"key": "google_one", "display": "Google One", "category": "cloud_storage", "aliases": ["google one", "google storage"], "domains": ["one.google.com"]},
     {"key": "icloud", "display": "iCloud+", "category": "cloud_storage", "aliases": ["icloud", "icloud+", "icloud storage"], "domains": ["icloud.com"]},
@@ -177,7 +180,9 @@
     {"key": "skillshare", "display": "Skillshare", "category": "education", "aliases": ["skillshare"], "domains": ["skillshare.com"]},
     {"key": "coursera", "display": "Coursera", "category": "education", "aliases": ["coursera"], "domains": ["coursera.org"]},
     {"key": "udemy", "display": "Udemy", "category": "education", "aliases": ["udemy"], "domains": ["udemy.com"]},
-    {"key": "babbel", "display": "Babbel", "category": "education", "aliases": ["babbel"], "domains": ["babbel.com"]}
+    {"key": "babbel", "display": "Babbel", "category": "education", "aliases": ["babbel"], "domains": ["babbel.com"]},
+
+    {"key": "koho", "display": "KOHO", "category": "other", "aliases": ["koho", "koho financial"], "domains": ["koho.ca"]}
   ],
   "bank_fee_indicators": [
     "monthly maintenance fee",

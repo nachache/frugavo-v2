@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Check, ChevronDown } from "lucide-react";
+import { Check, ChevronDown, Scissors } from "lucide-react";
 import { BrandLogo } from "./brand-logo";
 import { cn, formatCurrency } from "@/lib/utils";
 import {
@@ -24,7 +24,8 @@ export function PrunedRail({ cancelled }: Props) {
   if (cancelled.length === 0) {
     return (
       <aside className="rounded-3xl border border-hairline/60 bg-white p-5">
-        <div className="text-[11.5px] uppercase tracking-[0.14em] font-semibold text-ink-muted">
+        <div className="inline-flex items-center gap-1.5 text-[11.5px] uppercase tracking-[0.14em] font-semibold text-ink-muted">
+          <Scissors size={12} className="text-ink-muted" />
           Pruned · 0
         </div>
         <p className="mt-2 text-[12.5px] text-ink-muted leading-relaxed">
@@ -42,7 +43,8 @@ export function PrunedRail({ cancelled }: Props) {
 
   return (
     <aside className="rounded-3xl border border-brand/20 bg-brand-light/40 p-5">
-      <div className="text-[11.5px] uppercase tracking-[0.14em] font-semibold text-emerald-900/70">
+      <div className="inline-flex items-center gap-1.5 text-[11.5px] uppercase tracking-[0.14em] font-semibold text-emerald-900/70">
+        <Scissors size={12} className="text-emerald-900/70" />
         Pruned · {cancelled.length}
       </div>
       <div className="mt-2 flex items-baseline gap-2 tnum">

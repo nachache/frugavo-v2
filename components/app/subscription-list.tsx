@@ -68,18 +68,16 @@ export function SubscriptionList({
   const [sortMode, setSortMode] = useState<"category" | "price" | "age">(
     "category"
   );
+  // Default to ALL categories open so a user lands on the dashboard and
+  // sees every sub inside every category at a glance, with no extra
+  // click required. Clicking a category header still collapses it.
   const [openCategories, setOpenCategories] = useState<Set<Category>>(() => {
-    const totals: Partial<Record<Category, number>> = {};
+    const cats = new Set<Category>();
     for (const s of initial) {
       if (s.status !== "active") continue;
-      const cat = asCategory(s.category);
-      totals[cat] =
-        (totals[cat] ?? 0) + monthlyEquivalentCents(s.amount_cents, s.frequency);
+      cats.add(asCategory(s.category));
     }
-    const top = Object.entries(totals).sort(
-      (a, b) => (b[1] as number) - (a[1] as number)
-    )[0];
-    return new Set(top ? [top[0] as Category] : []);
+    return cats;
   });
 
   const candidates = useMemo(() => cancelCandidates(items), [items]);

@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Clock, Loader2, RefreshCw } from "lucide-react";
+import { Clock, Eye, Loader2, RefreshCw } from "lucide-react";
 import { BrandLogo } from "./brand-logo";
 import { formatCurrency } from "@/lib/utils";
 import { annualCents } from "@/lib/subscription-math";
@@ -54,7 +54,8 @@ export function PendingCancellations({ pending, compact }: Props) {
     return (
       <aside className="rounded-3xl border border-hairline/60 bg-white p-5">
         <div className="flex items-center justify-between gap-2">
-          <div className="text-[11.5px] uppercase tracking-[0.14em] font-semibold text-ink-muted">
+          <div className="inline-flex items-center gap-1.5 text-[11.5px] uppercase tracking-[0.14em] font-semibold text-ink-muted">
+            <Eye size={12} className="text-ink-muted" />
             Watching · {pending.length}
           </div>
           {pending.length > 0 && (
