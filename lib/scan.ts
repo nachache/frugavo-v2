@@ -16,10 +16,9 @@ import type {
   ScanPhase,
 } from "@/lib/types/scan";
 import {
-  SANDBOX_SEED_SUBS,
-  chargesForSeed,
-  type SeedSub,
-} from "./sandbox-seed";
+  recurringStreamsFromRaw,
+  type RawDetectedStream,
+} from "./raw-data-ingest";
 
 // ---------------------------------------------------------------------------
 // Scan orchestrator.
@@ -235,15 +234,31 @@ async function scanOneItem(args: {
   // not subscriptions) and they confuse users when shown as cancellable.
   streams = streams.filter((s) => isProbablySubscription(s));
 
-  // Sandbox-only: append a rich fixture that simulates realistic user
-  // data — varied start dates, mid-year price increases, churn, annual
-  // spikes, usage-based variable bills. Each fixture also seeds 12
-  // months of subscription_charges so the chart reads real history.
-  // Production never enters this branch.
-  let seedSubs: SeedSub[] = [];
+  // Sandbox-only: ingest the raw bank transactions in
+  // tests/fixtures/raw-transactions.json. The recurrence-detection rule
+  // lives in lib/raw-data-ingest.ts and is intentionally minimal so the
+  // downstream pipeline (filter, AI normalize, category assignment) is
+  // what we're actually testing. We do NOT hand-pick subscriptions or
+  // hand-clean merchant names here. Production never enters this branch.
+  let rawStreams: RawDetectedStream[] = [];
   if (PLAID_ENV === "sandbox") {
-    seedSubs = SANDBOX_SEED_SUBS;
-    streams = [...streams, ...seedSubs.map(seedToPlaidStream)];
+    rawStreams = recurringStreamsFromRaw();
+    streams = [
+      ...streams,
+      ...rawStreams.map((d) => ({
+        stream_id: d.stream_id,
+        merchant_name: null, // null on purpose — force AI normalize
+        description: d.descriptor,
+        average_amount: {
+          amount: d.average_amount,
+          iso_currency_code: "USD",
+        },
+        frequency: d.frequency,
+        last_date: d.last_date,
+        is_active: true,
+        predicted_next_date: d.next_expected_date,
+      })),
+    ];
   }
 
   await runWithCap(streams, ROW_CONCURRENCY, async (stream) => {
@@ -327,30 +342,31 @@ async function scanOneItem(args: {
       return;
     }
 
-    // Sandbox-only: persist the seed's historical charges so the 12-month
-    // chart and "started X months ago" copy read real numbers.
-    if (PLAID_ENV === "sandbox" && stream.stream_id.startsWith("syn-")) {
-      const seedId = stream.stream_id.slice(4);
-      const seed = seedSubs.find((s) => s.id === seedId);
-      if (seed) {
-        const charges = chargesForSeed(seed);
-        if (charges.length > 0) {
-          const rows = charges.map((c) => ({
-            user_id: userId,
-            subscription_id: upserted.id as string,
-            plaid_stream_id: stream.stream_id,
-            amount_cents: c.amount_cents,
-            charged_at: c.charged_at,
-            is_estimated: true,
-            currency: row.currency,
-          }));
-          await supabaseAdmin!
-            .from("subscription_charges")
-            .upsert(rows, {
-              onConflict: "subscription_id,charged_at,amount_cents",
-              ignoreDuplicates: true,
-            });
-        }
+    // Sandbox-only: persist the REAL transactions for this descriptor.
+    // These are the actual amounts and dates from your bank statement —
+    // not synthesized, not averaged. Drives the 12-month chart.
+    if (PLAID_ENV === "sandbox" && stream.stream_id.startsWith("raw-")) {
+      const detected = rawStreams.find(
+        (d) => d.stream_id === stream.stream_id
+      );
+      if (detected && detected.transactions.length > 0) {
+        const chargeRows = detected.transactions.map((t) => ({
+          user_id: userId,
+          subscription_id: upserted.id as string,
+          plaid_stream_id: stream.stream_id,
+          amount_cents: Math.round(Math.abs(t.amount_dollars) * 100),
+          charged_at: t.date,
+          // false = derived from a real transaction record, not a
+          // synthesized estimate.
+          is_estimated: false,
+          currency: row.currency,
+        }));
+        await supabaseAdmin!
+          .from("subscription_charges")
+          .upsert(chargeRows, {
+            onConflict: "subscription_id,charged_at,amount_cents",
+            ignoreDuplicates: true,
+          });
       }
     }
 
@@ -572,34 +588,6 @@ function isProbablySubscription(s: PlaidStreamLike): boolean {
     if (pattern.test(haystack)) return false;
   }
   return true;
-}
-
-// ---------- sandbox seed → Plaid stream adapter ----------
-//
-// Converts a rich SeedSub (with historical patterns) into the
-// PlaidStreamLike shape the scan pipeline expects. The "cancelled mid
-// year" subs get is_active=false so the upsert lands them in the
-// Pruned section. Historical charges are persisted separately, after
-// the upsert in scanOneItem.
-
-function seedToPlaidStream(seed: SeedSub): PlaidStreamLike {
-  const today = new Date();
-  const lastDate = new Date(today.getTime() - seed.lastChargedDaysAgo * 86_400_000)
-    .toISOString()
-    .slice(0, 10);
-
-  const isCancelled = seed.history?.cancelledMonthsAgo !== undefined;
-  const freqUpper = seed.frequency.toUpperCase();
-
-  return {
-    stream_id: `syn-${seed.id}`,
-    merchant_name: seed.plaidMerchantName,
-    description: seed.description,
-    average_amount: { amount: seed.amountCents / 100, iso_currency_code: "USD" },
-    frequency: freqUpper,
-    last_date: lastDate,
-    is_active: !isCancelled,
-  };
 }
 
 export type { ScanRow, ScanPhase };
