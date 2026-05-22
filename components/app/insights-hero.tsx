@@ -1,17 +1,15 @@
-// InsightsHero — the new dashboard hero that turns Frugavo from
-// "subscription detection" into "emotional financial insight."
+// InsightsHero — the new dashboard hero. Tightened layout: one
+// dominant burn card with the personality + share affordance inside,
+// a single stats row, visible share-card thumbnails, and the
+// shock/leaks content folded into a single insights strip below.
 //
-// Server component. Receives a pre-computed insights payload (server-
-// side from lib/insights, lib/personality, lib/money-leaks). No client
-// JS is needed for this to render.
+// Visual hierarchy:
+//   1. Burn hero (dominant, dark, magazine-cover styling)
+//   2. Stats row (3 small cards)
+//   3. Share cards (3 visible thumbnails — the social object)
+//   4. Insights strip (shock + leaks, compact list)
 //
-// Visual language follows the existing Frugavo design system:
-//   canvas: #FAF8F4 (warm off-white)
-//   ink:    #0A0A0A
-//   brand:  emerald
-//   accent: orange
-// Hero cards are full-width on mobile, two-column at md, with the big
-// numbers reading like a magazine cover — not a spreadsheet.
+// Server component. No client JS needed.
 
 import type {
   BurnRate,
@@ -53,72 +51,69 @@ export function InsightsHero({
   moneyLeaks,
 }: InsightsHeroProps) {
   const hasSubs = burn.active_subscription_count > 0;
-  if (!hasSubs && burn.other_recurring_count === 0) {
-    // Empty state — let the existing list render its own empty UI.
-    return null;
+  if (!hasSubs && burn.other_recurring_count === 0) return null;
+
+  // Decide which share cards make sense given the data.
+  type ShareCard = { type: string; label: string };
+  const shareCards: ShareCard[] = [
+    { type: "monthly_burn", label: "Monthly burn" },
+    { type: "yearly_total", label: "Yearly spend" },
+  ];
+  if (aiSpend.subscription_count > 0) {
+    shareCards.push({ type: "ai_stack", label: "AI stack" });
   }
 
-  const topShock = shockInsights.slice(0, 3);
-  const topLeaks = moneyLeaks.slice(0, 4);
-
   return (
-    <div className="space-y-6">
-      {/* Personality identity */}
-      <div className="rounded-2xl border border-hairline bg-surface px-6 py-5 md:px-8 md:py-6">
-        <div className="flex items-center gap-2 text-[12px] font-medium uppercase tracking-[0.08em] text-ink-muted">
-          <span className="inline-block h-1.5 w-1.5 rounded-full bg-brand" />
-          Your subscription personality
-        </div>
-        <div className="mt-2 font-display text-[28px] md:text-[36px] font-bold tracking-[-0.02em] text-ink leading-tight">
-          {personality.label}
-        </div>
-        <div className="mt-1.5 text-[14px] md:text-[15px] text-ink-body leading-relaxed">
-          {personality.sub}
-        </div>
-      </div>
+    <div className="space-y-8">
+      {/* ─── 1. BURN HERO ─────────────────────────────────────────── */}
+      <div className="rounded-3xl border border-hairline bg-ink text-canvas px-6 py-8 md:px-12 md:py-12 overflow-hidden relative">
+        <div className="absolute -top-32 -right-32 h-96 w-96 rounded-full bg-brand opacity-20 blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-32 -left-32 h-72 w-72 rounded-full bg-accent opacity-10 blur-3xl pointer-events-none" />
 
-      {/* Burn — the emotional anchor */}
-      <div className="rounded-2xl border border-hairline bg-ink text-canvas px-6 py-7 md:px-10 md:py-10 overflow-hidden relative">
-        <div className="absolute -top-24 -right-24 h-72 w-72 rounded-full bg-brand opacity-20 blur-3xl pointer-events-none" />
         <div className="relative">
-          <div className="text-[12px] font-medium uppercase tracking-[0.08em] text-canvas/60">
+          {/* Personality chip */}
+          <div className="flex flex-wrap items-center gap-2 mb-8">
+            <span className="inline-flex items-center gap-2 rounded-full border border-canvas/15 bg-canvas/5 px-3 py-1 text-[12px] font-medium text-canvas/80">
+              <span className="inline-block h-1.5 w-1.5 rounded-full bg-brand" />
+              {personality.label}
+            </span>
+          </div>
+
+          <div className="text-[12px] font-medium uppercase tracking-[0.12em] text-canvas/50">
             You spend
           </div>
-          <div className="mt-3 font-display font-bold tracking-[-0.04em] leading-[0.95] text-[64px] md:text-[96px] tabular-nums">
+          <div className="mt-2 font-display font-bold tracking-[-0.04em] leading-[0.95] text-[72px] md:text-[112px] tabular-nums">
             {fmtCents(burn.monthly_cents, { withCents: false })}
-            <span className="text-[36px] md:text-[44px] font-medium text-canvas/60">
+            <span className="text-[36px] md:text-[48px] font-medium text-canvas/50">
               /mo
             </span>
           </div>
-          <div className="mt-3 text-[16px] md:text-[18px] text-canvas/80">
-            {fmtCents(burn.yearly_cents, { withCents: false })}/yr · across{" "}
+          <div className="mt-4 text-[16px] md:text-[18px] text-canvas/80">
+            {fmtCents(burn.yearly_cents, { withCents: false })} a year, across{" "}
             {burn.active_subscription_count} subscription
-            {burn.active_subscription_count === 1 ? "" : "s"}
+            {burn.active_subscription_count === 1 ? "" : "s"}.
+          </div>
+          <div className="mt-1 text-[14px] text-canvas/50">
+            {personality.sub}
           </div>
 
-          {burn.ledger_yearly_cents > 0 && (
-            <div className="mt-1 text-[13px] text-canvas/50">
-              {fmtCents(burn.ledger_yearly_cents, { withCents: false })}{" "}
-              actually paid over the last 12 months
-            </div>
-          )}
-
           {burn.other_recurring_count > 0 && (
-            <div className="mt-6 inline-flex items-center gap-2 rounded-full border border-canvas/15 bg-canvas/5 px-4 py-2 text-[13px] text-canvas/80">
-              <span>+ {fmtCents(burn.other_recurring_monthly_cents, { withCents: false })}/mo</span>
+            <div className="mt-8 inline-flex items-center gap-2 rounded-full border border-canvas/15 bg-canvas/5 px-4 py-2 text-[13px] text-canvas/70">
+              <span className="text-canvas/90 font-medium">
+                + {fmtCents(burn.other_recurring_monthly_cents, { withCents: false })}/mo
+              </span>
               <span className="text-canvas/40">in other recurring</span>
               <span className="text-canvas/40">
-                · {burn.other_recurring_count} item
-                {burn.other_recurring_count === 1 ? "" : "s"}
+                ({burn.other_recurring_count} item
+                {burn.other_recurring_count === 1 ? "" : "s"})
               </span>
             </div>
           )}
         </div>
       </div>
 
-      {/* Quick stats row */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {/* AI stack */}
+      {/* ─── 2. STATS ROW ─────────────────────────────────────────── */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <StatCard
           eyebrow="AI stack"
           big={
@@ -129,24 +124,22 @@ export function InsightsHero({
           detail={
             aiSpend.subscription_count === 0
               ? "No AI subscriptions detected"
-              : `${aiSpend.subscription_count} AI tool${aiSpend.subscription_count === 1 ? "" : "s"} running · ${fmtCents(aiSpend.yearly_cents, { withCents: false })}/yr`
+              : `${aiSpend.subscription_count} AI tool${aiSpend.subscription_count === 1 ? "" : "s"} · ${fmtCents(aiSpend.yearly_cents, { withCents: false })}/yr`
           }
           accent="emerald"
         />
         <StatCard
-          eyebrow="Top subscription"
+          eyebrow="Biggest sub"
           big={
             topSubscriptions[0]
               ? `${fmtCents(topSubscriptions[0].monthly_cents)}/mo`
               : "—"
           }
-          detail={
-            topSubscriptions[0]?.merchant_name ?? "Nothing detected yet"
-          }
+          detail={topSubscriptions[0]?.merchant_name ?? "Nothing detected"}
           accent="orange"
         />
         <StatCard
-          eyebrow="Hidden leaks"
+          eyebrow="Money leaks"
           big={String(moneyLeaks.length)}
           detail={
             moneyLeaks.length === 0
@@ -157,42 +150,71 @@ export function InsightsHero({
         />
       </div>
 
-      {/* Shock insights */}
-      {topShock.length > 0 && (
-        <div>
-          <div className="text-[12px] font-medium uppercase tracking-[0.08em] text-ink-muted mb-3">
-            This shocked us
+      {/* ─── 3. SHARE CARDS (visible) ─────────────────────────────── */}
+      <div>
+        <div className="flex items-end justify-between mb-4">
+          <div>
+            <div className="text-[12px] font-medium uppercase tracking-[0.12em] text-ink-muted">
+              Share your numbers
+            </div>
+            <div className="mt-1 text-[14px] text-ink-body">
+              Tap any card to open it in a new tab. Save the image. Post it
+              anywhere.
+            </div>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {topShock.map((s) => (
-              <div
-                key={s.id}
-                className="rounded-2xl border border-hairline bg-surface p-5 md:p-6"
-              >
-                <div className="font-display text-[18px] md:text-[20px] font-bold tracking-[-0.01em] text-ink leading-snug">
-                  {s.headline}
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {shareCards.map((card) => (
+            <a
+              key={card.type}
+              href={`/api/share-card/${card.type}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="group block rounded-2xl border border-hairline bg-surface overflow-hidden transition hover:shadow-soft"
+            >
+              <div className="aspect-square bg-ink relative overflow-hidden">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={`/api/share-card/${card.type}`}
+                  alt={`${card.label} share card`}
+                  className="absolute inset-0 h-full w-full object-cover"
+                />
+              </div>
+              <div className="px-4 py-3 flex items-center justify-between">
+                <div className="text-[14px] font-medium text-ink">
+                  {card.label}
                 </div>
-                <div className="mt-2 text-[14px] text-ink-body leading-relaxed">
-                  {s.detail}
+                <div className="text-[12px] text-ink-muted group-hover:text-ink transition">
+                  Open →
+                </div>
+              </div>
+            </a>
+          ))}
+        </div>
+      </div>
+
+      {/* ─── 4. INSIGHTS STRIP (shock + leaks, compact) ───────────── */}
+      {(shockInsights.length > 0 || moneyLeaks.length > 0) && (
+        <div className="rounded-2xl border border-hairline bg-surface p-6 md:p-8">
+          <div className="text-[12px] font-medium uppercase tracking-[0.12em] text-ink-muted mb-5">
+            What we noticed
+          </div>
+          <div className="space-y-4">
+            {shockInsights.slice(0, 3).map((s) => (
+              <div key={s.id} className="flex items-start gap-3">
+                <span className="mt-1.5 inline-block h-2 w-2 rounded-full bg-brand shrink-0" />
+                <div className="min-w-0">
+                  <div className="text-[15px] font-medium text-ink leading-snug">
+                    {s.headline}
+                  </div>
+                  <div className="mt-0.5 text-[13px] text-ink-body leading-relaxed">
+                    {s.detail}
+                  </div>
                 </div>
               </div>
             ))}
-          </div>
-        </div>
-      )}
-
-      {/* Money leaks */}
-      {topLeaks.length > 0 && (
-        <div>
-          <div className="text-[12px] font-medium uppercase tracking-[0.08em] text-ink-muted mb-3">
-            Money leaks
-          </div>
-          <div className="space-y-2">
-            {topLeaks.map((leak) => (
-              <div
-                key={leak.id}
-                className="rounded-xl border border-hairline bg-surface p-4 md:p-5 flex items-start gap-3"
-              >
+            {moneyLeaks.slice(0, 4).map((leak) => (
+              <div key={leak.id} className="flex items-start gap-3">
                 <span
                   className={[
                     "mt-1.5 inline-block h-2 w-2 rounded-full shrink-0",
@@ -207,17 +229,16 @@ export function InsightsHero({
                   <div className="text-[15px] font-medium text-ink leading-snug">
                     {leak.headline}
                   </div>
-                  <div className="mt-1 text-[13px] text-ink-body leading-relaxed">
+                  <div className="mt-0.5 text-[13px] text-ink-body leading-relaxed">
                     {leak.detail}
                   </div>
                 </div>
               </div>
             ))}
-            {moneyLeaks.length > topLeaks.length && (
+            {moneyLeaks.length > 4 && (
               <div className="text-[13px] text-ink-muted pl-5">
-                + {moneyLeaks.length - topLeaks.length} more leak
-                {moneyLeaks.length - topLeaks.length === 1 ? "" : "s"} below the
-                fold
+                + {moneyLeaks.length - 4} more flagged in your subscription
+                list below
               </div>
             )}
           </div>
@@ -246,11 +267,11 @@ function StatCard({
       : "bg-danger";
   return (
     <div className="rounded-2xl border border-hairline bg-surface px-5 py-5 md:px-6 md:py-6">
-      <div className="flex items-center gap-2 text-[12px] font-medium uppercase tracking-[0.08em] text-ink-muted">
+      <div className="flex items-center gap-2 text-[12px] font-medium uppercase tracking-[0.12em] text-ink-muted">
         <span className={`inline-block h-1.5 w-1.5 rounded-full ${dotColor}`} />
         {eyebrow}
       </div>
-      <div className="mt-2 font-display text-[28px] md:text-[32px] font-bold tracking-[-0.02em] text-ink tabular-nums leading-tight">
+      <div className="mt-2 font-display text-[26px] md:text-[30px] font-bold tracking-[-0.02em] text-ink tabular-nums leading-tight">
         {big}
       </div>
       <div className="mt-1 text-[13px] text-ink-body leading-relaxed">
