@@ -58,31 +58,31 @@ export function Hero() {
             }}
             className="mt-6 font-display font-bold text-ink text-[36px] md:text-[56px] leading-[1.05] tracking-[-0.03em]"
           >
-            You think you pay <span className="text-ink/50">$86</span> in
-            subscriptions.{" "}
-            <span className="text-brand">It&apos;s really $219.</span>
+            Your subscription <span className="text-brand">watchdog</span>.
           </motion.h1>
+
+          <motion.p
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{
+              duration: 0.6,
+              delay: 0.14,
+              ease: [0.16, 1, 0.3, 1],
+            }}
+            className="mt-5 max-w-[620px] text-[20px] md:text-[24px] leading-snug text-ink font-medium tnum"
+          >
+            89% of Americans think they spend{" "}
+            <span className="text-ink/50">$86</span>/month on subscriptions —{" "}
+            <span className="text-brand">it&apos;s really $219.</span>
+          </motion.p>
 
           <motion.p
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ duration: 0.5, delay: 0.14 }}
-            className="mt-3 text-[12.5px] text-ink-muted tnum"
+            transition={{ duration: 0.5, delay: 0.2 }}
+            className="mt-2 text-[12.5px] text-ink-muted tnum"
           >
             {hero.sourceCitation}
-          </motion.p>
-
-          <motion.p
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{
-              duration: 0.7,
-              delay: 0.2,
-              ease: [0.16, 1, 0.3, 1],
-            }}
-            className="mt-6 max-w-[560px] text-[18px] md:text-[19px] leading-relaxed text-ink-body"
-          >
-            {hero.subhead}
           </motion.p>
 
           <motion.div

@@ -21,4 +21,4 @@
 // looking at an old snapshot understands why the result differs from
 // today's engine.
 
-export const SCANNER_VERSION = "3.1.1-gateA-strengthened";
+export const SCANNER_VERSION = "3.1.2-catalog-source-paginated";

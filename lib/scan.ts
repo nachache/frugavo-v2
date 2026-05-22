@@ -467,28 +467,62 @@ async function processDetectedStream(args: {
 
 async function readStoredTransactions(userId: string): Promise<TxnInput[]> {
   if (!supabaseAdmin) return [];
-  const { data } = await supabaseAdmin
-    .from("plaid_transactions")
-    .select(
-      "plaid_transaction_id, posted_date, amount_cents, currency, description, merchant_key, canonical_name, normalized_descriptor, pfc_primary, pfc_detailed, pending"
-    )
-    .eq("user_id", userId)
-    .eq("pending", false)
-    .not("merchant_key", "is", null)
-    .order("posted_date", { ascending: true });
 
-  return (data ?? []).map((r) => ({
-    txn_id: r.plaid_transaction_id as string,
-    date: r.posted_date as string,
-    amount_dollars: ((r.amount_cents as number) ?? 0) / 100,
-    currency: (r.currency as string) ?? "USD",
-    raw_descriptor: (r.description as string) ?? "",
-    merchant_key: r.merchant_key as string,
-    canonical_name: (r.canonical_name as string) ?? "",
-    normalized_descriptor: (r.normalized_descriptor as string) ?? "",
-    pfc_primary: (r.pfc_primary as string | null) ?? null,
-    pfc_detailed: (r.pfc_detailed as string | null) ?? null,
-  }));
+  // Supabase PostgREST caps single requests at 1000 rows by default
+  // (db.max-rows). A user with >1000 outflows would silently lose the
+  // tail of their history, which is exactly the long-running annual
+  // and quarterly subscriptions the engine needs.
+  //
+  // Page through with .range() until we get a short page.
+  const PAGE = 1000;
+  const out: TxnInput[] = [];
+  let offset = 0;
+
+  // Hard ceiling so a runaway loop can't lock the function — 100k txns
+  // is well beyond any sane personal-banking history window.
+  const HARD_CEILING = 100_000;
+
+  while (offset < HARD_CEILING) {
+    const { data, error } = await supabaseAdmin
+      .from("plaid_transactions")
+      .select(
+        "plaid_transaction_id, posted_date, amount_cents, currency, description, merchant_key, canonical_name, normalized_descriptor, pfc_primary, pfc_detailed, pending"
+      )
+      .eq("user_id", userId)
+      .eq("pending", false)
+      .not("merchant_key", "is", null)
+      .order("posted_date", { ascending: true })
+      .order("plaid_transaction_id", { ascending: true })
+      .range(offset, offset + PAGE - 1);
+
+    if (error) {
+      // Surface but don't blow up the scan — return what we have.
+      // eslint-disable-next-line no-console
+      console.error("[scan] readStoredTransactions page error", error);
+      break;
+    }
+
+    const page = data ?? [];
+    for (const r of page) {
+      out.push({
+        txn_id: r.plaid_transaction_id as string,
+        date: r.posted_date as string,
+        amount_dollars: ((r.amount_cents as number) ?? 0) / 100,
+        currency: (r.currency as string) ?? "USD",
+        raw_descriptor: (r.description as string) ?? "",
+        merchant_key: r.merchant_key as string,
+        canonical_name: (r.canonical_name as string) ?? "",
+        normalized_descriptor: (r.normalized_descriptor as string) ?? "",
+        pfc_primary: (r.pfc_primary as string | null) ?? null,
+        pfc_detailed: (r.pfc_detailed as string | null) ?? null,
+      });
+    }
+
+    if (page.length < PAGE) break;
+    offset += PAGE;
+  }
+
+  return out;
 }
 
 // ---------------------------------------------------------------------------

@@ -118,7 +118,12 @@ export const DEFAULT_PARAMS: DetectorParams = {
     { name: "WEEKLY", min: 4, max: 9 },
     { name: "BIWEEKLY", min: 10, max: 18 },
     { name: "SEMI_MONTHLY", min: 19, max: 22 },
-    { name: "MONTHLY", min: 20, max: 50 },
+    // MONTHLY upper raised 50 -> 75 to cover real-world monthly subs
+    // that skip a billing cycle (paused membership, late posting,
+    // every-other-month products marketed as "monthly"). 71d gaps
+    // were previously falling into the dead zone between MONTHLY
+    // and QUARTERLY and getting silently dropped.
+    { name: "MONTHLY", min: 20, max: 75 },
     { name: "QUARTERLY", min: 80, max: 100 },
     { name: "ANNUALLY", min: 330, max: 400 },
   ],
