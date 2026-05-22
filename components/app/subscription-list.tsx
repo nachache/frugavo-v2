@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Check, X, ChevronDown, Sparkles } from "lucide-react";
 import { cn, formatCurrency } from "@/lib/utils";
 import {
@@ -521,11 +522,21 @@ function SubscriptionRow({
         kept && "border-ink/15"
       )}
     >
-      <div className="flex items-start gap-3">
+      <Link
+        href={`/app/subscriptions/${sub.id}`}
+        className="flex items-start gap-3 -mx-1 -my-0.5 px-1 py-0.5 rounded-lg hover:bg-ink/[0.03] transition group"
+      >
         <BrandLogo merchant={sub.merchant_name} category={sub.category} size={40} />
         <div className="min-w-0 flex-1">
-          <div className="text-[14.5px] font-semibold text-ink truncate">
-            {sub.merchant_name}
+          <div className="flex items-center gap-1.5">
+            <span className="text-[14.5px] font-semibold text-ink truncate group-hover:underline decoration-ink/30 underline-offset-2">
+              {sub.merchant_name}
+            </span>
+            <ChevronDown
+              size={13}
+              className="-rotate-90 text-ink-muted opacity-0 group-hover:opacity-100 transition shrink-0"
+              aria-hidden
+            />
           </div>
           <div className="mt-0.5 flex items-center gap-1.5 text-[11.5px] text-ink-muted">
             <span
@@ -536,7 +547,7 @@ function SubscriptionRow({
             <span>{CATEGORY_LABEL[cat]}</span>
           </div>
         </div>
-      </div>
+      </Link>
 
       <div className="tnum">
         <div className="flex items-baseline gap-1.5">
