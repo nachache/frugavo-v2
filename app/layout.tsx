@@ -36,21 +36,22 @@ const newsreader = Newsreader({
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://frugavo.com"),
-  title: "Frugavo — Cancel the subscriptions you forgot you had",
+  title: "Frugavo — Your subscription watchdog",
   description:
-    "Frugavo helps you find recurring charges in your inbox and bank account, and cancel the ones you tell it to. No phone calls. No \"are you sure?\" loops.",
+    "89% of people guess too low. Frugavo connects to your bank, finds every recurring charge, and shows you the real number — with categories, trends, and a personality profile of your spending. Free during early access.",
   openGraph: {
-    title: "Frugavo — Cancel the subscriptions you forgot you had",
+    title: "Frugavo — Your subscription watchdog",
     description:
-      "An AI agent that helps you cancel subscriptions you no longer want.",
+      "Find the subscriptions you forgot you're paying for. Real charges, real totals, a personality profile of your spending.",
     url: "https://frugavo.com",
     siteName: "Frugavo",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Frugavo",
-    description: "Cancel the subscriptions you forgot you had.",
+    title: "Frugavo — Your subscription watchdog",
+    description:
+      "Find every subscription you forgot you had. Real charges, real totals, real history.",
   },
   icons: { icon: "/favicon.svg" },
 };
