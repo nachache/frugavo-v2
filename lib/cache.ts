@@ -34,6 +34,12 @@ export const cacheKey = {
   aiMerchant: (descriptorKey: string) => `ai:merchant:v1:${descriptorKey}`,
   scanEvents: (scanId: string) => `scan:${scanId}:events`,
   webhookKey: (signingKeyId: string) => `plaid:wh:key:${signingKeyId}`,
+  // ---- Probabilistic feedback system (migration 014) ----
+  merchantPrior: (merchantKey: string) => `score:merchant:v1:${merchantKey}`,
+  merchantDictionary: () => `score:dictionary:v1`,
+  userOverrides: (userId: string) => `score:overrides:v1:${userId}`,
+  activeModel: () => `score:model:active:v1`,
+  feedbackRateLimit: (userId: string) => `rl:feedback:${userId}`,
 } as const;
 
 // ---------- get / set / del ----------
