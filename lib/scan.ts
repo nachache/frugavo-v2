@@ -413,6 +413,23 @@ async function processDetectedStream(args: {
     return null;
   }
 
+  // ---- Phase 4: write subscription_charges (real billing history) ----
+  // Both kept (accepted) and drift-rejected (outlier) charges are
+  // linked to this subscription. Outliers are real money — taxes, FX
+  // drift, annual true-ups — and stay visible in history with a
+  // status flag the UI can render as "unusual charge".
+  //
+  // Idempotent on (user_id, subscription_id, plaid_transaction_id).
+  // Failure here does NOT abort the scan; the subscription row is
+  // still valid, we just have incomplete history for this run.
+  await writeSubscriptionCharges({
+    userId,
+    subscriptionId: upserted.id as string,
+    scanId,
+    stream,
+    confidence: verdict.score,
+  });
+
   const scanRow: ScanRow = {
     stream_id: subKey,
     merchant_name: merchantName,
@@ -459,6 +476,113 @@ async function processDetectedStream(args: {
     scanRow,
     snapshotRow,
   };
+}
+
+// ---------------------------------------------------------------------------
+// Phase 4: subscription_charges writer.
+//
+// Writes the per-transaction billing history for a single detected
+// stream. Called once per accepted subscription, immediately after the
+// subscriptions upsert.
+//
+// Determinism contract:
+//   - Accepted (in-cadence) charges are written in chronological order
+//     with cadence_cycle_id = 1..N.
+//   - Outlier charges are written with cadence_cycle_id = NULL.
+//   - matched_by = "biller_tier" when the merchant_key carries the
+//     amount-bucket suffix (Apple / PayPal / Google Play passthrough),
+//     otherwise "merchant_key".
+//
+// Idempotency: upsert on (user_id, subscription_id, plaid_transaction_id).
+// Re-scans overwrite confidence, scan_run_id, scanner_version and
+// detector_status — useful when a charge moves from "kept" → "outlier"
+// across engine versions, which is the whole point of the replay
+// guarantee.
+// ---------------------------------------------------------------------------
+
+export async function writeSubscriptionCharges(args: {
+  userId: string;
+  subscriptionId: string;
+  scanId: string;
+  stream: DetectedStream;
+  confidence: number;
+}): Promise<void> {
+  if (!supabaseAdmin) return;
+
+  const { userId, subscriptionId, scanId, stream, confidence } = args;
+
+  // Detect biller-tier matching by inspecting the merchant_key. The
+  // tier suffix is appended in lib/plaid-sync.ts buildTxnRow only when
+  // norm.biller_passthrough is true.
+  const isBillerTier = /_t\d+$/.test(stream.merchant_key);
+  const matchedBy: "merchant_key" | "biller_tier" = isBillerTier
+    ? "biller_tier"
+    : "merchant_key";
+
+  // Accepted charges, sorted ascending by date so cycle_id is stable
+  // across runs (the detector already returns them ordered, but defend
+  // against future refactors).
+  const accepted = [...stream.transactions].sort((a, b) =>
+    a.date.localeCompare(b.date)
+  );
+
+  const rows = [
+    ...accepted.map((t, idx) => ({
+      user_id: userId,
+      subscription_id: subscriptionId,
+      plaid_transaction_id: t.txn_id,
+      posted_date: t.date,
+      amount_cents: Math.round(Math.abs(t.amount_dollars) * 100),
+      currency: t.currency || "USD",
+      raw_descriptor: t.raw_descriptor,
+      merchant_key: t.merchant_key,
+      detector_status: "accepted" as const,
+      matched_by: matchedBy,
+      confidence,
+      cadence_cycle_id: idx + 1,
+      scan_run_id: scanId,
+      scanner_version: SCANNER_VERSION,
+    })),
+    ...stream.outliers.map((t) => ({
+      user_id: userId,
+      subscription_id: subscriptionId,
+      plaid_transaction_id: t.txn_id,
+      posted_date: t.date,
+      amount_cents: Math.round(Math.abs(t.amount_dollars) * 100),
+      currency: t.currency || "USD",
+      raw_descriptor: t.raw_descriptor,
+      merchant_key: t.merchant_key,
+      detector_status: "outlier" as const,
+      matched_by: matchedBy,
+      confidence,
+      cadence_cycle_id: null,
+      scan_run_id: scanId,
+      scanner_version: SCANNER_VERSION,
+    })),
+  ];
+
+  if (rows.length === 0) return;
+
+  const CHUNK = 500;
+  for (let i = 0; i < rows.length; i += CHUNK) {
+    const chunk = rows.slice(i, i + CHUNK);
+    const { error } = await supabaseAdmin
+      .from("subscription_charges")
+      .upsert(chunk, {
+        onConflict: "user_id,subscription_id,plaid_transaction_id",
+        ignoreDuplicates: false,
+      });
+    if (error) {
+      // eslint-disable-next-line no-console
+      console.error("[scan] subscription_charges upsert failed", {
+        subscriptionId,
+        merchant_key: stream.merchant_key,
+        rows: chunk.length,
+        error: error.message,
+      });
+      // Continue to next chunk — partial history beats none.
+    }
+  }
 }
 
 // ---------------------------------------------------------------------------

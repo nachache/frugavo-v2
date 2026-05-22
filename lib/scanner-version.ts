@@ -21,4 +21,4 @@
 // looking at an old snapshot understands why the result differs from
 // today's engine.
 
-export const SCANNER_VERSION = "3.1.3-gateA-extended-apple-passthrough";
+export const SCANNER_VERSION = "3.2.0-phase4-subscription-charges";
