@@ -114,10 +114,24 @@ const DESCRIPTOR_DENY_GROUPS: { name: string; pattern: RegExp }[] = [
   { name: "settlement", pattern: /\b(settlement|sd\s+settlement)\b/i },
   { name: "merchant_svc", pattern: /\b(merchant\s+svc|mrchnt|merchant\s+services)\b/i },
   { name: "fee",        pattern: /\b(cover\s+fee)\b/i },
-  { name: "payroll",    pattern: /\bpayroll\b/i },
+  // Payroll providers + the generic "payroll" word. Covers Gusto, ADP,
+  // Paychex, Justworks, Rippling, Deel — common US/CA payroll services
+  // that show up in business accounts and never represent subscriptions.
+  { name: "payroll",    pattern: /\b(payroll|gusto|adp\s+payroll|paychex|justworks|rippling|deel|wagepoint|ach\s+credit)\b/i },
   { name: "loan",       pattern: /\b(mortgage|loan|bdc|banque\s+developpement|loan\s+payment)\b/i },
   { name: "vendor",     pattern: /\b(property\s+group|holdings?|invoice|payment\s+to)\b/i },
   { name: "transfer_to_account", pattern: /\bpc\s+to\s+\d/i },
+  // Credit-card auto-payments. Banks render these as the cardholder's
+  // own card being paid — recurring outflow, but not a subscription.
+  // Covers "AUTOMATIC PAYMENT - THANK", "CREDIT CARD 3333 PAYMENT", and
+  // generic "automatic payment" / "auto pay" descriptors.
+  { name: "card_payment", pattern: /\b(credit\s*card[^a-z]*payment|automatic\s+payment|auto[\s-]?pay\b|cc\s+payment|card\s+payment|payment\s+received|payment\s+-?\s*thank|thank\s+you[^a-z]*payment)\b/i },
+  // Internal bank moves. CDs, savings sweeps, internal transfers.
+  // Always recurrence-shaped (same amount on a schedule) but never a
+  // subscription.
+  { name: "bank_internal", pattern: /\b(cd\s+deposit|certificate\s+of\s+deposit|savings\s+transfer|sweep\s+to\s+savings|investment\s+contribution|brokerage\s+transfer|round[\-\s]?up)\b/i },
+  // Long digit blobs without any human-readable merchant. The bank's
+  // internal reference, not a real subscription.
   { name: "long_digits", pattern: /\b\d{9,}\b/ },
 ];
 
