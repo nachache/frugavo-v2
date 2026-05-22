@@ -45,16 +45,16 @@ export function DashboardHeader({ lastScannedAt }: Props) {
 
   return (
     <div>
-      <span className="text-[13px] font-medium text-brand">Dashboard</span>
-      <h1 className="mt-2 font-display text-[36px] md:text-[44px] font-bold tracking-[-0.03em] leading-[1.05] text-ink">
+      <span className="text-[12px] md:text-[13px] font-medium text-brand">Dashboard</span>
+      <h1 className="mt-1.5 md:mt-2 font-display text-[30px] sm:text-[36px] md:text-[44px] font-bold tracking-[-0.03em] leading-[1.05] text-ink">
         Your subscriptions
       </h1>
-      <p className="mt-3 text-[15px] leading-relaxed text-ink-body">
+      <p className="mt-2 md:mt-3 text-[14px] md:text-[15px] leading-relaxed text-ink-body">
         Every recurring charge on your connected accounts.
       </p>
 
       {/* Utility row: timestamp + re-scan + share */}
-      <div className="mt-4 flex flex-wrap items-center gap-3 text-[12.5px] text-ink-muted">
+      <div className="mt-3 md:mt-4 flex flex-wrap items-center gap-2 md:gap-3 text-[12px] md:text-[12.5px] text-ink-muted">
         <span>{timeAgo(lastScannedAt)}</span>
         <button
           type="button"

@@ -101,7 +101,7 @@ export function WhatChangedCard() {
 
   return (
     <div
-      className="rounded-2xl border border-hairline bg-surface p-5 md:p-7 animate-fadeUp"
+      className="rounded-2xl border border-hairline bg-surface p-4 md:p-7 animate-fadeUp"
       style={{ animationDelay: "0.05s" }}
     >
       <div className="flex items-baseline justify-between gap-3 flex-wrap">

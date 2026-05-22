@@ -125,7 +125,7 @@ export default async function AppHome() {
       : null;
 
   return (
-    <section className="container-page py-8 md:py-12 max-w-[1200px] space-y-6 md:space-y-8">
+    <section className="container-page py-6 md:py-12 max-w-[1200px] space-y-5 md:space-y-8">
       <DashboardHeader lastScannedAt={latestScanFinishedAt} />
 
       {data && (

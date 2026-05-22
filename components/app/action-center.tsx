@@ -226,7 +226,7 @@ export function ActionCenter({
   }
 
   return (
-    <div className="rounded-2xl border border-hairline bg-surface p-5 md:p-7 animate-fadeUp">
+    <div className="rounded-2xl border border-hairline bg-surface p-4 md:p-7 animate-fadeUp">
       <CancelCelebration
         annualSaved={celebrate?.annualSaved ?? 0}
         merchant={celebrate?.merchant ?? ""}
@@ -349,10 +349,12 @@ function SortControl({
   value: Sort;
   onChange: (v: Sort) => void;
 }) {
-  const opts: { value: Sort; label: string }[] = [
-    { value: "price", label: "Most expensive" },
-    { value: "age", label: "Oldest charge" },
-    { value: "category", label: "Category" },
+  // Shorter labels on phones — "Most expensive" turns into "Price"
+  // so all three pills fit without overflow.
+  const opts: { value: Sort; label: string; shortLabel: string }[] = [
+    { value: "price", label: "Most expensive", shortLabel: "Price" },
+    { value: "age", label: "Oldest charge", shortLabel: "Oldest" },
+    { value: "category", label: "Category", shortLabel: "Category" },
   ];
   return (
     <div className="inline-flex items-center gap-1 p-1 rounded-full bg-ink/[0.04] text-[12px] mb-2">
@@ -362,13 +364,14 @@ function SortControl({
           type="button"
           onClick={() => onChange(o.value)}
           className={[
-            "h-7 px-3 rounded-full transition",
+            "h-7 px-2.5 md:px-3 rounded-full transition whitespace-nowrap",
             value === o.value
               ? "bg-surface text-ink shadow-soft font-medium"
               : "text-ink-muted hover:text-ink",
           ].join(" ")}
         >
-          {o.label}
+          <span className="md:hidden">{o.shortLabel}</span>
+          <span className="hidden md:inline">{o.label}</span>
         </button>
       ))}
     </div>

@@ -118,7 +118,7 @@ export function UncertainPromptCards() {
 
   return (
     <div
-      className="rounded-2xl border border-hairline bg-surface p-5 md:p-6 animate-fadeUp"
+      className="rounded-2xl border border-hairline bg-surface p-4 md:p-6 animate-fadeUp"
       style={{ animationDelay: "0.05s" }}
     >
       <div className="flex items-baseline justify-between mb-4 gap-3">
