@@ -17,6 +17,7 @@ import {
   computeCategoryTotals,
   computeTopSubscriptions,
   computeShockInsights,
+  computeMonthlySpendSeries,
   type LedgerCharge,
   type LedgerSubscription,
 } from "@/lib/insights";
@@ -154,6 +155,7 @@ export default async function AppHome() {
             shockInsights={insights.shockInsights}
             personality={insights.personality}
             moneyLeaks={insights.moneyLeaks}
+            chart12mo={insights.chart12mo}
           />
         </div>
       )}
@@ -211,6 +213,7 @@ async function buildInsights(userId: string) {
   const aiSpend = computeAiSpend(ledgerSubs, ledgerCharges, asOf);
   const categories = computeCategoryTotals(ledgerSubs);
   const topSubscriptions = computeTopSubscriptions(ledgerSubs, 5);
+  const chart12mo = computeMonthlySpendSeries(ledgerCharges, asOf);
   const shockInsights = computeShockInsights({
     subs: ledgerSubs,
     charges: ledgerCharges,
@@ -240,6 +243,7 @@ async function buildInsights(userId: string) {
     shockInsights,
     personality,
     moneyLeaks,
+    chart12mo,
   };
 }
 
