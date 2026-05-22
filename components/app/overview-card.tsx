@@ -81,17 +81,17 @@ export function OverviewCard({
   const fiveYear = monthly.total_cents * 60;
 
   return (
-    <div className="rounded-2xl border border-hairline bg-surface p-5 md:p-7 animate-fadeUp">
+    <div className="rounded-2xl border border-hairline bg-surface p-4 md:p-7 animate-fadeUp">
       {/* Top row: stats | donut | insights */}
-      <div className="grid grid-cols-1 lg:grid-cols-[1.1fr_280px_1.2fr] gap-6 lg:gap-8 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-[1.1fr_280px_1.2fr] gap-5 md:gap-6 lg:gap-8 items-start">
         {/* COL 1 — stats */}
         <div className="min-w-0">
           <div className="text-[11px] md:text-[12px] font-medium uppercase tracking-[0.12em] text-ink-muted">
             Monthly upkeep
           </div>
-          <div className="mt-2 font-display font-bold tracking-[-0.03em] leading-[1] text-[44px] sm:text-[56px] md:text-[60px] tabular-nums break-words text-brand">
+          <div className="mt-2 font-display font-bold tracking-[-0.03em] leading-[1] text-[40px] sm:text-[52px] md:text-[60px] tabular-nums break-words text-brand">
             <CountUp targetCents={monthly.total_cents} />
-            <span className="text-[22px] sm:text-[24px] md:text-[26px] font-medium text-ink-muted">
+            <span className="text-[20px] sm:text-[24px] md:text-[26px] font-medium text-ink-muted">
               /mo
             </span>
           </div>

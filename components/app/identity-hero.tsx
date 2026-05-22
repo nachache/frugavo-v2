@@ -22,14 +22,16 @@ function fmt(c: number): string {
 
 export function IdentityHero({ monthlySubCents, personality }: Props) {
   return (
-    <div className="rounded-2xl border border-hairline bg-surface p-5 md:p-7 animate-fadeUp overflow-hidden">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-7 items-center">
-        {/* Identity card preview */}
+    <div className="rounded-2xl border border-hairline bg-surface p-4 md:p-7 animate-fadeUp overflow-hidden">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-7 items-center">
+        {/* Identity card preview — capped on mobile so the 9:16 SVG
+            doesn't blow out the viewport. ~240px wide on phone, full
+            column on desktop. */}
         <a
           href="/api/share-card/identity"
           target="_blank"
           rel="noopener noreferrer"
-          className="block rounded-2xl overflow-hidden border border-hairline bg-ink transition hover:opacity-95"
+          className="block rounded-2xl overflow-hidden border border-hairline bg-ink transition hover:opacity-95 mx-auto md:mx-0 max-w-[240px] md:max-w-none w-full"
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img

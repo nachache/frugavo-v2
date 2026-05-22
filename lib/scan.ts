@@ -38,6 +38,7 @@ import {
 } from "./merchants-store";
 import { getOverridesForUser } from "./user-overrides";
 import { pickModelForUser } from "./model-store";
+import { runMonitoringForUser } from "./monitoring/run";
 import {
   detectRecurringStreams,
   cadenceToFrequency,
@@ -315,6 +316,20 @@ export async function runScanForUser(
       },
     }
   );
+
+  // Peace of Mind monitoring — run detectors against the freshly-
+  // written snapshot. Non-fatal: alert failures must not break the
+  // scan itself.
+  try {
+    const monitoring = await runMonitoringForUser({ userId, scanRunId: scanId });
+    if (process.env.FRUGAVO_SCAN_DEBUG_USER_ID === userId) {
+      // eslint-disable-next-line no-console
+      console.log(`[monitoring] alerts_written=${monitoring.alerts_written}`);
+    }
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.error("[monitoring] runMonitoringForUser failed", e);
+  }
 
   return {
     scan_id: scanId,

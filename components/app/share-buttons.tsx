@@ -162,8 +162,11 @@ export function ShareButtons({ shareType, shareText, compact }: Props) {
     }
   }, [buildPng, flash, shareType]);
 
-  const sizeCls = compact ? "h-8 w-8" : "h-10 w-10";
-  const wrapCls = compact ? "gap-1" : "gap-2";
+  // On phones the 5-button row + status pill is a tight fit.
+  // Default to 36px buttons on mobile, 40px from md up. Compact mode
+  // stays 32px universally.
+  const sizeCls = compact ? "h-8 w-8" : "h-9 w-9 md:h-10 md:w-10";
+  const wrapCls = compact ? "gap-1" : "gap-1.5 md:gap-2";
 
   return (
     <div className={`flex flex-wrap items-center ${wrapCls}`}>

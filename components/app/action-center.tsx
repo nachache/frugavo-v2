@@ -392,34 +392,47 @@ function Row({
   const pruned = tab === "pruned" || item.override_type === "cancelled";
 
   return (
-    <div className={["group flex items-center gap-3 md:gap-4 py-3 md:py-4 -mx-2 px-2 rounded-lg transition", muted ? "opacity-50" : "hover:bg-ink/[0.03]"].join(" ")}>
+    <div className={["group flex items-center gap-2.5 md:gap-4 py-2.5 md:py-4 -mx-2 px-2 rounded-lg transition", muted ? "opacity-50" : "hover:bg-ink/[0.03]"].join(" ")}>
       <Link
         href={`/app/subscriptions/${item.subscription_id}`}
-        className="flex items-center gap-3 md:gap-4 flex-1 min-w-0"
+        className="flex items-center gap-2.5 md:gap-4 flex-1 min-w-0"
       >
-        <MerchantLogo name={item.merchant_name} domain={item.domain} size={32} />
+        <MerchantLogo
+          name={item.merchant_name}
+          domain={item.domain}
+          size={28}
+        />
 
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2 flex-wrap min-w-0">
+          <div className="flex items-center gap-1.5 md:gap-2 flex-wrap min-w-0">
             <span
               className={[
-                "text-[14px] md:text-[15px] font-medium truncate group-hover:underline decoration-ink/30 underline-offset-2",
+                "text-[13.5px] md:text-[15px] font-medium truncate group-hover:underline decoration-ink/30 underline-offset-2",
                 pruned ? "line-through text-ink-muted" : "text-ink",
               ].join(" ")}
             >
               {item.merchant_name}
             </span>
-            {item.tags.map((t) => (
-              <Tag key={t} kind={t === "Biggest line item" ? "primary" : "subtle"}>
-                {t}
-              </Tag>
-            ))}
+            {/* Tags hidden on phone — they fight for horizontal space. */}
+            <span className="hidden sm:contents">
+              {item.tags.map((t) => (
+                <Tag key={t} kind={t === "Biggest line item" ? "primary" : "subtle"}>
+                  {t}
+                </Tag>
+              ))}
+            </span>
           </div>
-          <div className="mt-0.5 text-[11px] md:text-[12px] text-ink-muted">
-            {item.reason ?? prettyCategory(item.category)}
+          <div className="mt-0.5 text-[11px] md:text-[12px] text-ink-muted truncate">
+            <span className="hidden sm:inline">
+              {item.reason ?? prettyCategory(item.category)}
+            </span>
+            <span className="sm:hidden">
+              {prettyCategory(item.category)}
+            </span>
             {item.last_charged_at && (
               <>
-                {" · last "}
+                <span className="hidden sm:inline">{" · last "}</span>
+                <span className="sm:hidden">{" · "}</span>
                 {new Date(item.last_charged_at).toLocaleDateString("en-US", {
                   month: "short",
                   day: "numeric",
@@ -433,12 +446,13 @@ function Row({
       <div className="flex items-center gap-2 md:gap-3 shrink-0">
         <div className="text-right">
           <div className={[
-            "text-[14px] md:text-[15px] font-medium tabular-nums",
+            "text-[13px] md:text-[15px] font-medium tabular-nums",
             pruned ? "text-ink-muted line-through" : "text-ink",
           ].join(" ")}>
-            {fmt(item.monthly_cents)}/mo
+            {fmt(item.monthly_cents)}<span className="text-ink-muted">/mo</span>
           </div>
-          <div className="text-[11px] text-ink-muted tabular-nums">
+          {/* Yearly hidden on phone for density. */}
+          <div className="hidden sm:block text-[11px] text-ink-muted tabular-nums">
             {fmt(item.yearly_cents, { withCents: false })}/yr
           </div>
         </div>
@@ -466,9 +480,9 @@ function Row({
 
         <Link
           href={`/app/subscriptions/${item.subscription_id}`}
-          className="inline-flex items-center gap-1 h-8 px-3 rounded-full border border-hairline bg-surface group-hover:bg-ink/[0.04] text-ink text-[12px] font-medium transition"
+          className="inline-flex items-center gap-1 h-7 md:h-8 px-2.5 md:px-3 rounded-full border border-hairline bg-surface group-hover:bg-ink/[0.04] text-ink text-[11.5px] md:text-[12px] font-medium transition"
         >
-          Review
+          <span className="hidden sm:inline">Review</span>
           <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
             <polyline points="9 18 15 12 9 6" />
           </svg>

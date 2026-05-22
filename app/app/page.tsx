@@ -9,6 +9,7 @@ import { OverviewCard } from "@/components/app/overview-card";
 import { ActionCenter } from "@/components/app/action-center";
 import { WhatChangedCard } from "@/components/app/what-changed-card";
 import { UncertainPromptCards } from "@/components/app/uncertain-prompt-cards";
+import { MonitoringAlertsCard } from "@/components/app/monitoring-alerts-card";
 import { buildDashboardData } from "@/lib/selectors/dashboard";
 
 // /app — the authenticated dashboard root.
@@ -145,6 +146,7 @@ export default async function AppHome() {
             shockInsights={data.shock_insights}
           />
 
+          <MonitoringAlertsCard />
           <WhatChangedCard />
           <UncertainPromptCards />
 

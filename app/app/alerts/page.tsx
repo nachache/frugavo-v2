@@ -1,0 +1,74 @@
+import { redirect } from "next/navigation";
+import { currentUser } from "@clerk/nextjs/server";
+import Link from "next/link";
+import { supabaseAdmin } from "@/lib/supabase";
+import { AlertsInbox } from "@/components/app/alerts-inbox";
+
+// /app/alerts — full Peace of Mind inbox.
+//
+// Renders three sections: active, acknowledged, dismissed. Each row
+// supports the same actions as the dashboard card. Reads alerts
+// server-side so the initial paint shows real data.
+
+export const dynamic = "force-dynamic";
+
+type AlertRow = {
+  id: string;
+  subscription_id: string | null;
+  merchant_key: string | null;
+  merchant_name: string | null;
+  alert_type: string;
+  severity: "info" | "notice" | "urgent";
+  status: "active" | "acknowledged" | "dismissed" | "resolved";
+  details: Record<string, unknown>;
+  created_at: string;
+  acknowledged_at: string | null;
+  dismissed_at: string | null;
+};
+
+export default async function AlertsPage() {
+  const user = await currentUser();
+  if (!user) redirect("/sign-in");
+  if (!supabaseAdmin) redirect("/app");
+
+  const { data } = await supabaseAdmin
+    .from("monitoring_alerts")
+    .select(
+      "id, subscription_id, merchant_key, merchant_name, alert_type, severity, status, details, created_at, acknowledged_at, dismissed_at"
+    )
+    .eq("user_id", user.id)
+    .order("created_at", { ascending: false })
+    .limit(500);
+
+  const alerts = (data ?? []) as AlertRow[];
+
+  return (
+    <section className="container-page py-8 md:py-12 max-w-[1000px]">
+      <div className="mb-6 md:mb-8">
+        <Link
+          href="/app"
+          className="inline-flex items-center gap-2 text-[13px] text-ink-muted hover:text-ink transition"
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <line x1="19" y1="12" x2="5" y2="12" />
+            <polyline points="12 19 5 12 12 5" />
+          </svg>
+          Back to dashboard
+        </Link>
+      </div>
+
+      <span className="text-[13px] font-medium text-brand">Protection</span>
+      <h1 className="mt-2 font-display text-[32px] md:text-[40px] font-bold tracking-[-0.03em] leading-[1.05] text-ink">
+        Your alerts
+      </h1>
+      <p className="mt-3 text-[14px] leading-relaxed text-ink-body">
+        Everything we&apos;ve caught on your accounts. New subscriptions,
+        price increases, unusual charges, upcoming renewals.
+      </p>
+
+      <div className="mt-8">
+        <AlertsInbox initial={alerts} />
+      </div>
+    </section>
+  );
+}

@@ -21,4 +21,4 @@
 // looking at an old snapshot understands why the result differs from
 // today's engine.
 
-export const SCANNER_VERSION = "3.6.0-model-variants-retrain";
+export const SCANNER_VERSION = "3.7.0-peace-of-mind-monitoring";
