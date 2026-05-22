@@ -163,6 +163,32 @@
   .animate-progressFill {
     animation: progressFill linear forwards;
   }
+
+  /* ─── Design tokens (P2.10) ───────────────────────────────────────
+     Single source of truth for the brand green — used by the brand
+     dot, the hero number, the donut, the chart, the sparkline. */
+  :root {
+    --brand-green: #047857;
+  }
+
+  /* ─── Section title vs eyebrow (P2.11) ────────────────────────────
+     SECTION titles group cards into zones: larger, normal-case,
+     stronger weight. EYEBROW labels (already used via Tailwind
+     utility classes) stay small and uppercase and live INSIDE
+     cards. */
+  .section-title {
+    font-family: var(--font-inter-tight), system-ui, sans-serif;
+    font-weight: 700;
+    font-size: 22px;
+    letter-spacing: -0.01em;
+    color: #0a0a0a;
+    line-height: 1.15;
+  }
+  @media (min-width: 768px) {
+    .section-title {
+      font-size: 26px;
+    }
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -66,8 +66,11 @@ export function SubscriptionList({
   // How "Currently running" is sorted/grouped. Drives the visible
   // layout: "category" groups into collapsible category cards, the
   // other two flatten the list and sort within a single card.
+  // Default sort changed from "category" to "price" per dashboard
+  // refactor P1.7 — most expensive first answers the user's real
+  // question ("what should I cut?"). Category remains a toggle option.
   const [sortMode, setSortMode] = useState<"category" | "price" | "age">(
-    "category"
+    "price"
   );
   // Default to ALL categories open so a user lands on the dashboard and
   // sees every sub inside every category at a glance, with no extra
@@ -517,7 +520,7 @@ function SubscriptionRow({
   return (
     <li
       className={cn(
-        "rounded-2xl bg-white border border-hairline/60 p-4 flex flex-col gap-3 hover:shadow-soft transition-shadow",
+        "group rounded-2xl bg-white border border-hairline/60 p-4 flex flex-col gap-3 hover:shadow-soft transition-shadow",
         pendingCancel && "border-brand/40 bg-brand-light/30",
         kept && "border-ink/15"
       )}
@@ -584,7 +587,9 @@ function SubscriptionRow({
           Kept
         </span>
       ) : (
-        <div className="flex items-center gap-1.5">
+        // Cancel/Keep buttons fade in on hover (P2.8). They remain
+        // keyboard- and screen-reader-accessible via focus-within.
+        <div className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
           <button
             onClick={() => onCancel?.(sub)}
             className="flex-1 inline-flex h-9 items-center justify-center gap-1 rounded-full border border-hairline bg-white px-3 text-[12.5px] font-medium text-ink hover:border-accent hover:bg-accent hover:text-white transition"

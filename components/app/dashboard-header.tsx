@@ -1,0 +1,101 @@
+"use client";
+
+// DashboardHeader — page title, subtitle, utility row.
+//
+// Utility row (per ticket P2.13) holds:
+//   • Last scanned X ago
+//   • Re-scan button
+//   • Share link (P0.2 — small affordance to /app/share since the
+//     share UI no longer lives on the main dashboard)
+
+import { useTransition } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+
+type Props = {
+  lastScannedAt: string | null;
+};
+
+function timeAgo(iso: string | null): string {
+  if (!iso) return "Never scanned";
+  const ms = Date.now() - new Date(iso).getTime();
+  const min = Math.round(ms / 60_000);
+  if (min < 1) return "Last scanned just now";
+  if (min < 60) return `Last scanned ${min} minute${min === 1 ? "" : "s"} ago`;
+  const hr = Math.round(min / 60);
+  if (hr < 24) return `Last scanned ${hr} hour${hr === 1 ? "" : "s"} ago`;
+  const day = Math.round(hr / 24);
+  return `Last scanned ${day} day${day === 1 ? "" : "s"} ago`;
+}
+
+export function DashboardHeader({ lastScannedAt }: Props) {
+  const router = useRouter();
+  const [rescanning, startRescan] = useTransition();
+
+  function onRescan() {
+    startRescan(async () => {
+      try {
+        await fetch("/api/scan/rescan", { method: "POST" });
+        router.refresh();
+      } catch {
+        // best-effort
+      }
+    });
+  }
+
+  return (
+    <div>
+      <span className="text-[13px] font-medium text-brand">Dashboard</span>
+      <h1 className="mt-2 font-display text-[36px] md:text-[44px] font-bold tracking-[-0.03em] leading-[1.05] text-ink">
+        Your subscriptions
+      </h1>
+      <p className="mt-3 text-[15px] leading-relaxed text-ink-body">
+        Every recurring charge on your connected accounts.
+      </p>
+
+      {/* Utility row: timestamp + re-scan + share */}
+      <div className="mt-4 flex flex-wrap items-center gap-3 text-[12.5px] text-ink-muted">
+        <span>{timeAgo(lastScannedAt)}</span>
+        <button
+          type="button"
+          onClick={onRescan}
+          disabled={rescanning}
+          className="inline-flex items-center gap-1.5 rounded-full bg-ink text-canvas px-3 py-1.5 text-[12px] font-medium hover:bg-ink/85 transition disabled:opacity-60 disabled:cursor-not-allowed"
+        >
+          <svg
+            width="12"
+            height="12"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className={rescanning ? "animate-spin" : ""}
+            aria-hidden="true"
+          >
+            <polyline points="23 4 23 10 17 10" />
+            <polyline points="1 20 1 14 7 14" />
+            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10" />
+            <path d="M20.49 15a9 9 0 0 1-14.85 3.36L1 14" />
+          </svg>
+          {rescanning ? "Scanning…" : "Re-scan"}
+        </button>
+        <span className="text-ink-muted/40">·</span>
+        <Link
+          href="/app/share"
+          className="inline-flex items-center gap-1.5 text-ink-muted hover:text-ink transition"
+        >
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <circle cx="18" cy="5" r="3" />
+            <circle cx="6" cy="12" r="3" />
+            <circle cx="18" cy="19" r="3" />
+            <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" />
+            <line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
+          </svg>
+          Share your numbers
+        </Link>
+      </div>
+    </div>
+  );
+}

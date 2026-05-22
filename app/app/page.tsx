@@ -9,28 +9,28 @@ import {
   type Subscription,
 } from "@/components/app/subscription-list";
 import { RecommendationBanner } from "@/components/app/recommendation-banner";
-import { InsightsHero } from "@/components/app/insights-hero";
+import { DashboardHeader } from "@/components/app/dashboard-header";
+import { OverviewCard } from "@/components/app/overview-card";
+import { InsightsCard } from "@/components/app/insights-card";
+import { ActionCenter } from "@/components/app/action-center";
+import { WhatChangedCard } from "@/components/app/what-changed-card";
+import { UncertainPromptCards } from "@/components/app/uncertain-prompt-cards";
+import { buildDashboardData } from "@/lib/selectors/dashboard";
 import type { SnapshotRow } from "@/lib/types/snapshot";
-import {
-  computeBurnRate,
-  computeAiSpend,
-  computeCategoryTotals,
-  computeTopSubscriptions,
-  computeShockInsights,
-  computeMonthlySpendSeries,
-  type LedgerCharge,
-  type LedgerSubscription,
-} from "@/lib/insights";
-import { computePersonality } from "@/lib/personality";
-import { computeMoneyLeaks } from "@/lib/money-leaks";
 
 // /app — the authenticated dashboard root.
 //
-// Routing logic:
-//   1. No bank connected → /app/connect.
-//   2. Bank connected, no scan yet → run scan inline, then render list.
-//   3. Bank connected, scan complete → render list with cached data and
-//      let the user trigger a re-scan from the list UI.
+// IA per the dashboard refactor ticket:
+//   1. DashboardHeader
+//   2. OverviewCard       (canonical monthly upkeep, sparkline, donut)
+//   3. InsightsCard       (alerts + patterns + pinned stat rows)
+//   4. WhatChangedCard    (auto-hides when nothing to show)
+//   5. UncertainPromptCards (auto-hides when no candidates)
+//   6. ActionCenter       (worth a look / watching / pruned)
+//   7. SubscriptionsList  (default sort = most expensive)
+//
+// All numerical surfaces read from buildDashboardData(). The selector
+// owns the canonical Monthly Upkeep value — there is exactly one.
 
 export default async function AppHome() {
   const user = await currentUser();
@@ -98,168 +98,83 @@ export default async function AppHome() {
     );
   }
 
-  // Step 2 — render from the latest immutable snapshot. The snapshot
-  // is the integrity source: count, list, and monthly upkeep all
-  // derive from the SAME persisted row, so they cannot disagree.
-  //
-  // The mutable `subscriptions` table is still queried, but only to
-  // resolve the DB row id + user_decision for each plaid_stream_id —
-  // those carry user state forward across scans.
-
+  // First-scan path — kick scan and bounce to /app/welcome for the
+  // emotional reveal.
   let snapshotRows = await fetchLatestSnapshotRows(user.id);
-  const decisions = await fetchDecisionMap(user.id);
-
-  // First-scan path: no snapshot yet AND no prior scan has run. Kick
-  // the synchronous scan now so the user sees data on first visit,
-  // then bounce them through the onboarding reveal — that's where the
-  // first emotional impression happens. Skipping the reveal lands the
-  // user right back here, but the second visit already has a snapshot
-  // so this branch won't fire again.
   const noScanYet = items.every((i) => !i.last_synced_at);
   if (snapshotRows.length === 0 && noScanYet) {
     await runScanForUser(user.id);
     redirect("/app/welcome");
   }
 
-  // Legacy fallback: a user whose last scan ran before migration 009
-  // has no snapshot yet. Read from `subscriptions` once more so they
-  // still see data; the next scan will write a snapshot and this branch
-  // stops being hit.
-  let subs = snapshotRows.length > 0
-    ? mergeSnapshotWithDecisions(snapshotRows, decisions)
-    : await fetchSubscriptions(user.id);
+  // Pull the canonical dashboard payload.
+  const data = await buildDashboardData(user.id);
+  const decisions = await fetchDecisionMap(user.id);
+
+  const subsForList: Subscription[] =
+    snapshotRows.length > 0
+      ? mergeSnapshotWithDecisions(snapshotRows, decisions)
+      : await fetchSubscriptionsFallback(user.id);
 
   const charges = await fetchCharges(user.id);
   const recommendation = await nextRecommendation(user.id);
+  const latestScanFinishedAt = data?.meta.last_scanned_at ?? null;
   const latestScan = await fetchLatestScan(user.id);
 
-  // ---- Insights layer (deterministic, ledger-derived) ----
-  // Computed server-side from the same lib functions the /api/dashboard
-  // /insights endpoint uses, so the hero numbers match the API exactly.
-  const insights = await buildInsights(user.id);
-
   return (
-    <section className="container-page py-12 md:py-16 max-w-[1200px]">
-      <span className="text-[13px] font-medium text-brand">Dashboard</span>
-      <h1 className="mt-2 font-display text-[36px] md:text-[44px] font-bold tracking-[-0.03em] leading-[1.05] text-ink">
-        Your subscriptions
-      </h1>
-      <p className="mt-3 text-[15px] leading-relaxed text-ink-body">
-        Every recurring charge Plaid detected on your connected accounts.
-        Re-scan to pull the latest.
-      </p>
+    <section className="container-page py-8 md:py-12 max-w-[1200px] space-y-8 md:space-y-10">
+      <DashboardHeader lastScannedAt={latestScanFinishedAt} />
 
-      {insights && (
-        <div className="mt-10">
-          <InsightsHero
-            burn={insights.burn}
-            aiSpend={insights.aiSpend}
-            categories={insights.categories}
-            topSubscriptions={insights.topSubscriptions}
-            shockInsights={insights.shockInsights}
-            personality={insights.personality}
-            moneyLeaks={insights.moneyLeaks}
-            chart12mo={insights.chart12mo}
-            lastScannedAt={latestScan?.finished_at ?? null}
+      {data && (
+        <>
+          <OverviewCard
+            monthly={data.monthly}
+            yearly={data.yearly}
+            chart12mo={data.chart_12mo}
+            categories={data.categories}
           />
-        </div>
+
+          <InsightsCard
+            aiSpend={data.ai_spend}
+            topSubscription={data.top_subscriptions[0] ?? null}
+            moneyLeakCount={data.money_leaks.length}
+            alerts={data.money_leaks}
+            patterns={data.shock_insights}
+          />
+
+          <WhatChangedCard />
+          <UncertainPromptCards />
+
+          <ActionCenter
+            worth_a_look={data.actions.worth_a_look}
+            watching={data.actions.watching}
+            pruned={data.actions.pruned}
+            potential_yearly_savings_cents={
+              data.actions.potential_yearly_savings_cents
+            }
+          />
+        </>
       )}
 
-      <div className="mt-10">
-        <RecommendationBanner rec={recommendation} />
-        <SubscriptionList
-          initial={subs}
-          charges={charges}
-          lastScannedAt={latestScan?.finished_at ?? null}
-          latestScanId={latestScan?.id ?? null}
-        />
+      <div>
+        <h2 className="section-title">Currently running</h2>
+        <p className="mt-1 text-[13px] md:text-[14px] text-ink-muted">
+          Every recurring charge we detected — sorted by what costs you most.
+        </p>
+        <div className="mt-5">
+          <RecommendationBanner rec={recommendation} />
+          <SubscriptionList
+            initial={subsForList}
+            charges={charges}
+            lastScannedAt={latestScan?.finished_at ?? null}
+            latestScanId={latestScan?.id ?? null}
+          />
+        </div>
       </div>
     </section>
   );
 }
 
-// Server-side insights builder. Computes the full insights payload
-// using the pure functions from lib/insights, lib/personality,
-// lib/money-leaks. Returns null on read errors so the page still
-// renders the subscription list even if insights are unavailable.
-async function buildInsights(userId: string) {
-  if (!supabaseAdmin) return null;
-  const asOf = new Date();
-
-  const { data: subsData } = await supabaseAdmin
-    .from("subscriptions")
-    .select(
-      "id, merchant_name, merchant_key, category, amount_cents, currency, frequency, status, classification, last_charged_at"
-    )
-    .eq("user_id", userId);
-  const ledgerSubs: LedgerSubscription[] =
-    (subsData ?? []) as LedgerSubscription[];
-
-  const ledgerCharges: LedgerCharge[] = [];
-  let offset = 0;
-  const PAGE = 1000;
-  while (offset < 100_000) {
-    const { data, error } = await supabaseAdmin
-      .from("subscription_charges")
-      .select(
-        "subscription_id, posted_date, amount_cents, detector_status, cadence_cycle_id"
-      )
-      .eq("user_id", userId)
-      .order("posted_date", { ascending: true })
-      .range(offset, offset + PAGE - 1);
-    if (error) break;
-    const page = (data ?? []) as LedgerCharge[];
-    ledgerCharges.push(...page);
-    if (page.length < PAGE) break;
-    offset += PAGE;
-  }
-
-  const burn = computeBurnRate(ledgerSubs, ledgerCharges, asOf);
-  const aiSpend = computeAiSpend(ledgerSubs, ledgerCharges, asOf);
-  const categories = computeCategoryTotals(ledgerSubs);
-  const topSubscriptions = computeTopSubscriptions(ledgerSubs, 5);
-  const chart12mo = computeMonthlySpendSeries(ledgerCharges, asOf);
-  const shockInsights = computeShockInsights({
-    subs: ledgerSubs,
-    charges: ledgerCharges,
-    asOf,
-    burn,
-    aiSpend,
-    categories,
-    top: topSubscriptions,
-  });
-  const personality = computePersonality({
-    categories,
-    aiMonthlyCents: aiSpend.monthly_cents,
-    totalMonthlyCents: burn.monthly_cents,
-    totalSubCount: burn.active_subscription_count,
-  });
-  const moneyLeaks = computeMoneyLeaks({
-    subs: ledgerSubs,
-    charges: ledgerCharges,
-    asOf,
-  });
-
-  return {
-    burn,
-    aiSpend,
-    categories,
-    topSubscriptions,
-    shockInsights,
-    personality,
-    moneyLeaks,
-    chart12mo,
-  };
-}
-
-// Most recent successful (terminal `done`) scan for this user. Returns
-// both id and finished_at so the dashboard can:
-//   - render "Last scanned X ago" against finished_at
-//   - hand the id to SubscriptionList as the "baseline" the tab-focus
-//     check compares against /api/scan/latest. If a newer scan_id is
-//     ever observed, the dashboard refreshes itself.
-// Hits the partial index from migration 008, so this is a single-row
-// lookup even at scale.
 async function fetchLatestScan(
   userId: string
 ): Promise<{ id: string; finished_at: string | null } | null> {
@@ -279,10 +194,6 @@ async function fetchLatestScan(
   };
 }
 
-// Reads the most recent scan snapshot's row array. This is the
-// integrity source — count, list, and totals all come from here. If
-// no snapshot exists yet (very first scan after migration 009, or a
-// fresh user) returns an empty array.
 async function fetchLatestSnapshotRows(userId: string): Promise<SnapshotRow[]> {
   if (!supabaseAdmin) return [];
   const { data } = await supabaseAdmin
@@ -297,20 +208,9 @@ async function fetchLatestSnapshotRows(userId: string): Promise<SnapshotRow[]> {
   return payload.rows ?? [];
 }
 
-// Per-stream user decisions (keep / cancel) + DB row id, keyed by
-// subscription_key. subscription_key is the stable identity introduced
-// by migration 010 — it survives Plaid stream_id drift, so a "Kept"
-// decision from one scan carries forward to the next.
-//
-// Backward compat: rows that pre-date migration 010 have their
-// subscription_key backfilled by the migration itself. Anything with a
-// null subscription_key is silently skipped (would not match a snapshot
-// row anyway).
 async function fetchDecisionMap(
   userId: string
-): Promise<
-  Map<string, { id: string; user_decision: Subscription["user_decision"] }>
-> {
+): Promise<Map<string, { id: string; user_decision: Subscription["user_decision"] }>> {
   const m = new Map<
     string,
     { id: string; user_decision: Subscription["user_decision"] }
@@ -330,14 +230,6 @@ async function fetchDecisionMap(
   return m;
 }
 
-// Merge snapshot rows with the decision map.
-//
-// Snapshot wins on every display field. We use the snapshot's
-// `plaid_stream_id` field — which the new engine stores AS the
-// subscription_key — to look up the matching subscriptions row for
-// `id` + `user_decision`. Legacy snapshots stored a real plaid_stream_id
-// here; in those cases the lookup misses and we fall back to the
-// snapshot's own key as the React key. No data is lost either way.
 function mergeSnapshotWithDecisions(
   rows: SnapshotRow[],
   decisions: Map<string, { id: string; user_decision: Subscription["user_decision"] }>
@@ -362,10 +254,7 @@ function mergeSnapshotWithDecisions(
   });
 }
 
-// Legacy fallback when no scan_snapshot exists yet. Reads subscriptions
-// directly. The active scan path writes snapshots so this only triggers
-// for users whose last scan ran before migration 009.
-async function fetchSubscriptions(userId: string): Promise<Subscription[]> {
+async function fetchSubscriptionsFallback(userId: string): Promise<Subscription[]> {
   if (!supabaseAdmin) return [];
   const { data } = await supabaseAdmin
     .from("subscriptions")
@@ -375,18 +264,9 @@ async function fetchSubscriptions(userId: string): Promise<Subscription[]> {
     .eq("user_id", userId)
     .order("status", { ascending: true })
     .order("amount_cents", { ascending: false });
-
   return (data ?? []) as Subscription[];
 }
 
-// Trailing-13-month window of charges. Drives the hero area chart. We
-// bound by date to keep the payload small even for users with years of
-// history in production.
-//
-// Phase 4 renamed the ledger date column from charged_at to posted_date
-// (and added detector_status). We select against the new schema here
-// and map to the legacy ChargeRow shape the existing chart component
-// expects, so the column rename is invisible to the UI.
 async function fetchCharges(
   userId: string
 ): Promise<{ amount_cents: number; charged_at: string }[]> {
