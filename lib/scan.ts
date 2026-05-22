@@ -28,6 +28,16 @@ import { SCANNER_VERSION } from "./scanner-version";
 import { subscriptionKey } from "./subscription-key";
 import { syncAllItemsForUser } from "./plaid-sync";
 import {
+  scoreCandidate,
+  featuresFromCharges,
+  type CandidateFeatures as ScoringCandidateFeatures,
+} from "./scoring";
+import {
+  getMerchantPrior,
+  getMerchantDictionary,
+} from "./merchants-store";
+import { getOverridesForUser } from "./user-overrides";
+import {
   detectRecurringStreams,
   cadenceToFrequency,
   type TxnInput,
@@ -409,6 +419,60 @@ async function processDetectedStream(args: {
   if (verdict.decision === "reject") return null;
   if (!verdict.classification) return null;
 
+  // ---- Shadow scoring (Track A — dual-write) ----
+  //
+  // The probabilistic scoring system runs ALONGSIDE the existing
+  // Gate A/B classifier. The result is recorded in classification_
+  // signals as tagged strings (score:0.78, scored_decision:subscription,
+  // prior:a50b1) so we can compare the two paths offline and gradually
+  // swap the engine without a flag day. The Gate A/B verdict still
+  // drives the row's `classification` column for now.
+  //
+  // Failure here is non-fatal — the existing pipeline keeps working
+  // if the scoring layer ever errors.
+  const shadowSignals: string[] = [];
+  try {
+    const featureStats = featuresFromCharges(
+      stream.transactions.map((t) => ({
+        posted_date: t.date,
+        amount_cents: Math.round(Math.abs(t.amount_dollars) * 100),
+      }))
+    );
+    const [prior, dictionary, overrides] = await Promise.all([
+      getMerchantPrior(stream.merchant_key),
+      getMerchantDictionary(),
+      getOverridesForUser(userId),
+    ]);
+    const features: ScoringCandidateFeatures = {
+      merchant_key: stream.merchant_key,
+      regularity: featureStats.regularity,
+      amount_consistency: featureStats.amount_consistency,
+      occurrences: featureStats.occurrences,
+      category,
+      in_dictionary: dictionary.has(stream.merchant_key),
+    };
+    const override = overrides.get(stream.merchant_key);
+    const scored = scoreCandidate({
+      features,
+      prior: prior ?? undefined,
+      override: override ?? undefined,
+    });
+    shadowSignals.push(
+      `score:${scored.probability.toFixed(3)}`,
+      `scored_decision:${scored.decision}`,
+      `scored_source:${scored.source}`,
+      `prior:a${scored.prior_alpha.toFixed(1)}b${scored.prior_beta.toFixed(1)}`,
+      `lo_prior:${scored.prior_log_odds.toFixed(2)}`,
+      `lo_pattern:${scored.pattern_log_odds.toFixed(2)}`
+    );
+    if (scored.override_type) {
+      shadowSignals.push(`override:${scored.override_type}`);
+    }
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.warn("[scan] shadow scoring failed", e);
+  }
+
   // ---- Stable identity ----
   const subKey = subscriptionKey(userId, stream.merchant_key);
 
@@ -452,7 +516,10 @@ async function processDetectedStream(args: {
         last_ai_run_at: asOfIso,
         status: "active",
         classification: verdict.classification,
-        classification_signals: verdict.signals,
+        classification_signals: [
+          ...(verdict.signals ?? []),
+          ...shadowSignals,
+        ],
         classification_score: verdict.score,
         scanner_version: SCANNER_VERSION,
         updated_at: asOfIso,

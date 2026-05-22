@@ -110,11 +110,15 @@ export default async function AppHome() {
   const decisions = await fetchDecisionMap(user.id);
 
   // First-scan path: no snapshot yet AND no prior scan has run. Kick
-  // the synchronous scan now so the user sees data on first visit.
+  // the synchronous scan now so the user sees data on first visit,
+  // then bounce them through the onboarding reveal — that's where the
+  // first emotional impression happens. Skipping the reveal lands the
+  // user right back here, but the second visit already has a snapshot
+  // so this branch won't fire again.
   const noScanYet = items.every((i) => !i.last_synced_at);
   if (snapshotRows.length === 0 && noScanYet) {
     await runScanForUser(user.id);
-    snapshotRows = await fetchLatestSnapshotRows(user.id);
+    redirect("/app/welcome");
   }
 
   // Legacy fallback: a user whose last scan ran before migration 009

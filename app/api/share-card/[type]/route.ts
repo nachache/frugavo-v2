@@ -33,7 +33,12 @@ import { computePersonality } from "@/lib/personality";
 export const runtime = "nodejs";
 export const maxDuration = 5;
 
-type ShareType = "yearly_total" | "ai_stack" | "monthly_burn" | "identity";
+type ShareType =
+  | "yearly_total"
+  | "ai_stack"
+  | "monthly_burn"
+  | "identity"
+  | "wrapped";
 
 function fmtCents(c: number): string {
   if (c >= 1000_00) {
@@ -295,7 +300,8 @@ export async function GET(
     raw === "yearly_total" ||
     raw === "ai_stack" ||
     raw === "monthly_burn" ||
-    raw === "identity"
+    raw === "identity" ||
+    raw === "wrapped"
       ? (raw as ShareType)
       : null;
   if (!type) {
@@ -341,6 +347,41 @@ export async function GET(
     totalMonthlyCents: burn.monthly_cents,
     totalSubCount: burn.active_subscription_count,
   });
+
+  // Wrapped — vertical 1080x1920 (Instagram Story / TikTok format)
+  // multi-stat recap. Renders its own layout.
+  if (type === "wrapped") {
+    const topCat = categories.find((c) => c.category !== "other" && c.subscription_count > 0);
+    const svg = renderWrappedCard({
+      personality_label: personality.label,
+      monthly_burn_cents: burn.monthly_cents,
+      yearly_burn_cents: burn.yearly_cents,
+      ledger_yearly_cents: burn.ledger_yearly_cents,
+      sub_count: burn.active_subscription_count,
+      ai_monthly_cents: ai.monthly_cents,
+      ai_count: ai.subscription_count,
+      top_sub: topSubs[0]
+        ? { name: topSubs[0].merchant_name, monthly_cents: topSubs[0].monthly_cents }
+        : null,
+      top_category: topCat
+        ? {
+            label: topCat.category,
+            monthly_cents: topCat.monthly_cents,
+            share_pct:
+              burn.monthly_cents > 0
+                ? Math.round((topCat.monthly_cents / burn.monthly_cents) * 100)
+                : 0,
+          }
+        : null,
+    });
+    return new NextResponse(svg, {
+      status: 200,
+      headers: {
+        "Content-Type": "image/svg+xml; charset=utf-8",
+        "Cache-Control": "private, max-age=3600",
+      },
+    });
+  }
 
   // The identity card is taller (1500h vs 1200h) and renders its own
   // full layout, so handle it before the simple card paths.
@@ -420,4 +461,186 @@ export async function GET(
       "Cache-Control": "private, max-age=3600",
     },
   });
+}
+
+// ───────────────────────────────────────────────────────────────────
+// Wrapped — Instagram-Story-shaped (1080x1920) yearly recap.
+//
+// Multi-stat layout designed for the "I have to show someone this"
+// moment. Emerald-and-canvas palette to feel high-end rather than
+// utilitarian. Each stat block has its own eyebrow + big number so
+// the card reads top-to-bottom as a story.
+// ───────────────────────────────────────────────────────────────────
+
+const CATEGORY_PRETTY: Record<string, string> = {
+  streaming: "Streaming",
+  software: "Software",
+  news: "News & reading",
+  fitness: "Fitness",
+  food_delivery: "Food delivery",
+  cloud_storage: "Cloud storage",
+  gaming: "Gaming",
+  telecom: "Phone & internet",
+  phone_internet: "Phone & internet",
+  utilities: "Utilities",
+  education: "Education",
+  insurance: "Insurance",
+  other: "Other",
+  bank_fees: "Bank fees",
+};
+
+function renderWrappedCard(args: {
+  personality_label: string;
+  monthly_burn_cents: number;
+  yearly_burn_cents: number;
+  ledger_yearly_cents: number;
+  sub_count: number;
+  ai_monthly_cents: number;
+  ai_count: number;
+  top_sub: { name: string; monthly_cents: number } | null;
+  top_category: { label: string; monthly_cents: number; share_pct: number } | null;
+}): string {
+  const {
+    personality_label,
+    monthly_burn_cents,
+    yearly_burn_cents,
+    ledger_yearly_cents,
+    sub_count,
+    ai_monthly_cents,
+    ai_count,
+    top_sub,
+    top_category,
+  } = args;
+
+  const W = 1080;
+  const H = 1920;
+  const ACCENT = "#10b981";
+
+  const yearlyShown =
+    ledger_yearly_cents > 0 ? ledger_yearly_cents : yearly_burn_cents;
+  const yearlyBig = `$${Math.round(yearlyShown / 100).toLocaleString("en-US")}`;
+  const monthlyBig = `$${Math.round(monthly_burn_cents / 100).toLocaleString("en-US")}`;
+
+  // Auto-shrink for the headline number based on length.
+  const yearlyLen = yearlyBig.length;
+  const yearlyFs =
+    yearlyLen >= 9 ? 140 : yearlyLen >= 7 ? 170 : yearlyLen >= 5 ? 210 : 240;
+
+  const personalityLen = personality_label.length;
+  const personalityFs =
+    personalityLen >= 28 ? 40 : personalityLen >= 22 ? 48 : 56;
+
+  // Optional rows — only render the ones with data.
+  type Row = { label: string; value: string };
+  const statRows: Row[] = [];
+  if (top_sub) {
+    statRows.push({
+      label: "Biggest subscription",
+      value: `${top_sub.name}  —  $${(top_sub.monthly_cents / 100).toFixed(0)}/mo`,
+    });
+  }
+  if (top_category) {
+    statRows.push({
+      label: "Top category",
+      value: `${CATEGORY_PRETTY[top_category.label] ?? top_category.label}  —  ${top_category.share_pct}%`,
+    });
+  }
+  statRows.push({
+    label: "Active subscriptions",
+    value: String(sub_count),
+  });
+  if (ai_count > 0) {
+    statRows.push({
+      label: "AI stack",
+      value: `${ai_count} tool${ai_count === 1 ? "" : "s"}  —  $${(ai_monthly_cents / 100).toFixed(0)}/mo`,
+    });
+  }
+
+  const statRowsSvg = statRows
+    .map((row, i) => {
+      const y = 1170 + i * 105;
+      return `
+    <text x="80" y="${y}" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif"
+          font-size="24" font-weight="500" fill="#a3a3a3" letter-spacing="2">${escapeXml(
+            row.label.toUpperCase()
+          )}</text>
+    <text x="80" y="${y + 50}" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif"
+          font-size="36" font-weight="700" fill="#fafafa" letter-spacing="-0.5">${escapeXml(row.value)}</text>`;
+    })
+    .join("");
+
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}">
+  <defs>
+    <linearGradient id="wbg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#0a0a0a"/>
+      <stop offset="50%" stop-color="#0f1d19"/>
+      <stop offset="100%" stop-color="#171717"/>
+    </linearGradient>
+    <radialGradient id="whalo1" cx="20%" cy="18%" r="55%">
+      <stop offset="0%" stop-color="${ACCENT}" stop-opacity="0.35"/>
+      <stop offset="100%" stop-color="${ACCENT}" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="whalo2" cx="85%" cy="85%" r="50%">
+      <stop offset="0%" stop-color="#a78bfa" stop-opacity="0.22"/>
+      <stop offset="100%" stop-color="#a78bfa" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <rect width="${W}" height="${H}" fill="url(#wbg)"/>
+  <rect width="${W}" height="${H}" fill="url(#whalo1)"/>
+  <rect width="${W}" height="${H}" fill="url(#whalo2)"/>
+
+  <!-- top brand -->
+  <g transform="translate(80, 110)">
+    <circle cx="14" cy="14" r="14" fill="${ACCENT}"/>
+    <text x="42" y="22" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif"
+          font-size="30" font-weight="600" fill="#f5f5f5" letter-spacing="-0.3">Frugavo</text>
+  </g>
+
+  <!-- "MY SUBSCRIPTION YEAR" -->
+  <text x="80" y="330" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif"
+        font-size="26" font-weight="500" fill="#a3a3a3" letter-spacing="4">
+    MY SUBSCRIPTION YEAR
+  </text>
+
+  <!-- Big yearly total -->
+  <text x="80" y="${330 + yearlyFs + 60}" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif"
+        font-size="${yearlyFs}" font-weight="800" fill="#fafafa" letter-spacing="-6" font-variant-numeric="tabular-nums">
+    ${escapeXml(yearlyBig)}
+  </text>
+
+  <text x="80" y="${330 + yearlyFs + 120}" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif"
+        font-size="28" font-weight="500" fill="#d4d4d4">
+    spent on subscriptions
+  </text>
+  <text x="80" y="${330 + yearlyFs + 160}" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif"
+        font-size="24" font-weight="500" fill="#737373">
+    That's ${escapeXml(monthlyBig)} every single month.
+  </text>
+
+  <!-- Divider -->
+  <line x1="80" y1="1100" x2="${W - 80}" y2="1100" stroke="#262626" stroke-width="2"/>
+
+  ${statRowsSvg}
+
+  <!-- Personality strip near bottom -->
+  <g transform="translate(80, 1640)">
+    <rect width="${W - 160}" height="120" rx="20" fill="${ACCENT}" fill-opacity="0.08" stroke="${ACCENT}" stroke-opacity="0.4" stroke-width="1.5"/>
+    <text x="32" y="48" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif"
+          font-size="20" font-weight="500" fill="${ACCENT}" letter-spacing="2">
+      MY PERSONALITY
+    </text>
+    <text x="32" y="92" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif"
+          font-size="${personalityFs}" font-weight="800" fill="#fafafa" letter-spacing="-1">
+      ${escapeXml(personality_label)}
+    </text>
+  </g>
+
+  <!-- Footer -->
+  <text x="80" y="${H - 60}" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif"
+        font-size="24" font-weight="500" fill="#737373">
+    Tracked with Frugavo · frugavo.com
+  </text>
+</svg>`;
 }

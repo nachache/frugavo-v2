@@ -168,7 +168,13 @@ export function InsightsHero({
         <div className="text-[11px] md:text-[12px] font-medium uppercase tracking-[0.12em] text-ink-muted mb-3">
           More share cards
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 md:gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 md:gap-4">
+          <ShareCardThumb
+            type="wrapped"
+            label="My year wrapped"
+            shareText={`My subscription year: ${fmtCents(burn.ledger_yearly_cents > 0 ? burn.ledger_yearly_cents : burn.yearly_cents, { withCents: false })} across ${burn.active_subscription_count} subscriptions.`}
+            aspect="portrait"
+          />
           <ShareCardThumb
             type="monthly_burn"
             label="Monthly burn"
@@ -255,18 +261,22 @@ function ShareCardThumb({
   type,
   label,
   shareText,
+  aspect = "square",
 }: {
   type: string;
   label: string;
   shareText: string;
+  aspect?: "square" | "portrait";
 }) {
+  const aspectCls =
+    aspect === "portrait" ? "aspect-[9/16]" : "aspect-square";
   return (
     <div className="rounded-2xl border border-hairline bg-surface overflow-hidden">
       <a
         href={`/api/share-card/${type}`}
         target="_blank"
         rel="noopener noreferrer"
-        className="block aspect-square bg-ink relative overflow-hidden"
+        className={`block ${aspectCls} bg-ink relative overflow-hidden`}
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img

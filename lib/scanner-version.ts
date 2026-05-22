@@ -21,4 +21,4 @@
 // looking at an old snapshot understands why the result differs from
 // today's engine.
 
-export const SCANNER_VERSION = "3.4.0-burn-split-ai-inherit-tombstone";
+export const SCANNER_VERSION = "3.5.0-shadow-score-onboarding-wrapped";

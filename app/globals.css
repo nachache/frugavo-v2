@@ -139,6 +139,30 @@
   .animate-drawIn {
     animation: drawIn 0.9s cubic-bezier(0.16, 1, 0.3, 1) both;
   }
+
+  /* Onboarding reveal — stage transitions + progress-bar fill. */
+  @keyframes revealUp {
+    0% {
+      opacity: 0;
+      transform: translateY(24px) scale(0.96);
+      filter: blur(6px);
+    }
+    100% {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+      filter: blur(0);
+    }
+  }
+  @keyframes progressFill {
+    from { width: 0%; }
+    to   { width: 100%; }
+  }
+  .animate-revealUp {
+    animation: revealUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+  .animate-progressFill {
+    animation: progressFill linear forwards;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
