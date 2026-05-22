@@ -108,17 +108,19 @@ const PFC_DETAILED_DENY_TOKENS = [
 // the verify harness can tell WHICH pattern fired and we can spot
 // regressions per category.
 const DESCRIPTOR_DENY_GROUPS: { name: string; pattern: RegExp }[] = [
-  { name: "tax",        pattern: /\b(tax|gst|hst|cra)\b/i },
-  { name: "government", pattern: /\b(govern|federal\s+govt|gvt\s+of)\b/i },
-  { name: "transfer",   pattern: /\b(wire|e[\-\s]?transfer|cash\s+transfer|interac|international\s+transfer\s+fee|direct\s+payment)\b/i },
+  { name: "tax",        pattern: /\b(tax|gst|hst|cra|irs|government\s+tax|tax\s+payment)\b/i },
+  { name: "government", pattern: /\b(govern|federal\s+govt|gvt\s+of|municipal|passport|passeport|cour\s+municipal)\b/i },
+  { name: "transfer",   pattern: /\b(wire|e[\-\s]?transfer|cash\s+transfer|interac|international\s+transfer\s+fee|direct\s+payment|mb[\-\s]?transfer|free\s+interac)\b/i },
   { name: "settlement", pattern: /\b(settlement|sd\s+settlement)\b/i },
   { name: "merchant_svc", pattern: /\b(merchant\s+svc|mrchnt|merchant\s+services)\b/i },
-  { name: "fee",        pattern: /\b(cover\s+fee)\b/i },
+  { name: "fee",        pattern: /\b(cover\s+fee|service\s+fee|transfer\s+fee|atm\s+fee|nsf\s+fee|overdraft\s+fee)\b/i },
   // Payroll providers + the generic "payroll" word. Covers Gusto, ADP,
-  // Paychex, Justworks, Rippling, Deel — common US/CA payroll services
-  // that show up in business accounts and never represent subscriptions.
-  { name: "payroll",    pattern: /\b(payroll|gusto|adp\s+payroll|paychex|justworks|rippling|deel|wagepoint|ach\s+credit)\b/i },
-  { name: "loan",       pattern: /\b(mortgage|loan|bdc|banque\s+developpement|loan\s+payment)\b/i },
+  // Paychex, Justworks, Rippling, Deel, Payworks, Ceridian — common
+  // US/CA payroll services that show up in business accounts and never
+  // represent subscriptions. Also catches "temp wages", "temp staffing"
+  // labels for short-term staffing payouts.
+  { name: "payroll",    pattern: /\b(payroll|gusto|adp\s+payroll|paychex|justworks|rippling|deel|wagepoint|payworks|ceridian|pc[\-\s]?payworks|mb[\-\s]?payworks|ach\s+credit|temp\s+wages|temp\s+staffing|tempstars[\-\s]?temp)\b/i },
+  { name: "loan",       pattern: /\b(mortgage|loan|bdc|banque\s+developpement|loan\s+payment|line\s+of\s+credit)\b/i },
   { name: "vendor",     pattern: /\b(property\s+group|holdings?|invoice|payment\s+to)\b/i },
   { name: "transfer_to_account", pattern: /\bpc\s+to\s+\d/i },
   // Credit-card auto-payments. Banks render these as the cardholder's
@@ -126,10 +128,20 @@ const DESCRIPTOR_DENY_GROUPS: { name: string; pattern: RegExp }[] = [
   // Covers "AUTOMATIC PAYMENT - THANK", "CREDIT CARD 3333 PAYMENT", and
   // generic "automatic payment" / "auto pay" descriptors.
   { name: "card_payment", pattern: /\b(credit\s*card[^a-z]*payment|automatic\s+payment|auto[\s-]?pay\b|cc\s+payment|card\s+payment|payment\s+received|payment\s+-?\s*thank|thank\s+you[^a-z]*payment)\b/i },
-  // Internal bank moves. CDs, savings sweeps, internal transfers.
-  // Always recurrence-shaped (same amount on a schedule) but never a
+  // Internal bank moves. CDs, savings sweeps, internal transfers,
+  // generic deposit/withdrawal labels with no merchant. Always
+  // recurrence-shaped (same amount on a schedule) but never a
   // subscription.
-  { name: "bank_internal", pattern: /\b(cd\s+deposit|certificate\s+of\s+deposit|savings\s+transfer|sweep\s+to\s+savings|investment\s+contribution|brokerage\s+transfer|round[\-\s]?up)\b/i },
+  { name: "bank_internal", pattern: /\b(cd\s+deposit|certificate\s+of\s+deposit|savings\s+transfer|sweep\s+to\s+savings|investment\s+contribution|brokerage\s+transfer|round[\-\s]?up|abm\s+withdrawal|atm\s+withdrawal|bank\s+withdrawal|scotia\s+direct|scotiaconnect|cash\s+sent|cash\s+withdrawal)\b/i },
+  // Bare generic descriptors with no merchant identity. "Deposit",
+  // "Transfer", "Withdrawal" alone are always internal bookkeeping.
+  // Allow longer phrases (e.g. "Direct Deposit Payroll") to pass through
+  // and be caught by the more specific patterns above.
+  { name: "bare_generic", pattern: /^(deposit|transfer|withdrawal|debit|credit)$/i },
+  // Brokerage / investment-account funding. These look like
+  // subscriptions (round amounts on a cadence) but are the user moving
+  // their own money into investments, not paying a vendor.
+  { name: "brokerage",  pattern: /\b(questrade|wealthsimple|td\s+direct|td\s+waterhouse|etrade|e\*trade|schwab|fidelity|vanguard|robinhood|interactive\s+brokers|brokerage)\b/i },
   // Long digit blobs without any human-readable merchant. The bank's
   // internal reference, not a real subscription.
   { name: "long_digits", pattern: /\b\d{9,}\b/ },

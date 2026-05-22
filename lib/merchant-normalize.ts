@@ -159,7 +159,17 @@ function stripPrefix(s: string): { cleaned: string; stripped: string | null } {
   for (const re of PREFIX_REGEXES) {
     const m = s.match(re);
     if (m) {
-      return { cleaned: s.slice(m[0].length).trim(), stripped: m[0].trim() };
+      const rest = s.slice(m[0].length).trim();
+      // If stripping the prefix consumes the ENTIRE descriptor, the
+      // prefix itself IS the merchant identity. e.g. "Apple.com/Bill"
+      // standalone means an Apple charge for an unknown product; only
+      // "Apple.com/Bill Netflix" should have "Apple.com/Bill" stripped
+      // off to expose Netflix. Without this guard, the catalog lookup
+      // runs on an empty string and falls through to the title-cased
+      // raw descriptor — losing the biller_passthrough flag and the
+      // amount-bucketing that depends on it.
+      if (rest.length === 0) continue;
+      return { cleaned: rest, stripped: m[0].trim() };
     }
   }
   return { cleaned: s, stripped: null };
