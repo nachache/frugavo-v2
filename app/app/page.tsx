@@ -9,7 +9,19 @@ import {
   type Subscription,
 } from "@/components/app/subscription-list";
 import { RecommendationBanner } from "@/components/app/recommendation-banner";
+import { InsightsHero } from "@/components/app/insights-hero";
 import type { SnapshotRow } from "@/lib/types/snapshot";
+import {
+  computeBurnRate,
+  computeAiSpend,
+  computeCategoryTotals,
+  computeTopSubscriptions,
+  computeShockInsights,
+  type LedgerCharge,
+  type LedgerSubscription,
+} from "@/lib/insights";
+import { computePersonality } from "@/lib/personality";
+import { computeMoneyLeaks } from "@/lib/money-leaks";
 
 // /app — the authenticated dashboard root.
 //
@@ -116,6 +128,11 @@ export default async function AppHome() {
   const recommendation = await nextRecommendation(user.id);
   const latestScan = await fetchLatestScan(user.id);
 
+  // ---- Insights layer (deterministic, ledger-derived) ----
+  // Computed server-side from the same lib functions the /api/dashboard
+  // /insights endpoint uses, so the hero numbers match the API exactly.
+  const insights = await buildInsights(user.id);
+
   return (
     <section className="container-page py-12 md:py-16 max-w-[1200px]">
       <span className="text-[13px] font-medium text-brand">Dashboard</span>
@@ -126,6 +143,20 @@ export default async function AppHome() {
         Every recurring charge Plaid detected on your connected accounts.
         Re-scan to pull the latest.
       </p>
+
+      {insights && (
+        <div className="mt-10">
+          <InsightsHero
+            burn={insights.burn}
+            aiSpend={insights.aiSpend}
+            categories={insights.categories}
+            topSubscriptions={insights.topSubscriptions}
+            shockInsights={insights.shockInsights}
+            personality={insights.personality}
+            moneyLeaks={insights.moneyLeaks}
+          />
+        </div>
+      )}
 
       <div className="mt-10">
         <RecommendationBanner rec={recommendation} />
@@ -138,6 +169,78 @@ export default async function AppHome() {
       </div>
     </section>
   );
+}
+
+// Server-side insights builder. Computes the full insights payload
+// using the pure functions from lib/insights, lib/personality,
+// lib/money-leaks. Returns null on read errors so the page still
+// renders the subscription list even if insights are unavailable.
+async function buildInsights(userId: string) {
+  if (!supabaseAdmin) return null;
+  const asOf = new Date();
+
+  const { data: subsData } = await supabaseAdmin
+    .from("subscriptions")
+    .select(
+      "id, merchant_name, merchant_key, category, amount_cents, currency, frequency, status, classification, last_charged_at"
+    )
+    .eq("user_id", userId);
+  const ledgerSubs: LedgerSubscription[] =
+    (subsData ?? []) as LedgerSubscription[];
+
+  const ledgerCharges: LedgerCharge[] = [];
+  let offset = 0;
+  const PAGE = 1000;
+  while (offset < 100_000) {
+    const { data, error } = await supabaseAdmin
+      .from("subscription_charges")
+      .select(
+        "subscription_id, posted_date, amount_cents, detector_status, cadence_cycle_id"
+      )
+      .eq("user_id", userId)
+      .order("posted_date", { ascending: true })
+      .range(offset, offset + PAGE - 1);
+    if (error) break;
+    const page = (data ?? []) as LedgerCharge[];
+    ledgerCharges.push(...page);
+    if (page.length < PAGE) break;
+    offset += PAGE;
+  }
+
+  const burn = computeBurnRate(ledgerSubs, ledgerCharges, asOf);
+  const aiSpend = computeAiSpend(ledgerSubs, ledgerCharges, asOf);
+  const categories = computeCategoryTotals(ledgerSubs);
+  const topSubscriptions = computeTopSubscriptions(ledgerSubs, 5);
+  const shockInsights = computeShockInsights({
+    subs: ledgerSubs,
+    charges: ledgerCharges,
+    asOf,
+    burn,
+    aiSpend,
+    categories,
+    top: topSubscriptions,
+  });
+  const personality = computePersonality({
+    categories,
+    aiMonthlyCents: aiSpend.monthly_cents,
+    totalMonthlyCents: burn.monthly_cents,
+    totalSubCount: burn.active_subscription_count,
+  });
+  const moneyLeaks = computeMoneyLeaks({
+    subs: ledgerSubs,
+    charges: ledgerCharges,
+    asOf,
+  });
+
+  return {
+    burn,
+    aiSpend,
+    categories,
+    topSubscriptions,
+    shockInsights,
+    personality,
+    moneyLeaks,
+  };
 }
 
 // Most recent successful (terminal `done`) scan for this user. Returns
@@ -267,9 +370,14 @@ async function fetchSubscriptions(userId: string): Promise<Subscription[]> {
   return (data ?? []) as Subscription[];
 }
 
-// Trailing-12-month window of charges. Drives the hero area chart. We
+// Trailing-13-month window of charges. Drives the hero area chart. We
 // bound by date to keep the payload small even for users with years of
 // history in production.
+//
+// Phase 4 renamed the ledger date column from charged_at to posted_date
+// (and added detector_status). We select against the new schema here
+// and map to the legacy ChargeRow shape the existing chart component
+// expects, so the column rename is invisible to the UI.
 async function fetchCharges(
   userId: string
 ): Promise<{ amount_cents: number; charged_at: string }[]> {
@@ -278,9 +386,16 @@ async function fetchCharges(
   since.setMonth(since.getMonth() - 13);
   const { data } = await supabaseAdmin
     .from("subscription_charges")
-    .select("amount_cents, charged_at")
+    .select("amount_cents, posted_date, detector_status")
     .eq("user_id", userId)
-    .gte("charged_at", since.toISOString().slice(0, 10))
-    .order("charged_at", { ascending: true });
-  return (data ?? []) as { amount_cents: number; charged_at: string }[];
+    .eq("detector_status", "accepted")
+    .gte("posted_date", since.toISOString().slice(0, 10))
+    .order("posted_date", { ascending: true });
+  return ((data ?? []) as Array<{
+    amount_cents: number;
+    posted_date: string;
+  }>).map((r) => ({
+    amount_cents: r.amount_cents,
+    charged_at: r.posted_date,
+  }));
 }
