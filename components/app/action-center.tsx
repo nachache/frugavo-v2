@@ -19,7 +19,7 @@
 //
 // Cancel/Keep buttons are hover-revealed (focus-within accessible).
 
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Check, X } from "lucide-react";
@@ -85,6 +85,58 @@ export function ActionCenter({
     merchant: string;
   } | null>(null);
   const [, startTransition] = useTransition();
+
+  // ─── Preference persistence ─────────────────────────────────────
+  // Load saved tab + sort on mount. Save (debounced) when either
+  // changes. `prefsHydrated` blocks the save effect from firing
+  // before the fetch returns — otherwise we'd overwrite the saved
+  // value with the initial defaults.
+  const [prefsHydrated, setPrefsHydrated] = useState(false);
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/user/preferences")
+      .then((r) => r.json())
+      .then((j) => {
+        if (cancelled) return;
+        const p = (j?.prefs ?? {}) as {
+          action_center_tab?: Tab;
+          action_center_sort?: Sort;
+        };
+        if (p.action_center_tab) setTab(p.action_center_tab);
+        if (p.action_center_sort) setSort(p.action_center_sort);
+      })
+      .catch(() => {
+        // ignore — defaults are fine
+      })
+      .finally(() => {
+        if (!cancelled) setPrefsHydrated(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!prefsHydrated) return;
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(() => {
+      fetch("/api/user/preferences", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action_center_tab: tab,
+          action_center_sort: sort,
+        }),
+      }).catch(() => {
+        // best-effort
+      });
+    }, 400);
+    return () => {
+      if (saveTimer.current) clearTimeout(saveTimer.current);
+    };
+  }, [tab, sort, prefsHydrated]);
 
   const all = useMemo(
     () => [...worth_a_look, ...watching, ...pruned, ...hidden],

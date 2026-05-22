@@ -37,6 +37,7 @@ import {
   getMerchantDictionary,
 } from "./merchants-store";
 import { getOverridesForUser } from "./user-overrides";
+import { pickModelForUser } from "./model-store";
 import {
   detectRecurringStreams,
   cadenceToFrequency,
@@ -438,10 +439,11 @@ async function processDetectedStream(args: {
         amount_cents: Math.round(Math.abs(t.amount_dollars) * 100),
       }))
     );
-    const [prior, dictionary, overrides] = await Promise.all([
+    const [prior, dictionary, overrides, model] = await Promise.all([
       getMerchantPrior(stream.merchant_key),
       getMerchantDictionary(),
       getOverridesForUser(userId),
+      pickModelForUser(userId),
     ]);
     const features: ScoringCandidateFeatures = {
       merchant_key: stream.merchant_key,
@@ -456,11 +458,14 @@ async function processDetectedStream(args: {
       features,
       prior: prior ?? undefined,
       override: override ?? undefined,
+      coeffs: model.coefficients,
     });
     shadowSignals.push(
       `score:${scored.probability.toFixed(3)}`,
       `scored_decision:${scored.decision}`,
       `scored_source:${scored.source}`,
+      `model:${model.version_string ?? "default"}`,
+      `bucket:${model.bucket}`,
       `prior:a${scored.prior_alpha.toFixed(1)}b${scored.prior_beta.toFixed(1)}`,
       `lo_prior:${scored.prior_log_odds.toFixed(2)}`,
       `lo_pattern:${scored.pattern_log_odds.toFixed(2)}`

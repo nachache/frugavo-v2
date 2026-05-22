@@ -17,6 +17,7 @@ import {
   writeOverride,
   invalidateUserOverridesCache,
 } from "@/lib/user-overrides";
+import { pickModelForUser } from "@/lib/model-store";
 import { tryAcquireLock, cacheKey } from "@/lib/cache";
 import { SCANNER_VERSION } from "@/lib/scanner-version";
 
@@ -205,6 +206,7 @@ export async function POST(req: NextRequest) {
     in_dictionary: dictionary.has(merchantKey),
   };
 
+  const model = await pickModelForUser(user.id);
   const scored = scoreCandidate({
     features,
     prior: prior ?? undefined,
@@ -212,6 +214,7 @@ export async function POST(req: NextRequest) {
       override_type,
       override_value,
     },
+    coeffs: model.coefficients,
   });
 
   // Persist the new probability + decision on the subscription row.

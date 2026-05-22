@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   Check,
   Copy,
@@ -50,8 +51,12 @@ export function CancelModal({ sub, onClose, onConfirmed }: Props) {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
+  const closeBtnRef = useRef<HTMLButtonElement>(null);
 
-  // Close on Esc + lock body scroll while open.
+  // Close on Esc + lock body scroll. Also reset scroll position and
+  // park focus on the close button so the browser doesn't auto-scroll
+  // the modal to put the primary "I cancelled it" button into view
+  // (which would push the merchant header above the scroll line).
   useEffect(() => {
     if (!sub) return;
     const onKey = (e: KeyboardEvent) => {
@@ -59,7 +64,23 @@ export function CancelModal({ sub, onClose, onConfirmed }: Props) {
     };
     document.addEventListener("keydown", onKey);
     document.body.style.overflow = "hidden";
+
+    // Reset transient field state when a new sub opens. Prevents the
+    // "copied!" badge from sticking across different merchants.
+    setEmailCopied(false);
+    setMessageCopied(false);
+    setSubmitting(false);
+    setError(null);
+
+    // Run after paint so the dialog ref points at the freshly-mounted
+    // portal node. Two-step: scroll to top, then focus close button.
+    const raf = requestAnimationFrame(() => {
+      if (dialogRef.current) dialogRef.current.scrollTop = 0;
+      closeBtnRef.current?.focus({ preventScroll: true });
+    });
+
     return () => {
+      cancelAnimationFrame(raf);
       document.removeEventListener("keydown", onKey);
       document.body.style.overflow = "";
     };
@@ -93,11 +114,17 @@ export function CancelModal({ sub, onClose, onConfirmed }: Props) {
     }
   };
 
-  return (
+  // Portal the modal to <body> so it escapes any transformed ancestor
+  // (e.g. ActionCenter's animate-fadeUp creates a new stacking context
+  // that would otherwise trap position:fixed children).
+  if (typeof window === "undefined") return null;
+
+  const modalContent = (
     <div
+      key={sub.id}
       role="dialog"
       aria-modal="true"
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-ink/40 backdrop-blur-sm p-0 sm:p-4"
+      className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-ink/40 backdrop-blur-sm p-0 sm:p-4"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
@@ -112,6 +139,7 @@ export function CancelModal({ sub, onClose, onConfirmed }: Props) {
         {/* Header */}
         <div className="relative p-6 pb-4 border-b border-hairline/60">
           <button
+            ref={closeBtnRef}
             onClick={onClose}
             aria-label="Close"
             className="absolute right-4 top-4 inline-flex h-8 w-8 items-center justify-center rounded-full text-ink-muted hover:bg-ink/[0.05] transition"
@@ -209,6 +237,8 @@ export function CancelModal({ sub, onClose, onConfirmed }: Props) {
       </div>
     </div>
   );
+
+  return createPortal(modalContent, document.body);
 }
 
 // --- channel sections -------------------------------------------------

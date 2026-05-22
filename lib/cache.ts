@@ -39,6 +39,7 @@ export const cacheKey = {
   merchantDictionary: () => `score:dictionary:v1`,
   userOverrides: (userId: string) => `score:overrides:v1:${userId}`,
   activeModel: () => `score:model:active:v1`,
+  modelRoster: () => `score:model:roster:v1`,
   feedbackRateLimit: (userId: string) => `rl:feedback:${userId}`,
 } as const;
 

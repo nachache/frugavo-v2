@@ -21,4 +21,4 @@
 // looking at an old snapshot understands why the result differs from
 // today's engine.
 
-export const SCANNER_VERSION = "3.5.0-shadow-score-onboarding-wrapped";
+export const SCANNER_VERSION = "3.6.0-model-variants-retrain";

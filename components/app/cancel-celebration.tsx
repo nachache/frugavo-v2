@@ -2,6 +2,7 @@
 
 import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useMemo, useRef } from "react";
+import { createPortal } from "react-dom";
 import { formatCurrency } from "@/lib/utils";
 import { playCelebrationChime } from "@/lib/celebration-sound";
 
@@ -76,7 +77,13 @@ export function CancelCelebration({
     };
   }, [visible, onDone]);
 
-  return (
+  // Portal to <body> so the celebration escapes any transformed
+  // ancestor (e.g. ActionCenter's animate-fadeUp). Without this the
+  // fixed positioning anchors to the parent card instead of the
+  // viewport.
+  if (typeof window === "undefined") return null;
+
+  const content = (
     <AnimatePresence>
       {visible && (
         <motion.div
@@ -84,7 +91,7 @@ export function CancelCelebration({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0, transition: { duration: 0.25 } }}
-          className="pointer-events-none fixed inset-0 z-[60] flex items-center justify-center"
+          className="pointer-events-none fixed inset-0 z-[200] flex items-center justify-center"
         >
           {/* Confetti burst — particles fly outward from center then drop. */}
           {particles.map((p) => {
@@ -148,6 +155,8 @@ export function CancelCelebration({
       )}
     </AnimatePresence>
   );
+
+  return createPortal(content, document.body);
 }
 
 // A small SVG seedling that "grows" — leaves scale in with a stagger.

@@ -13,6 +13,7 @@ import {
   getMerchantDictionary,
 } from "@/lib/merchants-store";
 import { getOverridesForUser } from "@/lib/user-overrides";
+import { pickModelForUser } from "@/lib/model-store";
 
 // GET /api/scoring/uncertain
 //
@@ -114,10 +115,11 @@ export async function GET(req: Request) {
   const merchantKeys = Array.from(
     new Set(subs.map((s) => s.merchant_key!).filter(Boolean))
   );
-  const [priors, dictionary, overrides] = await Promise.all([
+  const [priors, dictionary, overrides, model] = await Promise.all([
     getMerchantPriors(merchantKeys),
     getMerchantDictionary(),
     getOverridesForUser(user.id),
+    pickModelForUser(user.id),
   ]);
 
   // ---- 4. Score every sub. Filter to uncertain band, drop already
@@ -157,6 +159,7 @@ export async function GET(req: Request) {
     const result = scoreCandidate({
       features,
       prior: priors.get(sub.merchant_key),
+      coeffs: model.coefficients,
     });
 
     if (
