@@ -55,8 +55,9 @@ export function ActionCenter({
   const [sort, setSort] = useState<Sort>("price");
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
 
-  if (all.length === 0) return null;
-
+  // Compute tabList + sorted unconditionally so hooks always run in
+  // the same order (Rules of Hooks). The early-return for empty data
+  // happens AFTER all hook calls below.
   const tabList =
     tab === "worth"
       ? worth_a_look
@@ -84,6 +85,8 @@ export function ActionCenter({
     }
     return arr;
   }, [tabList, sort]);
+
+  if (all.length === 0) return null;
 
   const visible = sorted.slice(0, visibleCount);
   const hasMore = sorted.length > visible.length;
