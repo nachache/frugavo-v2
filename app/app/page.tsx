@@ -156,6 +156,7 @@ export default async function AppHome() {
             personality={insights.personality}
             moneyLeaks={insights.moneyLeaks}
             chart12mo={insights.chart12mo}
+            lastScannedAt={latestScan?.finished_at ?? null}
           />
         </div>
       )}
