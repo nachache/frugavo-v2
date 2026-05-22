@@ -28,6 +28,7 @@ import {
 } from "@/lib/insights";
 import { computePersonality, type Personality } from "@/lib/personality";
 import { computeMoneyLeaks, type MoneyLeak } from "@/lib/money-leaks";
+import catalog from "@/lib/data/merchant-catalog.json";
 
 // ───────────────────────────────────────────────────────────────────
 // Output shape — the ONLY shape the dashboard reads.
@@ -92,6 +93,8 @@ export type DashboardData = {
 export type ActionItem = {
   subscription_id: string;
   merchant_name: string;
+  merchant_key: string | null;
+  domain: string | null;
   category: string;
   monthly_cents: number;
   yearly_cents: number;
@@ -100,6 +103,9 @@ export type ActionItem = {
   status: string;
   classification: string | null;
   reason: string | null;
+  // Display-only tags surfaced inline next to the merchant name
+  // ("Biggest line item", "Might be forgotten").
+  tags: string[];
 };
 
 export async function buildDashboardData(
@@ -199,23 +205,74 @@ export async function buildDashboardData(
     }
   };
 
-  const allActions: ActionItem[] = subs
+  // Domain lookup: walk the catalog once and build a merchant_key →
+  // domain map. Strip biller-tier suffixes (e.g. paypal_t4) before
+  // matching so amount-bucketed merchant_keys still resolve.
+  type CatalogEntry = { key: string; domains?: string[] };
+  type CatalogShape = { merchants?: CatalogEntry[]; billers?: CatalogEntry[] };
+  const c = catalog as unknown as CatalogShape;
+  const domainByKey = new Map<string, string>();
+  for (const e of [...(c.merchants ?? []), ...(c.billers ?? [])]) {
+    if (e.domains && e.domains.length > 0) {
+      domainByKey.set(e.key, e.domains[0]);
+    }
+  }
+  const lookupDomain = (key: string | null | undefined): string | null => {
+    if (!key) return null;
+    const stripped = key.replace(/_t\d+$/, "");
+    return domainByKey.get(stripped) ?? null;
+  };
+
+  // First pass — build action items WITHOUT tags so we can rank them
+  // by monthly cost and assign "Biggest line item" to top N.
+  const baseActions = subs
     .filter((s) => s.classification === "confirmed")
     .map((s) => {
       const m = monthlyEq(s.amount_cents, s.frequency);
       return {
-        subscription_id: s.id,
-        merchant_name: s.merchant_name,
-        category: s.category,
-        monthly_cents: m,
-        yearly_cents: m * 12,
-        frequency: s.frequency,
-        last_charged_at: s.last_charged_at,
-        status: s.status,
-        classification: s.classification,
-        reason: leakReasonById.get(s.id) ?? null,
+        sub: s,
+        monthly: m,
       };
     });
+
+  const rankedByPrice = [...baseActions].sort(
+    (a, b) => b.monthly - a.monthly
+  );
+  const biggestIds = new Set(
+    rankedByPrice.slice(0, 3).map((b) => b.sub.id)
+  );
+
+  // "Might be forgotten" — no charge in 30+ days but still active.
+  const thirtyDaysAgo = new Date(asOf);
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+  const cutoff = thirtyDaysAgo.toISOString().slice(0, 10);
+
+  const allActions: ActionItem[] = baseActions.map(({ sub: s, monthly: m }) => {
+    const tags: string[] = [];
+    if (biggestIds.has(s.id)) tags.push("Biggest line item");
+    if (
+      s.last_charged_at &&
+      s.last_charged_at < cutoff &&
+      s.status === "active"
+    ) {
+      tags.push("Might be forgotten");
+    }
+    return {
+      subscription_id: s.id,
+      merchant_name: s.merchant_name,
+      merchant_key: s.merchant_key ?? null,
+      domain: lookupDomain(s.merchant_key ?? null),
+      category: s.category,
+      monthly_cents: m,
+      yearly_cents: m * 12,
+      frequency: s.frequency,
+      last_charged_at: s.last_charged_at,
+      status: s.status,
+      classification: s.classification,
+      reason: leakReasonById.get(s.id) ?? null,
+      tags,
+    };
+  });
 
   const worth_a_look: ActionItem[] = allActions
     .filter((a) => {

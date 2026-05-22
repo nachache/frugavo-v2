@@ -3,32 +3,23 @@ import { currentUser } from "@clerk/nextjs/server";
 import Link from "next/link";
 import { supabaseAdmin } from "@/lib/supabase";
 import { runScanForUser } from "@/lib/scan";
-import { nextRecommendation } from "@/lib/recommendations";
-import {
-  SubscriptionList,
-  type Subscription,
-} from "@/components/app/subscription-list";
-import { RecommendationBanner } from "@/components/app/recommendation-banner";
 import { DashboardHeader } from "@/components/app/dashboard-header";
 import { IdentityHero } from "@/components/app/identity-hero";
 import { OverviewCard } from "@/components/app/overview-card";
-import { InsightsCard } from "@/components/app/insights-card";
 import { ActionCenter } from "@/components/app/action-center";
 import { WhatChangedCard } from "@/components/app/what-changed-card";
 import { UncertainPromptCards } from "@/components/app/uncertain-prompt-cards";
 import { buildDashboardData } from "@/lib/selectors/dashboard";
-import type { SnapshotRow } from "@/lib/types/snapshot";
 
 // /app — the authenticated dashboard root.
 //
-// IA per the dashboard refactor ticket:
+// IA per refactor v2:
 //   1. DashboardHeader
-//   2. OverviewCard       (canonical monthly upkeep, sparkline, donut)
-//   3. InsightsCard       (alerts + patterns + pinned stat rows)
-//   4. WhatChangedCard    (auto-hides when nothing to show)
-//   5. UncertainPromptCards (auto-hides when no candidates)
-//   6. ActionCenter       (worth a look / watching / pruned)
-//   7. SubscriptionsList  (default sort = most expensive)
+//   2. IdentityHero      (personality + share)
+//   3. OverviewCard      (canonical $, donut, insights, sparkline — ONE block)
+//   4. WhatChangedCard   (auto-hides)
+//   5. UncertainPromptCards (auto-hides)
+//   6. ActionCenter      (THE single list — 4 tabs, sort, pagination)
 //
 // All numerical surfaces read from buildDashboardData(). The selector
 // owns the canonical Monthly Upkeep value — there is exactly one.
@@ -110,20 +101,30 @@ export default async function AppHome() {
 
   // Pull the canonical dashboard payload.
   const data = await buildDashboardData(user.id);
-  const decisions = await fetchDecisionMap(user.id);
-
-  const subsForList: Subscription[] =
-    snapshotRows.length > 0
-      ? mergeSnapshotWithDecisions(snapshotRows, decisions)
-      : await fetchSubscriptionsFallback(user.id);
-
-  const charges = await fetchCharges(user.id);
-  const recommendation = await nextRecommendation(user.id);
   const latestScanFinishedAt = data?.meta.last_scanned_at ?? null;
-  const latestScan = await fetchLatestScan(user.id);
+
+  // Top subscription gets an explicit domain so its logo can render
+  // in the merged Overview "Biggest sub" pinned row.
+  const topSubWithDomain =
+    data && data.top_subscriptions[0]
+      ? {
+          ...data.top_subscriptions[0],
+          domain:
+            data.actions.worth_a_look.find(
+              (a) => a.subscription_id === data.top_subscriptions[0].id
+            )?.domain ??
+            data.actions.watching.find(
+              (a) => a.subscription_id === data.top_subscriptions[0].id
+            )?.domain ??
+            data.actions.pruned.find(
+              (a) => a.subscription_id === data.top_subscriptions[0].id
+            )?.domain ??
+            null,
+        }
+      : null;
 
   return (
-    <section className="container-page py-8 md:py-12 max-w-[1200px] space-y-8 md:space-y-10">
+    <section className="container-page py-8 md:py-12 max-w-[1200px] space-y-6 md:space-y-8">
       <DashboardHeader lastScannedAt={latestScanFinishedAt} />
 
       {data && (
@@ -138,14 +139,10 @@ export default async function AppHome() {
             yearly={data.yearly}
             chart12mo={data.chart_12mo}
             categories={data.categories}
-          />
-
-          <InsightsCard
             aiSpend={data.ai_spend}
-            topSubscription={data.top_subscriptions[0] ?? null}
-            moneyLeakCount={data.money_leaks.length}
-            alerts={data.money_leaks}
-            patterns={data.shock_insights}
+            topSubscription={topSubWithDomain}
+            moneyLeaks={data.money_leaks}
+            shockInsights={data.shock_insights}
           />
 
           <WhatChangedCard />
@@ -161,136 +158,21 @@ export default async function AppHome() {
           />
         </>
       )}
-
-      <div>
-        <h2 className="section-title">Currently running</h2>
-        <p className="mt-1 text-[13px] md:text-[14px] text-ink-muted">
-          Every recurring charge we detected — sorted by what costs you most.
-        </p>
-        <div className="mt-5">
-          <RecommendationBanner rec={recommendation} />
-          <SubscriptionList
-            initial={subsForList}
-            charges={charges}
-            lastScannedAt={latestScan?.finished_at ?? null}
-            latestScanId={latestScan?.id ?? null}
-          />
-        </div>
-      </div>
     </section>
   );
 }
 
-async function fetchLatestScan(
-  userId: string
-): Promise<{ id: string; finished_at: string | null } | null> {
-  if (!supabaseAdmin) return null;
-  const { data } = await supabaseAdmin
-    .from("scan_runs")
-    .select("id, finished_at")
-    .eq("user_id", userId)
-    .eq("status", "done")
-    .order("finished_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  if (!data) return null;
-  return {
-    id: data.id as string,
-    finished_at: (data.finished_at as string | null) ?? null,
-  };
-}
-
-async function fetchLatestSnapshotRows(userId: string): Promise<SnapshotRow[]> {
+// Snapshot existence check — used only by the first-scan redirect
+// branch to know whether to run the inline scan and bounce to
+// /app/welcome.
+async function fetchLatestSnapshotRows(userId: string): Promise<unknown[]> {
   if (!supabaseAdmin) return [];
   const { data } = await supabaseAdmin
     .from("scan_snapshots")
-    .select("payload")
+    .select("id")
     .eq("user_id", userId)
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();
-  if (!data) return [];
-  const payload = (data.payload ?? {}) as { rows?: SnapshotRow[] };
-  return payload.rows ?? [];
-}
-
-async function fetchDecisionMap(
-  userId: string
-): Promise<Map<string, { id: string; user_decision: Subscription["user_decision"] }>> {
-  const m = new Map<
-    string,
-    { id: string; user_decision: Subscription["user_decision"] }
-  >();
-  if (!supabaseAdmin) return m;
-  const { data } = await supabaseAdmin
-    .from("subscriptions")
-    .select("id, subscription_key, user_decision")
-    .eq("user_id", userId)
-    .not("subscription_key", "is", null);
-  for (const row of data ?? []) {
-    m.set(row.subscription_key as string, {
-      id: row.id as string,
-      user_decision: (row.user_decision ?? null) as Subscription["user_decision"],
-    });
-  }
-  return m;
-}
-
-function mergeSnapshotWithDecisions(
-  rows: SnapshotRow[],
-  decisions: Map<string, { id: string; user_decision: Subscription["user_decision"] }>
-): Subscription[] {
-  return rows.map((r) => {
-    const d = decisions.get(r.plaid_stream_id);
-    return {
-      id: d?.id ?? r.plaid_stream_id,
-      merchant_name: r.merchant_name,
-      normalized_name: r.merchant_name,
-      category: r.category,
-      amount_cents: r.amount_cents,
-      currency: r.currency,
-      frequency: r.frequency,
-      last_charged_at: r.last_charged_at,
-      next_expected_charge_at: r.next_expected_charge_at,
-      regret_score: r.regret_score,
-      status: r.status,
-      user_decision: d?.user_decision ?? null,
-      classification: r.classification,
-    } as Subscription;
-  });
-}
-
-async function fetchSubscriptionsFallback(userId: string): Promise<Subscription[]> {
-  if (!supabaseAdmin) return [];
-  const { data } = await supabaseAdmin
-    .from("subscriptions")
-    .select(
-      "id, merchant_name, normalized_name, category, amount_cents, currency, frequency, last_charged_at, next_expected_charge_at, regret_score, status, user_decision, classification, subscription_key"
-    )
-    .eq("user_id", userId)
-    .order("status", { ascending: true })
-    .order("amount_cents", { ascending: false });
-  return (data ?? []) as Subscription[];
-}
-
-async function fetchCharges(
-  userId: string
-): Promise<{ amount_cents: number; charged_at: string }[]> {
-  if (!supabaseAdmin) return [];
-  const since = new Date();
-  since.setMonth(since.getMonth() - 13);
-  const { data } = await supabaseAdmin
-    .from("subscription_charges")
-    .select("amount_cents, posted_date, detector_status")
-    .eq("user_id", userId)
-    .eq("detector_status", "accepted")
-    .gte("posted_date", since.toISOString().slice(0, 10))
-    .order("posted_date", { ascending: true });
-  return ((data ?? []) as Array<{
-    amount_cents: number;
-    posted_date: string;
-  }>).map((r) => ({
-    amount_cents: r.amount_cents,
-    charged_at: r.posted_date,
-  }));
+  return data ? [data] : [];
 }
