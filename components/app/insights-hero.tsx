@@ -25,6 +25,7 @@ import type { MoneyLeak } from "@/lib/money-leaks";
 import { ShareButtons } from "./share-buttons";
 import { MonthlyUpkeepCard } from "./monthly-upkeep-card";
 import { UncertainPromptCards } from "./uncertain-prompt-cards";
+import { WhatChangedCard } from "./what-changed-card";
 
 function fmtCents(c: number, opts: { withCents?: boolean } = {}): string {
   const dollars = c / 100;
@@ -117,6 +118,9 @@ export function InsightsHero({
           lastScannedAt={lastScannedAt}
         />
       </div>
+
+      {/* ─── WHAT CHANGED THIS MONTH (retention loop) ─────────────── */}
+      <WhatChangedCard />
 
       {/* ─── ACTIVE LEARNING: uncertain candidates ────────────────── */}
       <UncertainPromptCards />
