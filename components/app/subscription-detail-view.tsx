@@ -159,30 +159,51 @@ export function SubscriptionDetailView({
   return (
     <div className="space-y-6 md:space-y-8">
       {/* ─── 1. HEADER ────────────────────────────────────────────── */}
-      <div className="rounded-3xl border border-hairline bg-ink text-canvas px-6 py-7 md:px-10 md:py-10 overflow-hidden relative animate-fadeUp">
+      <div
+        className="rounded-3xl border border-hairline bg-ink px-6 py-7 md:px-10 md:py-10 overflow-hidden relative animate-fadeUp"
+        style={{ color: "#FAF8F4" }}
+      >
         <div className="absolute -top-32 -right-32 h-80 w-80 rounded-full bg-brand opacity-20 blur-3xl pointer-events-none" />
         <div className="relative">
           <div className="flex flex-wrap items-center gap-2 mb-4">
-            <span className="text-[12px] font-medium uppercase tracking-[0.12em] text-canvas/60">
+            <span
+              className="text-[12px] font-medium uppercase tracking-[0.12em]"
+              style={{ color: "rgba(250,248,244,0.6)" }}
+            >
               {prettyCategory(subscription.category)}
             </span>
-            <span className="text-canvas/30">·</span>
-            <span className="text-[12px] font-medium uppercase tracking-[0.12em] text-canvas/60">
+            <span style={{ color: "rgba(250,248,244,0.3)" }}>·</span>
+            <span
+              className="text-[12px] font-medium uppercase tracking-[0.12em]"
+              style={{ color: "rgba(250,248,244,0.6)" }}
+            >
               {prettyFrequency(subscription.frequency)}
             </span>
-            <span className="text-canvas/30">·</span>
+            <span style={{ color: "rgba(250,248,244,0.3)" }}>·</span>
             <StatusBadge status={subscription.status} />
           </div>
-          <h1 className="font-display font-bold text-[36px] md:text-[56px] tracking-[-0.03em] leading-[1] break-words">
+          <h1
+            className="font-display font-bold text-[36px] md:text-[56px] tracking-[-0.03em] leading-[1] break-words"
+            style={{ color: "#FAF8F4" }}
+          >
             {subscription.merchant_name}
           </h1>
-          <div className="mt-5 font-display font-bold tracking-[-0.03em] leading-[1] text-[40px] md:text-[56px] tabular-nums">
+          <div
+            className="mt-5 font-display font-bold tracking-[-0.03em] leading-[1] text-[40px] md:text-[56px] tabular-nums"
+            style={{ color: "#FAF8F4" }}
+          >
             {fmtCents(monthly)}
-            <span className="text-[20px] md:text-[28px] font-medium text-canvas/60">
+            <span
+              className="text-[20px] md:text-[28px] font-medium"
+              style={{ color: "rgba(250,248,244,0.6)" }}
+            >
               /mo
             </span>
           </div>
-          <div className="mt-2 text-[14px] md:text-[15px] text-canvas/70">
+          <div
+            className="mt-2 text-[14px] md:text-[15px]"
+            style={{ color: "rgba(250,248,244,0.7)" }}
+          >
             {fmtCents(yearly, { withCents: false })}/yr ·
             {" "}
             Last charged {fmtDate(stats.last_charge_date)}

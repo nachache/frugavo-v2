@@ -152,6 +152,7 @@ export default async function AppHome() {
             worth_a_look={data.actions.worth_a_look}
             watching={data.actions.watching}
             pruned={data.actions.pruned}
+            hidden={data.actions.hidden}
             potential_yearly_savings_cents={
               data.actions.potential_yearly_savings_cents
             }

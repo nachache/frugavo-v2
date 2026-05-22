@@ -73,15 +73,19 @@ export type DashboardData = {
   // ─── Identity ─────────────────────────────────────────────────────
   personality: Personality;
 
-  // ─── Action center tab counts ────────────────────────────────────
-  // worth_a_look: subscriptions the user hasn't acted on (no decision).
-  // watching: user_decision = 'kept' (or equivalent).
-  // pruned: user_decision = 'cancelled'.
-  // Each list is the actual subset of subscription ids the tab shows.
+  // ─── Action center tabs ──────────────────────────────────────────
+  // Source of truth is user_overrides.override_type:
+  //   confirmed         → watching
+  //   cancelled         → pruned
+  //   not_recurring     → hidden
+  //   not_subscription  → hidden
+  //   none / wrong_*    → worth_a_look
+  // legacy subscriptions.user_decision is also honored for back-compat.
   actions: {
     worth_a_look: ActionItem[];
     watching: ActionItem[];
     pruned: ActionItem[];
+    hidden: ActionItem[];
     potential_yearly_savings_cents: number;
   };
 
@@ -96,16 +100,24 @@ export type ActionItem = {
   merchant_key: string | null;
   domain: string | null;
   category: string;
+  // Display-derived monthly equivalent (used for the right-side $/mo
+  // column in the list).
   monthly_cents: number;
   yearly_cents: number;
+  // RAW amount as stored on the subscription. CancelModal consumes
+  // this together with frequency to derive its own monthly/annual.
+  amount_cents: number;
+  currency: string;
   frequency: string;
   last_charged_at: string | null;
+  next_expected_charge_at: string | null;
   status: string;
   classification: string | null;
   reason: string | null;
-  // Display-only tags surfaced inline next to the merchant name
-  // ("Biggest line item", "Might be forgotten").
   tags: string[];
+  // Echo of the active override so the UI knows which tab this item
+  // belongs in without re-deriving from user_decision.
+  override_type: string | null;
 };
 
 export async function buildDashboardData(
@@ -117,11 +129,14 @@ export async function buildDashboardData(
   const { data: subsData } = await supabaseAdmin
     .from("subscriptions")
     .select(
-      "id, merchant_name, merchant_key, category, amount_cents, currency, frequency, status, classification, last_charged_at, user_decision"
+      "id, merchant_name, merchant_key, category, amount_cents, currency, frequency, status, classification, last_charged_at, next_expected_charge_at, user_decision"
     )
     .eq("user_id", userId);
   const subs = (subsData ?? []) as Array<
-    LedgerSubscription & { user_decision: string | null }
+    LedgerSubscription & {
+      user_decision: string | null;
+      next_expected_charge_at: string | null;
+    }
   >;
 
   const charges: LedgerCharge[] = [];
@@ -178,6 +193,24 @@ export async function buildDashboardData(
   for (const s of subs) {
     decisionByMerchant.set(s.id, s.user_decision ?? null);
   }
+
+  // Pull user_overrides — the new source of truth for tab placement.
+  // Keyed by merchant_key. We merge with the legacy user_decision
+  // field below so existing kept/cancelled state still works.
+  const overrideByMerchant = new Map<string, string>();
+  {
+    const { data: overrideRows } = await supabaseAdmin
+      .from("user_overrides")
+      .select("merchant_key, override_type")
+      .eq("user_id", userId);
+    for (const row of (overrideRows ?? []) as Array<{
+      merchant_key: string;
+      override_type: string;
+    }>) {
+      overrideByMerchant.set(row.merchant_key, row.override_type);
+    }
+  }
+
   const leakReasonById = new Map<string, string>();
   for (const leak of moneyLeaks) {
     for (const sid of leak.source.subscription_ids ?? []) {
@@ -257,6 +290,7 @@ export async function buildDashboardData(
     ) {
       tags.push("Might be forgotten");
     }
+    const ov = s.merchant_key ? overrideByMerchant.get(s.merchant_key) ?? null : null;
     return {
       subscription_id: s.id,
       merchant_name: s.merchant_name,
@@ -265,34 +299,53 @@ export async function buildDashboardData(
       category: s.category,
       monthly_cents: m,
       yearly_cents: m * 12,
+      amount_cents: s.amount_cents,
+      currency: s.currency,
       frequency: s.frequency,
       last_charged_at: s.last_charged_at,
+      next_expected_charge_at:
+        (s as { next_expected_charge_at?: string | null }).next_expected_charge_at ??
+        null,
       status: s.status,
       classification: s.classification,
       reason: leakReasonById.get(s.id) ?? null,
       tags,
+      override_type: ov,
     };
   });
 
-  const worth_a_look: ActionItem[] = allActions
-    .filter((a) => {
-      const decision = decisionByMerchant.get(a.subscription_id);
-      return !decision || decision === "needs_review" || decision === "uncertain";
-    })
-    .sort((a, b) => b.monthly_cents - a.monthly_cents);
+  // Bucket placement priority: override_type wins over legacy
+  // user_decision. Anything explicitly marked as not_subscription or
+  // not_recurring goes to Hidden; the user has told us this isn't a
+  // subscription so we shouldn't keep nagging them about it.
+  const inWatching = (a: ActionItem) =>
+    a.override_type === "confirmed" ||
+    a.override_type === "wrong_amount" ||
+    a.override_type === "wrong_cadence" ||
+    decisionByMerchant.get(a.subscription_id) === "kept" ||
+    decisionByMerchant.get(a.subscription_id) === "keep";
+  const inPruned = (a: ActionItem) =>
+    a.override_type === "cancelled" ||
+    decisionByMerchant.get(a.subscription_id) === "cancelled" ||
+    decisionByMerchant.get(a.subscription_id) === "cancel";
+  const inHidden = (a: ActionItem) =>
+    a.override_type === "not_subscription" ||
+    a.override_type === "not_recurring";
 
   const watching: ActionItem[] = allActions
-    .filter((a) => {
-      const d = decisionByMerchant.get(a.subscription_id);
-      return d === "kept" || d === "keep";
-    })
+    .filter(inWatching)
     .sort((a, b) => b.monthly_cents - a.monthly_cents);
 
   const pruned: ActionItem[] = allActions
-    .filter((a) => {
-      const d = decisionByMerchant.get(a.subscription_id);
-      return d === "cancelled" || d === "cancel";
-    })
+    .filter(inPruned)
+    .sort((a, b) => b.monthly_cents - a.monthly_cents);
+
+  const hidden: ActionItem[] = allActions
+    .filter(inHidden)
+    .sort((a, b) => b.monthly_cents - a.monthly_cents);
+
+  const worth_a_look: ActionItem[] = allActions
+    .filter((a) => !inWatching(a) && !inPruned(a) && !inHidden(a))
     .sort((a, b) => b.monthly_cents - a.monthly_cents);
 
   return {
@@ -326,6 +379,7 @@ export async function buildDashboardData(
       worth_a_look,
       watching,
       pruned,
+      hidden,
       potential_yearly_savings_cents: worth_a_look.reduce(
         (acc, a) => acc + a.yearly_cents,
         0
