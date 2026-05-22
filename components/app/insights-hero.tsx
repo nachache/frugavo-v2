@@ -24,6 +24,7 @@ import type { Personality } from "@/lib/personality";
 import type { MoneyLeak } from "@/lib/money-leaks";
 import { ShareButtons } from "./share-buttons";
 import { MonthlyUpkeepCard } from "./monthly-upkeep-card";
+import { UncertainPromptCards } from "./uncertain-prompt-cards";
 
 function fmtCents(c: number, opts: { withCents?: boolean } = {}): string {
   const dollars = c / 100;
@@ -116,6 +117,9 @@ export function InsightsHero({
           lastScannedAt={lastScannedAt}
         />
       </div>
+
+      {/* ─── ACTIVE LEARNING: uncertain candidates ────────────────── */}
+      <UncertainPromptCards />
 
       {/* ─── 2. STATS ROW ─────────────────────────────────────────── */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 md:gap-4">

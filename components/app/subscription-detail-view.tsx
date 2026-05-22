@@ -11,6 +11,7 @@
 // can come later for filtering/export.
 
 import type { ChargeRow, PriceChange } from "@/app/app/subscriptions/[id]/page";
+import { SubscriptionFeedbackControls } from "./subscription-feedback-controls";
 
 type Subscription = {
   id: string;
@@ -191,6 +192,14 @@ export function SubscriptionDetailView({
           </div>
         </div>
       </div>
+
+      {/* ─── FEEDBACK CONTROLS ────────────────────────────────────── */}
+      <SubscriptionFeedbackControls
+        subscriptionId={subscription.id}
+        merchantName={subscription.merchant_name}
+        currentAmountCents={subscription.amount_cents}
+        currentFrequency={subscription.frequency}
+      />
 
       {/* ─── 2. STATS GRID ────────────────────────────────────────── */}
       <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4">
