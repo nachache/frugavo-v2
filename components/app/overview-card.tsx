@@ -1,15 +1,17 @@
 "use client";
 
-// OverviewCard — first viewport. Three columns on desktop:
-//   1. Hero total (canonical Monthly Upkeep + yearly + active count)
-//   2. 12-month sparkline with hover tooltip
-//   3. Category donut (no 0% legend entries)
+// OverviewCard — three-column hero (number / sparkline / donut).
 //
-// On mobile: stacks vertically.
+// Animations:
+//   • Number counts up on mount (1.1s ease-out)
+//   • Sparkline path draws itself in via stroke-dashoffset (0.9s)
+//   • Donut slices fan in one by one via stroke-dashoffset (staggered)
+//   • Donut segments highlight on hover/touch with tooltip
+//   • Sparkline tooltip on cursor (already had it; refined here)
 //
-// Reads ONLY from DashboardData fields. Never recomputes totals.
+// Cinematic reveal on mount; cursor-interactive afterwards.
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { CategoryTotal, MonthBucket } from "@/lib/insights";
 
 type Props = {
@@ -29,16 +31,6 @@ type Props = {
   categories: CategoryTotal[];
 };
 
-function fmtBig(c: number): string {
-  return `$${(c / 100).toLocaleString("en-US", {
-    minimumFractionDigits: c % 100 === 0 ? 0 : 2,
-    maximumFractionDigits: 2,
-  })}`;
-}
-function fmtRound(c: number): string {
-  return `$${Math.round(c / 100).toLocaleString("en-US")}`;
-}
-
 const DONUT_COLORS = [
   "var(--brand-green)",
   "#10b981",
@@ -49,17 +41,26 @@ const DONUT_COLORS = [
   "#fbbf24",
 ];
 
+function fmtBig(c: number): string {
+  return `$${(c / 100).toLocaleString("en-US", {
+    minimumFractionDigits: c % 100 === 0 ? 0 : 2,
+    maximumFractionDigits: 2,
+  })}`;
+}
+function fmtRound(c: number): string {
+  return `$${Math.round(c / 100).toLocaleString("en-US")}`;
+}
+
 export function OverviewCard({ monthly, yearly, chart12mo, categories }: Props) {
   return (
     <div className="rounded-2xl border border-hairline bg-surface p-5 md:p-7 animate-fadeUp">
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8 items-start">
-        {/* Hero total */}
         <div className="min-w-0">
           <div className="text-[11px] md:text-[12px] font-medium uppercase tracking-[0.12em] text-ink-muted">
             Monthly upkeep
           </div>
           <div className="mt-2 font-display font-bold tracking-[-0.03em] leading-[1] text-[44px] sm:text-[56px] md:text-[64px] tabular-nums break-words text-brand">
-            {fmtBig(monthly.total_cents)}
+            <CountUp targetCents={monthly.total_cents} />
             <span className="text-[22px] sm:text-[26px] md:text-[28px] font-medium text-ink-muted">
               /mo
             </span>
@@ -70,20 +71,15 @@ export function OverviewCard({ monthly, yearly, chart12mo, categories }: Props) 
           </div>
           {monthly.other_recurring_count > 0 && (
             <div className="mt-3 inline-flex flex-wrap items-center gap-1.5 rounded-full border border-hairline bg-canvas/40 px-3 py-1.5 text-[12px] text-ink-body">
-              <span className="font-medium text-ink">
-                {fmtRound(monthly.sub_only_cents)}
-              </span>
+              <span className="font-medium text-ink">{fmtRound(monthly.sub_only_cents)}</span>
               <span className="text-ink-muted">subscriptions</span>
               <span className="text-ink-muted/40">+</span>
-              <span className="font-medium text-ink">
-                {fmtRound(monthly.other_recurring_cents)}
-              </span>
+              <span className="font-medium text-ink">{fmtRound(monthly.other_recurring_cents)}</span>
               <span className="text-ink-muted">other recurring</span>
             </div>
           )}
         </div>
 
-        {/* 12-month sparkline */}
         <div className="min-w-0">
           <div className="text-[10px] md:text-[11px] font-medium uppercase tracking-[0.12em] text-ink-muted mb-2">
             Last 12 months
@@ -91,7 +87,6 @@ export function OverviewCard({ monthly, yearly, chart12mo, categories }: Props) 
           <Sparkline data={chart12mo} />
         </div>
 
-        {/* Category donut */}
         <div className="min-w-0">
           <div className="text-[10px] md:text-[11px] font-medium uppercase tracking-[0.12em] text-ink-muted mb-2">
             By category
@@ -103,19 +98,54 @@ export function OverviewCard({ monthly, yearly, chart12mo, categories }: Props) 
   );
 }
 
-// ─── Sparkline ─────────────────────────────────────────────────────
+// ─── Count-up number animation ─────────────────────────────────────
+
+function CountUp({ targetCents }: { targetCents: number }) {
+  // Animates from 0 to target over ~1.1s with ease-out cubic.
+  const [shown, setShown] = useState(0);
+  const startRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    // Respect prefers-reduced-motion.
+    const reduce =
+      typeof window !== "undefined" &&
+      window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    if (reduce) {
+      setShown(targetCents);
+      return;
+    }
+    let raf = 0;
+    const duration = 1100;
+    const start = performance.now();
+    startRef.current = start;
+    const tick = (now: number) => {
+      const t = Math.min(1, (now - start) / duration);
+      // ease-out cubic
+      const eased = 1 - Math.pow(1 - t, 3);
+      setShown(Math.round(targetCents * eased));
+      if (t < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [targetCents]);
+
+  return <>{fmtBig(shown)}</>;
+}
+
+// ─── Sparkline (with draw-in + hover tooltip) ──────────────────────
 
 function Sparkline({ data }: { data: MonthBucket[] }) {
   const W = 1000;
   const H = 300;
   const PAD = 8;
   const max = Math.max(1, ...data.map((d) => d.spend_cents));
+
   const points = useMemo(() => {
     if (data.length === 0) return [];
     const stepX = (W - 2 * PAD) / Math.max(1, data.length - 1);
     return data.map((d, i) => ({
       x: PAD + i * stepX,
-      y: H - PAD - ((d.spend_cents / max) * (H - 2 * PAD)),
+      y: H - PAD - (d.spend_cents / max) * (H - 2 * PAD),
       ...d,
     }));
   }, [data, max]);
@@ -133,6 +163,11 @@ function Sparkline({ data }: { data: MonthBucket[] }) {
       .join(" ");
     return `${top} L ${points[points.length - 1].x},${H - PAD} L ${points[0].x},${H - PAD} Z`;
   }, [points]);
+
+  // Approximate path length for stroke-dashoffset draw-in. Hardcode a
+  // generous value since exact getTotalLength() requires the SVG to be
+  // mounted; using a large constant works because dasharray clamps.
+  const PATH_LENGTH = 2200;
 
   const [hover, setHover] = useState<number | null>(null);
   function handleMove(e: React.PointerEvent<SVGSVGElement>) {
@@ -177,7 +212,11 @@ function Sparkline({ data }: { data: MonthBucket[] }) {
             <stop offset="100%" stopColor="var(--brand-green)" stopOpacity="0" />
           </linearGradient>
         </defs>
-        <path d={fillD} fill="url(#ovsk-fill)" />
+        <path
+          d={fillD}
+          fill="url(#ovsk-fill)"
+          style={{ animation: "fadeIn 0.7s ease-out 0.6s both" }}
+        />
         <path
           d={pathD}
           fill="none"
@@ -186,6 +225,11 @@ function Sparkline({ data }: { data: MonthBucket[] }) {
           vectorEffect="non-scaling-stroke"
           strokeLinecap="round"
           strokeLinejoin="round"
+          strokeDasharray={PATH_LENGTH}
+          strokeDashoffset={PATH_LENGTH}
+          style={{
+            animation: "sparkDraw 0.9s cubic-bezier(0.16, 1, 0.3, 1) 0.1s forwards",
+          }}
         />
         {h && (
           <>
@@ -211,8 +255,11 @@ function Sparkline({ data }: { data: MonthBucket[] }) {
             />
           </>
         )}
+        <style>{`
+          @keyframes sparkDraw { to { stroke-dashoffset: 0; } }
+        `}</style>
       </svg>
-      <div className="mt-1.5 grid grid-cols-12 text-[10px] md:text-[10px] text-ink-muted tabular-nums">
+      <div className="mt-1.5 grid grid-cols-12 text-[10px] text-ink-muted tabular-nums">
         {data.map((d, i) => {
           const abbr = new Date(d.month + "-01").toLocaleDateString("en-US", { month: "short" });
           const show = i % 3 === 0;
@@ -238,11 +285,37 @@ function Sparkline({ data }: { data: MonthBucket[] }) {
   );
 }
 
-// ─── Donut ─────────────────────────────────────────────────────────
+// ─── Donut (fan-in + hover-highlight + tooltip) ────────────────────
+
+type DonutSlice = CategoryTotal & { pct: number; color: string };
 
 function Donut({ categories }: { categories: CategoryTotal[] }) {
   const filtered = categories.filter((c) => c.monthly_cents > 0);
   const total = filtered.reduce((a, c) => a + c.monthly_cents, 0);
+
+  // Hooks must run in stable order — call them BEFORE the early
+  // empty-state return.
+  const slices = useMemo<DonutSlice[]>(() => {
+    if (total === 0) return [];
+    const top = filtered.slice(0, 6);
+    const otherRest = filtered.slice(6).reduce((a, c) => a + c.monthly_cents, 0);
+    if (otherRest > 0) {
+      top.push({
+        category: "other_rollup",
+        monthly_cents: otherRest,
+        yearly_cents: otherRest * 12,
+        subscription_count: 0,
+      });
+    }
+    return top.map((c, i) => ({
+      ...c,
+      pct: Math.round((c.monthly_cents / total) * 100),
+      color: DONUT_COLORS[i % DONUT_COLORS.length],
+    }));
+  }, [filtered, total]);
+
+  const [hoverIdx, setHoverIdx] = useState<number | null>(null);
+
   if (total === 0) {
     return (
       <div className="h-32 flex items-center justify-center text-[13px] text-ink-muted">
@@ -250,68 +323,109 @@ function Donut({ categories }: { categories: CategoryTotal[] }) {
       </div>
     );
   }
-  const top = filtered.slice(0, 6);
-  const otherRest = filtered.slice(6).reduce((a, c) => a + c.monthly_cents, 0);
-  if (otherRest > 0) {
-    top.push({
-      category: "other_rollup",
-      monthly_cents: otherRest,
-      yearly_cents: otherRest * 12,
-      subscription_count: 0,
-    });
-  }
-  // Compute % once. Hide entries < 1% per ticket P2.9 (0% effectively).
-  const withPct = top.map((c, i) => ({
-    ...c,
-    pct: Math.round((c.monthly_cents / total) * 100),
-    color: DONUT_COLORS[i % DONUT_COLORS.length],
-  }));
-  const legend = withPct.filter((c) => c.pct >= 1);
 
+  // Legend entries — hide < 1% (effectively 0%) per ticket.
+  const legend = slices.filter((s) => s.pct >= 1);
+
+  // Donut geometry.
   const cx = 100;
   const cy = 100;
   const r = 70;
   const stroke = 20;
+  const strokeHover = 26;
   const circumference = 2 * Math.PI * r;
-  let offset = 0;
+  // Pre-compute each slice's dash + offset.
+  let cumulative = 0;
+  const seg = slices.map((s) => {
+    const dash = (s.monthly_cents / total) * circumference;
+    const item = { ...s, dash, offset: cumulative };
+    cumulative += dash;
+    return item;
+  });
+
+  const hover = hoverIdx !== null ? seg[hoverIdx] : null;
+  const centerLabel = hover
+    ? fmtRound(hover.monthly_cents)
+    : fmtRound(total);
+  const centerSub = hover
+    ? prettyCategory(hover.category)
+    : "per month";
 
   return (
     <div className="flex flex-row md:flex-col items-center md:items-stretch gap-4">
-      <svg viewBox="0 0 200 200" className="w-28 h-28 md:w-full md:max-w-[160px] mx-auto shrink-0">
+      <svg
+        viewBox="0 0 200 200"
+        className="w-32 h-32 md:w-full md:max-w-[180px] mx-auto shrink-0"
+        onPointerLeave={() => setHoverIdx(null)}
+      >
         <circle cx={cx} cy={cy} r={r} fill="none" stroke="#f5f5f5" strokeWidth={stroke} />
-        {withPct.map((c) => {
-          const fraction = c.monthly_cents / total;
-          const dash = fraction * circumference;
-          const seg = (
+        {seg.map((s, i) => {
+          const isHover = hoverIdx === i;
+          // Cinematic fan-in: each slice starts hidden and reveals
+          // over ~700ms with a 90ms stagger between slices.
+          const delay = 0.15 + i * 0.09;
+          return (
             <circle
-              key={c.category}
+              key={s.category}
               cx={cx}
               cy={cy}
               r={r}
               fill="none"
-              stroke={c.color}
-              strokeWidth={stroke}
-              strokeDasharray={`${dash} ${circumference - dash}`}
-              strokeDashoffset={-offset}
+              stroke={s.color}
+              strokeWidth={isHover ? strokeHover : stroke}
+              strokeDasharray={`${s.dash} ${circumference - s.dash}`}
+              strokeDashoffset={-s.offset}
               transform={`rotate(-90 ${cx} ${cy})`}
               strokeLinecap="butt"
+              onPointerEnter={() => setHoverIdx(i)}
+              onPointerDown={() => setHoverIdx(i)}
+              style={{
+                cursor: "pointer",
+                transition: "stroke-width 180ms cubic-bezier(0.16, 1, 0.3, 1)",
+                opacity: 0,
+                animation: `donutSliceFan 0.7s cubic-bezier(0.16, 1, 0.3, 1) ${delay}s forwards`,
+              }}
             />
           );
-          offset += dash;
-          return seg;
         })}
-        <text x={cx} y={cy + 4} textAnchor="middle" fontFamily="system-ui, sans-serif" fontSize="14" fontWeight="700" fill="#0a0a0a">
-          {fmtRound(total)}
+        <text x={cx} y={cy + 2} textAnchor="middle" fontFamily="system-ui, sans-serif" fontSize="14" fontWeight="700" fill="#0a0a0a">
+          {centerLabel}
         </text>
+        <text x={cx} y={cy + 18} textAnchor="middle" fontFamily="system-ui, sans-serif" fontSize="9" fontWeight="500" fill="#737373" letterSpacing="1">
+          {centerSub.toUpperCase()}
+        </text>
+        <style>{`
+          @keyframes donutSliceFan {
+            from { opacity: 0; }
+            to   { opacity: 1; }
+          }
+        `}</style>
       </svg>
+
       <div className="flex-1 min-w-0 space-y-1">
-        {legend.map((c) => (
-          <div key={c.category} className="flex items-center gap-2 text-[11px] md:text-[12px]">
-            <span className="inline-block h-2 w-2 rounded-full shrink-0" style={{ background: c.color }} />
-            <span className="text-ink truncate flex-1 min-w-0">{prettyCategory(c.category)}</span>
-            <span className="text-ink-muted tabular-nums">{c.pct}%</span>
-          </div>
-        ))}
+        {legend.map((s, i) => {
+          const isHover = hoverIdx === i;
+          return (
+            <div
+              key={s.category}
+              onPointerEnter={() => setHoverIdx(i)}
+              onPointerLeave={() => setHoverIdx(null)}
+              className={[
+                "flex items-center gap-2 text-[11px] md:text-[12px] cursor-pointer rounded px-1 -mx-1 transition-colors",
+                isHover ? "bg-ink/[0.04]" : "",
+              ].join(" ")}
+            >
+              <span
+                className="inline-block h-2 w-2 rounded-full shrink-0"
+                style={{ background: s.color }}
+              />
+              <span className="text-ink truncate flex-1 min-w-0">
+                {prettyCategory(s.category)}
+              </span>
+              <span className="text-ink-muted tabular-nums">{s.pct}%</span>
+            </div>
+          );
+        })}
       </div>
     </div>
   );

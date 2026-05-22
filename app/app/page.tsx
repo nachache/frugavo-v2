@@ -10,6 +10,7 @@ import {
 } from "@/components/app/subscription-list";
 import { RecommendationBanner } from "@/components/app/recommendation-banner";
 import { DashboardHeader } from "@/components/app/dashboard-header";
+import { IdentityHero } from "@/components/app/identity-hero";
 import { OverviewCard } from "@/components/app/overview-card";
 import { InsightsCard } from "@/components/app/insights-card";
 import { ActionCenter } from "@/components/app/action-center";
@@ -127,6 +128,11 @@ export default async function AppHome() {
 
       {data && (
         <>
+          <IdentityHero
+            monthlySubCents={data.monthly.sub_only_cents}
+            personality={data.personality}
+          />
+
           <OverviewCard
             monthly={data.monthly}
             yearly={data.yearly}

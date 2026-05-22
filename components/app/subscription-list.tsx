@@ -19,7 +19,9 @@ import {
   type SubLike,
 } from "@/lib/subscription-math";
 import { BrandLogo } from "./brand-logo";
-import { DashboardHero } from "./dashboard-hero";
+// DashboardHero removed per IA refactor — chart + donut + monthly
+// upkeep now live in <OverviewCard /> above this list. Avoids the
+// duplicate-totals + duplicate-chart problem.
 import { CancelCandidates } from "./cancel-candidates";
 import { CancelModal } from "./cancel-modal";
 import { PendingCancellations } from "./pending-cancellations";
@@ -301,14 +303,6 @@ export function SubscriptionList({
   return (
     <div>
       <SavingsCounter subs={items} />
-
-      <DashboardHero
-        subs={items}
-        charges={charges}
-        onRescan={triggerRescan}
-        rescanning={rescanning}
-        lastScannedAt={lastScannedAt}
-      />
 
       <CancelCandidates candidates={candidates} onCancel={openCancel} />
 
