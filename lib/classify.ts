@@ -111,9 +111,22 @@ const DESCRIPTOR_DENY_GROUPS: { name: string; pattern: RegExp }[] = [
   { name: "tax",        pattern: /\b(tax|gst|hst|cra|irs|government\s+tax|tax\s+payment)\b/i },
   { name: "government", pattern: /\b(govern|federal\s+govt|gvt\s+of|municipal|passport|passeport|cour\s+municipal)\b/i },
   { name: "transfer",   pattern: /\b(wire|e[\-\s]?transfer|cash\s+transfer|interac|international\s+transfer\s+fee|direct\s+payment|mb[\-\s]?transfer|free\s+interac)\b/i },
-  { name: "settlement", pattern: /\b(settlement|sd\s+settlement)\b/i },
+  { name: "settlement", pattern: /\b(settlement|sd\s+settlement|stripe\s+settlement|square\s+settlement|wire\s+settlement|disbursement)\b/i },
   { name: "merchant_svc", pattern: /\b(merchant\s+svc|mrchnt|merchant\s+services)\b/i },
   { name: "fee",        pattern: /\b(cover\s+fee|service\s+fee|transfer\s+fee|atm\s+fee|nsf\s+fee|overdraft\s+fee)\b/i },
+  // B2B procurement and lab services. Generalized: any descriptor that
+  // self-identifies as a dental/medical supplier, laboratory, or
+  // wholesale vendor is recurring vendor spend, not a subscription.
+  // Catches Henry Schein (dental supply), Safco Dental Supply, ASAP
+  // Dental Laboratory, Sinclair Dental, Practicon, etc. without
+  // hardcoding any single brand.
+  { name: "b2b_supply", pattern: /\b((dental|medical|laboratory|optical|orthodontic|veterinary)\s+(supply|supplies|laboratory|labs?|equipment|distributor))\b/i },
+  { name: "b2b_lab",    pattern: /\b(dental\s+lab|dental\s+laboratory|medical\s+lab|pathology\s+lab|optical\s+lab|practicon|orascoptic|cintas|safco)\b/i },
+  // Property-group / landlord / real-estate management names that
+  // pass through normalization as "Property Group", "Holdings",
+  // "Properties", "Real Estate Inc". Rent-style recurring outflows
+  // aren't subscriptions even though they pattern-match perfectly.
+  { name: "rent",       pattern: /\b(property\s+group|real\s+estate|propert(?:y|ies)\s+(?:llc|inc|management)|landlord|rent\s+payment|lease\s+payment|huntington\s+property)\b/i },
   // Payroll providers + the generic "payroll" word. Covers Gusto, ADP,
   // Paychex, Justworks, Rippling, Deel, Payworks, Ceridian — common
   // US/CA payroll services that show up in business accounts and never

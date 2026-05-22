@@ -51,12 +51,41 @@ const AI_CATALOG_KEYS: Set<string> = (() => {
   return s;
 })();
 
+// Build a lowercase token set of AI catalog aliases too, so we can
+// detect AI subs that landed under a biller wrapper before the engine
+// supported AI inheritance (paddle_tN, stripe_tN, etc.). This lets the
+// insights layer count existing storage correctly without requiring a
+// re-scan of every user.
+type CatalogAlias = { key: string; aliases?: string[]; display?: string; ai?: boolean };
+const AI_CATALOG_ALIASES: string[] = (() => {
+  const out = new Set<string>();
+  const c = catalog as unknown as { merchants?: CatalogAlias[] };
+  for (const m of c.merchants ?? []) {
+    if (m.ai !== true) continue;
+    if (m.display) out.add(m.display.toLowerCase());
+    for (const a of m.aliases ?? []) out.add(a.toLowerCase());
+  }
+  // Drop entries shorter than 3 chars — too generic to match safely.
+  return Array.from(out).filter((a) => a.length >= 3);
+})();
+
 export function isAiSubscription(sub: LedgerSubscription): boolean {
-  if (!sub.merchant_key) return false;
-  // merchant_key may carry a biller-tier suffix like "openai_t2";
-  // strip it before catalog lookup.
-  const baseKey = sub.merchant_key.replace(/_t\d+$/, "");
-  return AI_CATALOG_KEYS.has(baseKey);
+  if (sub.merchant_key) {
+    // merchant_key may carry a biller-tier suffix like "openai_t2";
+    // strip it before catalog lookup.
+    const baseKey = sub.merchant_key.replace(/_t\d+$/, "");
+    if (AI_CATALOG_KEYS.has(baseKey)) return true;
+  }
+  // Fallback for existing data: scan the visible merchant name for any
+  // AI catalog alias as a substring. Covers subs stored under a biller
+  // wrapper (paddle_tN, stripe_tN) before the engine learned to
+  // inherit the inner AI merchant.
+  const name = (sub.merchant_name || "").toLowerCase();
+  if (!name) return false;
+  for (const alias of AI_CATALOG_ALIASES) {
+    if (name.includes(alias)) return true;
+  }
+  return false;
 }
 
 // ---------------------------------------------------------------------------
@@ -83,18 +112,69 @@ export function monthlyEqCents(amountCents: number, frequency: string): number {
 }
 
 // ---------------------------------------------------------------------------
+// Category split: what counts as a "subscription" vs "other recurring".
+//
+// Subscription = the emotional consumer-style category the dashboard
+//                hero card sums up. Streaming, software, news, fitness,
+//                food delivery, cloud storage, gaming, telecom/phone,
+//                utilities — recurring spend the user thinks of as
+//                "stuff I subscribe to."
+//
+// Other recurring = same engine, same detector, but the category is
+//                   noise from a consumer-subscription point of view:
+//                   B2B procurement, rent (when miscategorized to
+//                   other), bank settlements, internal transfers.
+//                   Still surfaced — but not in the hero number.
+//
+// Allowlist is intentionally generous and category-based, not merchant-
+// specific. New users get the same split rule regardless of what their
+// bank descriptors look like.
+// ---------------------------------------------------------------------------
+
+export const SUBSCRIPTION_CATEGORIES: Set<string> = new Set([
+  "streaming",
+  "software",
+  "news",
+  "fitness",
+  "food_delivery",
+  "cloud_storage",
+  "gaming",
+  "telecom",
+  "phone_internet",
+  "utilities",
+  "education",
+  "insurance",
+]);
+
+export function isSubscriptionCategory(category: string): boolean {
+  return SUBSCRIPTION_CATEGORIES.has(category);
+}
+
+// ---------------------------------------------------------------------------
 // Burn rate (the emotional anchor)
 // ---------------------------------------------------------------------------
 
 export type BurnRate = {
+  // Hero number on the dashboard. Sum of monthly equivalents over
+  // subs whose category is in SUBSCRIPTION_CATEGORIES.
   monthly_cents: number;
   yearly_cents: number;
   active_subscription_count: number;
-  // Yearly spend as actually observed in the ledger over the trailing
-  // 12 months (cap at oldest charge). Differs from yearly_cents
-  // (= monthly_cents * 12, the cadence-based projection) when the
-  // user has annual subs or partial-year history.
   ledger_yearly_cents: number;
+
+  // Everything else the engine detected and confirmed but that isn't
+  // a consumer subscription — rent, supplies, settlements, transfers
+  // that survived Gate A. The dashboard surfaces this separately so
+  // the user can audit it without it bloating the headline.
+  other_recurring_monthly_cents: number;
+  other_recurring_yearly_cents: number;
+  other_recurring_count: number;
+  other_recurring_ledger_yearly_cents: number;
+
+  // Combined view, for completeness — same as the old (pre-split) burn.
+  total_monthly_cents: number;
+  total_yearly_cents: number;
+  total_active_count: number;
 };
 
 export function computeBurnRate(
@@ -105,28 +185,49 @@ export function computeBurnRate(
   const active = subs.filter(
     (s) => s.status === "active" && s.classification === "confirmed"
   );
-  const monthlyCents = active.reduce(
+  const sub = active.filter((s) => isSubscriptionCategory(s.category));
+  const other = active.filter((s) => !isSubscriptionCategory(s.category));
+
+  const subMonthly = sub.reduce(
     (acc, s) => acc + monthlyEqCents(s.amount_cents, s.frequency),
     0
   );
-  const yearlyCents = monthlyCents * 12;
+  const otherMonthly = other.reduce(
+    (acc, s) => acc + monthlyEqCents(s.amount_cents, s.frequency),
+    0
+  );
 
   const twelveMoAgo = new Date(asOf);
   twelveMoAgo.setMonth(twelveMoAgo.getMonth() - 12);
   const twelveMoAgoIso = twelveMoAgo.toISOString().slice(0, 10);
 
-  const ledgerYearly = charges
-    .filter(
-      (c) =>
-        c.detector_status === "accepted" && c.posted_date >= twelveMoAgoIso
-    )
-    .reduce((acc, c) => acc + c.amount_cents, 0);
+  const subIds = new Set(sub.map((s) => s.id));
+  const otherIds = new Set(other.map((s) => s.id));
+
+  let subLedgerYearly = 0;
+  let otherLedgerYearly = 0;
+  for (const c of charges) {
+    if (c.detector_status !== "accepted") continue;
+    if (c.posted_date < twelveMoAgoIso) continue;
+    if (subIds.has(c.subscription_id)) subLedgerYearly += c.amount_cents;
+    else if (otherIds.has(c.subscription_id))
+      otherLedgerYearly += c.amount_cents;
+  }
 
   return {
-    monthly_cents: monthlyCents,
-    yearly_cents: yearlyCents,
-    active_subscription_count: active.length,
-    ledger_yearly_cents: ledgerYearly,
+    monthly_cents: subMonthly,
+    yearly_cents: subMonthly * 12,
+    active_subscription_count: sub.length,
+    ledger_yearly_cents: subLedgerYearly,
+
+    other_recurring_monthly_cents: otherMonthly,
+    other_recurring_yearly_cents: otherMonthly * 12,
+    other_recurring_count: other.length,
+    other_recurring_ledger_yearly_cents: otherLedgerYearly,
+
+    total_monthly_cents: subMonthly + otherMonthly,
+    total_yearly_cents: (subMonthly + otherMonthly) * 12,
+    total_active_count: sub.length + other.length,
   };
 }
 

@@ -194,6 +194,10 @@ export async function runScanForUser(
   const snapshotRows: SnapshotRow[] = [];
   let llmCalls = 0;
   let catalogHits = 0;
+  // Set of subscription_keys touched in this scan. Used at the end of
+  // the loop to tombstone any active subscription whose key wasn't
+  // re-detected.
+  const activeSubKeys = new Set<string>();
 
   // Process in stable order. detectRecurringStreams already sorts by
   // merchant_key but we re-pin here to make the contract explicit.
@@ -220,7 +224,58 @@ export async function runScanForUser(
       await emit(scanId, { type: "row", scan_id: scanId, row: result.scanRow });
     }
     snapshotRows.push(result.snapshotRow);
+    // Track the subscription_key we just wrote so we can tombstone
+    // anything NOT in this set below.
+    activeSubKeys.add(result.scanRow.stream_id);
   });
+
+  // ---- Orphan tombstone ----
+  // Any subscription on this user that is still status='active' but
+  // whose subscription_key isn't in the current scan's accepted set
+  // has stopped being detected. Could be: user cancelled, Plaid
+  // stopped reporting it, classifier got tighter and the descriptor
+  // now hits Gate A. Either way, the dashboard shouldn't keep
+  // showing it as live spend.
+  //
+  // Generalized rule — no merchant-specific logic. The engine treats
+  // "not in latest scan" as the same signal regardless of brand.
+  // We mark status='cancelled' (not delete) so the user's prior
+  // decisions and history stay intact, and so a future re-detect can
+  // re-activate the row deterministically via the same subscription_key.
+  if (supabaseAdmin) {
+    const { data: existing, error: existingErr } = await supabaseAdmin
+      .from("subscriptions")
+      .select("id, subscription_key")
+      .eq("user_id", userId)
+      .eq("status", "active");
+    if (!existingErr && existing) {
+      const orphanIds = existing
+        .filter(
+          (r) =>
+            r.subscription_key &&
+            !activeSubKeys.has(r.subscription_key as string)
+        )
+        .map((r) => r.id as string);
+      if (orphanIds.length > 0) {
+        const { error: tombErr } = await supabaseAdmin
+          .from("subscriptions")
+          .update({
+            status: "cancelled",
+            updated_at: asOfIso,
+          })
+          .in("id", orphanIds);
+        if (tombErr) {
+          // eslint-disable-next-line no-console
+          console.error("[scan] orphan tombstone failed", tombErr);
+        } else if (process.env.FRUGAVO_SCAN_DEBUG_USER_ID === userId) {
+          // eslint-disable-next-line no-console
+          console.log(
+            `[scan:debug] tombstoned ${orphanIds.length} orphan subscriptions (not in scan ${scanId})`
+          );
+        }
+      }
+    }
+  }
 
   await emit(scanId, {
     type: "total",

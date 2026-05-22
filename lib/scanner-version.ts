@@ -21,4 +21,4 @@
 // looking at an old snapshot understands why the result differs from
 // today's engine.
 
-export const SCANNER_VERSION = "3.3.0-insights-layer";
+export const SCANNER_VERSION = "3.4.0-burn-split-ai-inherit-tombstone";

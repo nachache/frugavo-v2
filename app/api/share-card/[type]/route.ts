@@ -57,6 +57,26 @@ function renderCard(args: {
   const { headline, bigNumber, subtext, accent } = args;
   const W = 1200;
   const H = 1200;
+  // Auto-shrink the big number when it gets long enough to overflow the
+  // 1080px usable canvas width. Empirically calibrated against the
+  // system-ui font glyphs at weight 800.
+  const len = bigNumber.length;
+  let bigFontSize = 220;
+  let bigLetterSpacing = -6;
+  if (len >= 12) {
+    bigFontSize = 130;
+    bigLetterSpacing = -3;
+  } else if (len >= 10) {
+    bigFontSize = 160;
+    bigLetterSpacing = -4;
+  } else if (len >= 8) {
+    bigFontSize = 190;
+    bigLetterSpacing = -5;
+  }
+  // Center the big number's baseline vertically in the middle 3rd of
+  // the card regardless of size so the layout doesn't drift when the
+  // font shrinks.
+  const bigBaselineY = 650;
   return `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}">
   <defs>
@@ -87,14 +107,14 @@ function renderCard(args: {
   </text>
 
   <!-- big number -->
-  <text x="80" y="650" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif"
-        font-size="220" font-weight="800" fill="#fafafa" letter-spacing="-6">
+  <text x="80" y="${bigBaselineY}" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif"
+        font-size="${bigFontSize}" font-weight="800" fill="#fafafa" letter-spacing="${bigLetterSpacing}">
     ${escapeXml(bigNumber)}
   </text>
 
   <!-- subtext -->
   <text x="80" y="760" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif"
-        font-size="36" font-weight="500" fill="#d4d4d4" letter-spacing="-0.5">
+        font-size="36" font-weight="500" fill="#e5e5e5" letter-spacing="-0.5">
     ${escapeXml(subtext)}
   </text>
 

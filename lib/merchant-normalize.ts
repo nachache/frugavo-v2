@@ -88,6 +88,7 @@ type AliasHit = {
   display: string;
   category: string; // billers report "other" — the SCAN layer fills in the wrapped product's category
   domains: string[];
+  ai?: boolean; // mirrors merchants[].ai from catalog
 };
 const ALIAS_INDEX: Map<string, AliasHit> = (() => {
   const m = new Map<string, AliasHit>();
@@ -115,10 +116,27 @@ const ALIAS_INDEX: Map<string, AliasHit> = (() => {
         display: merch.display,
         category: merch.category,
         domains: merch.domains,
+        ai: (merch as { ai?: boolean }).ai === true,
       });
     }
   }
   return m;
+})();
+
+// Subset index of AI-tagged merchants only. Used by the biller-
+// passthrough inheritance check: when a biller alias matches (e.g.
+// Paddle, Stripe), we also scan the rest of the descriptor for any
+// AI merchant alias and prefer the AI hit so the engine groups the
+// charge under the real product (n8n, Anthropic, OpenAI, etc.) and
+// the insights layer can count it toward the AI bucket.
+const AI_ALIASES: string[] = (() => {
+  const out: string[] = [];
+  for (const [alias, hit] of ALIAS_INDEX) {
+    if (hit.ai === true && alias.length >= 3) out.push(alias);
+  }
+  // Sort descending by length so longer aliases win in substring scan
+  // ("openai chatgpt" beats "openai" beats "ai").
+  return out.sort((a, b) => b.length - a.length);
 })();
 
 const DOMAIN_INDEX: Map<string, AliasHit> = (() => {
@@ -203,7 +221,26 @@ function findBankFeeIndicator(originalLower: string): string | null {
 function lookupByAliases(cleaned: string): {
   hit: AliasHit | null;
   matchedAlias: string | null;
+  // True when we promoted an inner AI merchant out of a wrapping
+  // biller (Paddle/Stripe/Square). Caller must force biller_passthrough
+  // on the resulting normalization so amount-bucketing still groups
+  // distinct products under the biller umbrella correctly.
+  biller_passthrough_override?: boolean;
 } {
+  const cleanedLower = cleaned.toLowerCase();
+
+  // Helper: scan the cleaned descriptor for an AI catalog alias. Used
+  // both for biller-passthrough inheritance and as a final defense
+  // against billers swallowing the real merchant identity.
+  const findAiInside = (): { hit: AliasHit; alias: string } | null => {
+    for (const alias of AI_ALIASES) {
+      if (!cleanedLower.includes(alias)) continue;
+      const hit = ALIAS_INDEX.get(alias);
+      if (hit) return { hit, alias };
+    }
+    return null;
+  };
+
   // Pass 1: token-prefix match, where "tokens" are split on whitespace
   // AND on bank-descriptor separators (* / -). This catches the very
   // common case where a bank squishes brand and product together —
@@ -213,7 +250,24 @@ function lookupByAliases(cleaned: string): {
   for (let len = tokens.length; len >= 1; len--) {
     const candidate = tokens.slice(0, len).join(" ").toLowerCase();
     const hit = ALIAS_INDEX.get(candidate);
-    if (hit) return { hit, matchedAlias: candidate };
+    if (hit) {
+      // Biller-passthrough AI inheritance: if the primary hit is a
+      // biller (Paddle, Stripe, Square, Apple, Google Play, PayPal),
+      // check whether the rest of the descriptor names an AI merchant.
+      // If yes, prefer the AI merchant — same charge, but grouped and
+      // categorized under the actual product the user is paying for.
+      if (hit.kind === "biller") {
+        const inner = findAiInside();
+        if (inner && inner.hit.key !== hit.key) {
+          return {
+            hit: inner.hit,
+            matchedAlias: inner.alias,
+            biller_passthrough_override: true,
+          };
+        }
+      }
+      return { hit, matchedAlias: candidate };
+    }
   }
   // Also try right-anchored token suffixes — "spotify usa inc" should
   // hit "spotify usa" even though "inc" is the trailing token.
@@ -222,7 +276,19 @@ function lookupByAliases(cleaned: string): {
       if (start === 0 && end === tokens.length) continue; // already tried
       const candidate = tokens.slice(start, end).join(" ").toLowerCase();
       const hit = ALIAS_INDEX.get(candidate);
-      if (hit) return { hit, matchedAlias: candidate };
+      if (hit) {
+        if (hit.kind === "biller") {
+          const inner = findAiInside();
+          if (inner && inner.hit.key !== hit.key) {
+            return {
+              hit: inner.hit,
+              matchedAlias: inner.alias,
+              biller_passthrough_override: true,
+            };
+          }
+        }
+        return { hit, matchedAlias: candidate };
+      }
     }
   }
 
@@ -234,16 +300,27 @@ function lookupByAliases(cleaned: string): {
   // This catches glued-together descriptors that survive the
   // multi-separator tokenizer above ("OPENAI*CHATGPT.AI" → "openai"
   // substring matches the openai alias).
-  const lower = cleaned.toLowerCase();
   let best: { hit: AliasHit; alias: string } | null = null;
   for (const [alias, hit] of ALIAS_INDEX) {
     if (alias.length < 4) continue; // skip short generic tokens
-    if (!lower.includes(alias)) continue;
+    if (!cleanedLower.includes(alias)) continue;
     if (!best || alias.length > best.alias.length) {
       best = { hit, alias };
     }
   }
-  if (best) return { hit: best.hit, matchedAlias: best.alias };
+  if (best) {
+    if (best.hit.kind === "biller") {
+      const inner = findAiInside();
+      if (inner && inner.hit.key !== best.hit.key) {
+        return {
+          hit: inner.hit,
+          matchedAlias: inner.alias,
+          biller_passthrough_override: true,
+        };
+      }
+    }
+    return { hit: best.hit, matchedAlias: best.alias };
+  }
 
   return { hit: null, matchedAlias: null };
 }
@@ -301,16 +378,28 @@ export function normalizeDescriptor(rawDescriptor: string): NormalizedMerchant {
     };
   }
 
-  const { hit: aliasHit, matchedAlias } = lookupByAliases(afterTrailing);
+  const {
+    hit: aliasHit,
+    matchedAlias,
+    biller_passthrough_override,
+  } = lookupByAliases(afterTrailing);
   const { hit: domainHit, matchedDomain } = lookupByDomain(afterTrailing);
   const hit = aliasHit ?? domainHit;
 
   if (hit) {
+    // biller_passthrough is true when:
+    //   - the catalog match is itself a biller (Apple, Paddle, etc.), OR
+    //   - we promoted an inner AI merchant up out of a biller wrapper,
+    //     in which case the original wrapper still affects how distinct
+    //     products posted under the same biller need to be bucketed
+    //     by amount.
+    const passthrough =
+      biller_passthrough_override === true || hit.kind === "biller";
     return {
       merchant_name: hit.display,
       category: hit.category,
       biller: hit.kind === "biller" ? hit.key : null,
-      biller_passthrough: hit.kind === "biller",
+      biller_passthrough: passthrough,
       domain: matchedDomain ?? hit.domains[0] ?? null,
       catalog_key: hit.key,
       signals: {
