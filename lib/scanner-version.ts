@@ -21,4 +21,4 @@
 // looking at an old snapshot understands why the result differs from
 // today's engine.
 
-export const SCANNER_VERSION = "3.2.0-phase4-subscription-charges";
+export const SCANNER_VERSION = "3.3.0-insights-layer";
