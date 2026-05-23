@@ -144,11 +144,19 @@ export async function POST(req: NextRequest) {
 // just received. Some events nest it (invoice → customer), some
 // have it at top level (subscription.customer). Returns null for
 // event types that don't reference a customer at all.
+//
+// We deliberately avoid casting to a structural type — Stripe's
+// `event.data.object` is a union that includes shapes like
+// ReceivedDebit which lack an index signature, so a blanket cast
+// to Record<string, unknown> won't compile. Property-existence
+// checks via `in` give us the same runtime behavior with sound
+// types.
 function extractStripeCustomerId(event: Stripe.Event): string | null {
-  const obj = event.data.object as Record<string, unknown>;
-  if (!obj) return null;
+  const obj = event.data.object;
+  if (!obj || typeof obj !== "object") return null;
+  if (!("customer" in obj)) return null;
 
-  const direct = obj.customer;
+  const direct = (obj as { customer: unknown }).customer;
   if (typeof direct === "string") return direct;
   if (
     direct &&
