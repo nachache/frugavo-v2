@@ -9,20 +9,20 @@ export const nav = {
     { label: "FAQ", href: "/#faq" },
   ],
   signIn: { label: "Sign in", href: "/sign-in" },
-  cta: { label: "Get early access", href: "/#cta" },
+  cta: { label: "Start Scan", href: "/sign-up" },
 };
 
 export const hero = {
-  eyebrow: "Pre-launch preview · Early access · Sample data shown",
+  eyebrow: "Sample data shown",
   headline: "Your subscription watchdog.",
   stat: "You think you pay $86 in subscriptions. It's really $219.",
   sourceCitation: "Source: C+R Research, 2026",
   subhead:
     "89% of people guess too low. We find the ones you forgot you're paying for.",
-  primaryCta: { label: "Show me my real number", href: "#cta" },
+  primaryCta: { label: "Start Scan", href: "/sign-up" },
   secondaryCta: { label: "See how it works", href: "#demo" },
   trust:
-    "Read-only access via Plaid · We don’t store bank credentials · We don’t sell data",
+    "Read-only access via Plaid · We don’t store bank credentials · Works with 11,000+ banks",
 };
 
 export type DemoSub = {
@@ -274,7 +274,7 @@ export const pricing = {
         "Unlimited bank and card accounts",
         "Cancel Frugavo anytime",
       ],
-      cta: "Join the waitlist",
+      cta: "Start Scan",
     },
   ],
 };
@@ -344,16 +344,9 @@ export const faqs = [
 ];
 
 export const finalCta = {
-  headline: "Stop paying for subscriptions you forgot about.",
+  heading: "Stop paying for subscriptions you forgot about.",
   subhead:
-    "Join the early-access waitlist. We’ll email you when your invite is ready.",
-  button: "Join the waitlist",
-  // We previously displayed a decrementing "spots remaining" counter. It was
-  // cosmetic (localStorage-driven, not server-backed) which counts as
-  // manufactured scarcity under Meta Ads policy. Removed pending real
-  // server-tracked early-access caps.
-  privacyNote:
-    "We’ll only email you about your Frugavo invite. Unsubscribe anytime.",
+    "Connect your bank, see every recurring charge, and cancel the ones you don't want. Takes about 30 seconds.",
 };
 
 export const footer = {

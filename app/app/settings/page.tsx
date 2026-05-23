@@ -7,6 +7,7 @@ import {
   DisconnectBankButton,
 } from "@/components/app/danger-zone";
 import { SoundToggle } from "@/components/app/sound-toggle";
+import { BillingPanel } from "@/components/app/settings-billing-panel";
 
 // /app/settings — minimal account + connection management.
 // Real disconnect, billing, and data-export controls land in week 5.
@@ -89,10 +90,7 @@ export default async function SettingsPage() {
       </Section>
 
       <Section title="Billing">
-        <p className="text-[14px] text-ink-body">
-          Frugavo&apos;s $5/month subscription is currently free during the
-          early-access beta. Billing ships when production launches.
-        </p>
+        <BillingPanel />
       </Section>
 
       <Section title="Data & privacy">

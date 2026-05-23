@@ -135,8 +135,11 @@ export function Hero() {
           </motion.ul>
         </div>
 
-        {/* RIGHT — animated demo card */}
-        <div className="relative">
+        {/* RIGHT — animated demo card. Hidden on mobile to cut
+            ~600px of vertical bloat; the headline + CTA do the
+            work above the fold and the inbox-demo section
+            below provides the visual proof. */}
+        <div className="relative hidden md:block">
           <HeroDemoCard />
         </div>
       </div>

@@ -48,8 +48,11 @@ export function HowItWorks() {
                     </p>
                   </div>
 
-                  {/* Illustration occupies its own panel below the text. */}
-                  <div className="mt-7 -mx-7 -mb-7 h-28 bg-canvas/60 border-t border-hairline/60 flex items-center justify-center overflow-hidden">
+                  {/* Illustration occupies its own panel below the text.
+                      Hidden on mobile — the text alone tells the story
+                      and the illustration added ~120px per step without
+                      improving comprehension on small screens. */}
+                  <div className="hidden md:flex mt-7 -mx-7 -mb-7 h-28 bg-canvas/60 border-t border-hairline/60 items-center justify-center overflow-hidden">
                     <StepArt index={step.n} />
                   </div>
                 </article>

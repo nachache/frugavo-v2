@@ -18,9 +18,10 @@ const HowItWorks = dynamic(() =>
 const InboxDemo = dynamic(() =>
   import("@/components/sections/inbox-demo").then((m) => m.InboxDemo)
 );
-const Providers = dynamic(() =>
-  import("@/components/sections/providers").then((m) => m.Providers)
-);
+// Providers section removed — the logo wall added ~1.8 viewport
+// heights of bloat on mobile without driving conversion. Coverage
+// breadth now lives as a single line of text inside the hero
+// ("Works with 11,000+ banks via Plaid.").
 const Calculator = dynamic(() =>
   import("@/components/sections/calculator").then((m) => m.Calculator)
 );
@@ -53,7 +54,6 @@ export default function Page() {
         <SocialProof />
         <HowItWorks />
         <InboxDemo />
-        <Providers />
         <Calculator />
         <Ticker />
         <Pricing />

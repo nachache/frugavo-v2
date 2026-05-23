@@ -67,7 +67,7 @@ export function Pricing() {
               </ul>
 
               <Button asChild size="lg" className="mt-8 w-full">
-                <a href="#cta">{plan.cta}</a>
+                <a href="/sign-up">{plan.cta}</a>
               </Button>
 
               <p className="mt-4 text-center text-[12px] text-ink-muted">

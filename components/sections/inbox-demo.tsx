@@ -109,12 +109,11 @@ export function InboxDemo() {
           <p className="mt-4 text-[18px] text-ink-body">
             A preview of the Frugavo dashboard once your bank is connected.
             Every recurring charge in one list, with a one-tap path to the
-            provider’s real cancel page. The data and brands shown are samples
-            — we’re launching soon.{" "}
-            <a href="#cta" className="text-ink underline underline-offset-4 hover:text-brand transition">
-              Join the waitlist
+            provider’s real cancel page. The data and brands shown are samples.{" "}
+            <a href="/sign-up" className="text-ink underline underline-offset-4 hover:text-brand transition">
+              Start Scan
             </a>{" "}
-            to be first.
+            to see yours.
           </p>
         </div>
 
