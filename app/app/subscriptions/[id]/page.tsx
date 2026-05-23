@@ -3,6 +3,7 @@ import { currentUser } from "@clerk/nextjs/server";
 import Link from "next/link";
 import { supabaseAdmin } from "@/lib/supabase";
 import { SubscriptionDetailView } from "@/components/app/subscription-detail-view";
+import { userHasAccess } from "@/lib/billing/gates";
 
 // /app/subscriptions/[id]
 //
@@ -228,7 +229,7 @@ export default async function SubscriptionDetailPage({
               }
             : null,
         }}
-        priceChanges={priceChanges}
+        priceChanges={(await userHasAccess(user.id)) ? priceChanges : []}
         charges={charges}
       />
     </section>

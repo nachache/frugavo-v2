@@ -14,6 +14,7 @@ import {
 } from "@/lib/merchants-store";
 import { getOverridesForUser } from "@/lib/user-overrides";
 import { pickModelForUser } from "@/lib/model-store";
+import { assertEntitled } from "@/lib/billing/gates";
 
 // GET /api/scoring/uncertain
 //
@@ -54,6 +55,12 @@ export async function GET(req: Request) {
   if (!supabaseAdmin) {
     return NextResponse.json({ error: "Not configured" }, { status: 503 });
   }
+
+  // Paid-only: the active-learning surface is part of the
+  // continuous-monitoring product. Free users can still see the
+  // basic dashboard, just not the "help us learn" carousel.
+  const gate = await assertEntitled({ clerkUserId: user.id });
+  if (gate) return gate;
 
   const url = new URL(req.url);
   const limit = Math.min(

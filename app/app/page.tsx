@@ -167,9 +167,19 @@ export default async function AppHome() {
             shockInsights={data.shock_insights}
           />
 
-          <MonitoringAlertsCard />
-          <WhatChangedCard />
-          <UncertainPromptCards />
+          {/*
+            Paid-only cards. We render the monitoring/changes/learn
+            surfaces only for entitled users. Free users still see
+            Overview + ActionCenter — the scan IS the value demo,
+            and the activate card above the hero is the upsell.
+          */}
+          {!showActivateCard && (
+            <>
+              <MonitoringAlertsCard />
+              <WhatChangedCard />
+              <UncertainPromptCards />
+            </>
+          )}
 
           <ActionCenter
             worth_a_look={data.actions.worth_a_look}
