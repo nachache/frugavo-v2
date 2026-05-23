@@ -35,7 +35,9 @@ type StoredBillingEvent = {
   event_id: string;
   event_type: string;
   payload: unknown;
-  stripe_created_at: string;
+  // Schema stores Stripe's event.created timestamp into received_at
+  // (set by the webhook handler from event.created). The projector
+  // uses this to order events chronologically.
   received_at: string;
 };
 
@@ -88,9 +90,9 @@ export async function projectUserState(args: {
   // Read recent events for this stripe customer, ordered oldest → newest.
   const { data: rows, error: readErr } = await supabaseAdmin
     .from("billing_events")
-    .select("id, event_id, event_type, payload, stripe_created_at, received_at")
+    .select("id, event_id, event_type, payload, received_at")
     .eq("stripe_customer_id", args.stripeCustomerId)
-    .order("stripe_created_at", { ascending: true })
+    .order("received_at", { ascending: true })
     .limit(PROJECTION_WINDOW);
 
   if (readErr) {
@@ -101,7 +103,9 @@ export async function projectUserState(args: {
       event_id: r.event_id,
       event_type: r.event_type,
       payload: r.payload,
-      stripe_created_at: r.stripe_created_at,
+      // received_at holds Stripe's event.created timestamp, so we
+      // use it as the stripe_created_at for the projector.
+      stripe_created_at: r.received_at,
     })
   );
 
