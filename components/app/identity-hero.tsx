@@ -19,6 +19,10 @@ type Props = {
   // unfurl the right personalized OG preview. May be null on the
   // very first dashboard render before the slug is provisioned.
   publicSlug?: string | null;
+  // First name from Clerk for warmer mobile framing ("Hey Nabil —
+  // you're the Wellness Devotee."). Falls back to a generic
+  // greeting when null.
+  firstName?: string | null;
 };
 
 function fmt(c: number): string {
@@ -29,7 +33,12 @@ export function IdentityHero({
   monthlySubCents,
   personality,
   publicSlug,
+  firstName,
 }: Props) {
+  // Warm, named greeting on mobile and desktop. Friendlier than the
+  // old corporate "Your subscription personality" eyebrow.
+  const greeting = firstName ? `Hey ${firstName} —` : "Here's your card —";
+
   return (
     <div className="rounded-2xl border border-hairline bg-surface p-4 md:p-7 animate-fadeUp overflow-hidden">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-7 items-center">
@@ -54,20 +63,22 @@ export function IdentityHero({
         {/* Personality + share controls */}
         <div className="flex flex-col gap-5">
           <div>
-            <div className="text-[11px] md:text-[12px] font-medium uppercase tracking-[0.12em] text-ink-muted">
-              Your subscription personality
+            <div className="text-[12px] md:text-[12.5px] font-medium text-ink-muted">
+              {greeting}
             </div>
-            <div className="mt-2 font-display text-[28px] md:text-[36px] font-bold tracking-[-0.02em] text-ink leading-tight">
-              {personality.label}
+            <div className="mt-1 font-display text-[28px] sm:text-[32px] md:text-[36px] font-bold tracking-[-0.02em] text-ink leading-[1.08]">
+              you&apos;re the
+              <br />
+              <span className="text-brand">{personality.label}</span>.
             </div>
-            <div className="mt-2 text-[14px] md:text-[15px] text-ink-body leading-relaxed">
+            <div className="mt-2.5 text-[14px] md:text-[15px] text-ink-body leading-relaxed">
               {personality.sub}
             </div>
           </div>
 
           <div>
             <div className="text-[11px] md:text-[12px] font-medium uppercase tracking-[0.12em] text-ink-muted mb-2">
-              Share your numbers
+              Share your card
             </div>
             <ShareButtons
               shareType="identity"

@@ -2,6 +2,8 @@ import { redirect } from "next/navigation";
 import { currentUser } from "@clerk/nextjs/server";
 import Link from "next/link";
 import { buildProtectionSummary } from "@/lib/protection/summary";
+import { getEntitlement } from "@/lib/billing/entitlements";
+import { ProtectionUpsellPreview } from "@/components/app/protection-upsell-preview";
 
 // /app/protection — the retention surface.
 //
@@ -37,6 +39,20 @@ const KIND_DOT: Record<string, string> = {
 export default async function ProtectionPage() {
   const user = await currentUser();
   if (!user) redirect("/sign-in");
+
+  // Entitlement-aware: free users see the upsell preview (blurred
+  // sample data + Activate CTA), paid users see their real summary.
+  // The Protection tab in the bottom nav lands here for both.
+  const entitlement = await getEntitlement(user.id);
+  const isEntitled =
+    entitlement.entitlement_state === "trialing" ||
+    entitlement.entitlement_state === "active" ||
+    entitlement.entitlement_state === "grace_period" ||
+    entitlement.entitlement_state === "cancelled_active";
+
+  if (!isEntitled) {
+    return <ProtectionUpsellPreview userId={user.id} />;
+  }
 
   const s = await buildProtectionSummary(user.id);
 

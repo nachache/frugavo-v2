@@ -189,6 +189,7 @@ export default async function AppHome() {
             monthlySubCents={data.monthly.total_cents}
             personality={data.personality}
             publicSlug={publicSlug}
+            firstName={user.firstName ?? null}
           />
 
           <OverviewCard
