@@ -18,6 +18,8 @@ import type {
 } from "@/lib/billing/projector";
 import { supabaseAdmin } from "@/lib/supabase";
 import { savePreferences } from "@/lib/notifications/preferences";
+import { sendBillingEmail } from "@/lib/billing/emails";
+import { clerkClient } from "@clerk/nextjs/server";
 
 export type SideEffectContext = {
   clerkUserId: string;
@@ -56,19 +58,32 @@ export async function onProjectionLanded(
     }
   }
 
-  // Cancellation: user just lost access (or scheduled to). PR 7
-  // will send the "we'll miss you" / "your protection paused" emails.
+  // Access lost: send the right goodbye/pause email depending on
+  // which terminal state we landed in.
   if (
     transitioning &&
     !isAccessGranting(ctx.nextState) &&
     isAccessGranting(ctx.prevState)
   ) {
-    // eslint-disable-next-line no-console
-    console.info(
-      "[billing/side-effects] access lost TODO (PR 7)",
-      ctx.clerkUserId,
-      ctx.nextState
-    );
+    await onAccessLost(ctx).catch((e) => {
+      // eslint-disable-next-line no-console
+      console.error(
+        "[billing/side-effects] onAccessLost failed (non-fatal)",
+        ctx.clerkUserId,
+        e
+      );
+    });
+  }
+
+  // active → grace_period: payment failed for the first time. Send
+  // the heads-up email immediately. The 72h/T10/T18 reminders fire
+  // from the dunning cron once enough time has elapsed.
+  if (
+    transitioning &&
+    ctx.prevState === "active" &&
+    ctx.nextState === "grace_period"
+  ) {
+    await sendBillingEmailSafe(ctx, "payment_declined", ctx.triggerEventId);
   }
 }
 
@@ -95,17 +110,12 @@ async function onActivation(ctx: SideEffectContext): Promise<void> {
     urgent_immediate_enabled: true,
   });
 
-  // 2. PR 7 will trigger the "You're protected" welcome email here.
-  //    Logging it now so the audit trail shows where it'll land.
-  // eslint-disable-next-line no-console
-  console.info(
-    "[billing/side-effects] activation complete",
-    {
-      userId: ctx.clerkUserId,
-      state: ctx.nextState,
-      triggerEventId: ctx.triggerEventId,
-      welcomeEmailPending: "PR 7",
-    }
+  // 2. Welcome email — "You're protected." Dedup'd by subscription
+  //    id so reprocessing the same webhook never double-sends.
+  await sendBillingEmailSafe(
+    ctx,
+    "trial_started",
+    ctx.subscription?.stripe_subscription_id ?? ctx.triggerEventId
   );
 
   // 3. Queue a fresh protection scan if the user already connected
@@ -129,5 +139,63 @@ async function onActivation(ctx: SideEffectContext): Promise<void> {
     // best triggered from a user-facing surface where progress can
     // be observed. The dashboard already kicks a scan on first
     // visit; that's enough for activation.
+  }
+}
+
+// Send the appropriate access-lost email based on terminal state.
+async function onAccessLost(ctx: SideEffectContext): Promise<void> {
+  const subDedup =
+    ctx.subscription?.stripe_subscription_id ?? ctx.triggerEventId;
+  if (ctx.nextState === "past_due") {
+    // 21-day grace exhausted (or Stripe gave up retrying).
+    await sendBillingEmailSafe(ctx, "protection_paused", `${subDedup}:paused`);
+    return;
+  }
+  if (ctx.nextState === "expired") {
+    // Cancellation period ended, or subscription.deleted.
+    await sendBillingEmailSafe(ctx, "protection_ended", `${subDedup}:ended`);
+    return;
+  }
+  // Any other "lost access" landing — log and move on. We don't
+  // send an email rather than risk sending the wrong one.
+  // eslint-disable-next-line no-console
+  console.info(
+    "[billing/side-effects] access lost to unmapped state",
+    ctx.nextState
+  );
+}
+
+// Small wrapper that resolves the user's email from Clerk then
+// dispatches via the idempotent sender. Errors are caught and
+// logged — billing emails must never crash the projector.
+async function sendBillingEmailSafe(
+  ctx: SideEffectContext,
+  emailType:
+    | "trial_started"
+    | "payment_declined"
+    | "protection_paused"
+    | "protection_ended",
+  dedupKey: string
+): Promise<void> {
+  try {
+    const user = await clerkClient().users.getUser(ctx.clerkUserId);
+    const to =
+      user.primaryEmailAddress?.emailAddress ??
+      user.emailAddresses[0]?.emailAddress ??
+      null;
+    if (!to) return;
+    await sendBillingEmail({
+      clerkUserId: ctx.clerkUserId,
+      emailType,
+      dedupKey,
+      to,
+    });
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.error(
+      "[billing/side-effects] sendBillingEmailSafe failed (non-fatal)",
+      emailType,
+      e
+    );
   }
 }

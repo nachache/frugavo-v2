@@ -12,6 +12,7 @@ import { WhatChangedCard } from "@/components/app/what-changed-card";
 import { UncertainPromptCards } from "@/components/app/uncertain-prompt-cards";
 import { MonitoringAlertsCard } from "@/components/app/monitoring-alerts-card";
 import { ActivateProtectionCard } from "@/components/app/activate-protection-card";
+import { BillingStatusBanner } from "@/components/app/billing-status-banner";
 import { getEntitlement } from "@/lib/billing/entitlements";
 import { buildDashboardData } from "@/lib/selectors/dashboard";
 
@@ -108,8 +109,8 @@ export default async function AppHome() {
   const latestScanFinishedAt = data?.meta.last_scanned_at ?? null;
 
   // Entitlement check — drives the Activate Protection card above
-  // IdentityHero when the user isn't currently paying. trialing /
-  // active / grace_period / cancelled_active → no card.
+  // IdentityHero when the user isn't currently paying, plus the
+  // dunning banner for grace_period / cancelled_active / past_due.
   const entitlement = await getEntitlement(user.id);
   const showActivateCard =
     entitlement.entitlement_state === "none" ||
@@ -121,6 +122,18 @@ export default async function AppHome() {
       : entitlement.entitlement_state === "past_due"
         ? "past_due"
         : "none";
+  const bannerVariant:
+    | "grace_period"
+    | "cancelled_active"
+    | "past_due"
+    | null =
+    entitlement.entitlement_state === "grace_period"
+      ? "grace_period"
+      : entitlement.entitlement_state === "cancelled_active"
+        ? "cancelled_active"
+        : entitlement.entitlement_state === "past_due"
+          ? "past_due"
+          : null;
 
   // Top subscription gets an explicit domain so its logo can render
   // in the merged Overview "Biggest sub" pinned row.
@@ -147,6 +160,7 @@ export default async function AppHome() {
       <TimezoneCapture />
       <DashboardHeader lastScannedAt={latestScanFinishedAt} />
 
+      {bannerVariant && <BillingStatusBanner variant={bannerVariant} />}
       {showActivateCard && <ActivateProtectionCard variant={activateVariant} />}
 
       {data && (
