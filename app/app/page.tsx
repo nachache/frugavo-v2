@@ -17,6 +17,7 @@ import { ProtectionStatusPill } from "@/components/app/protection-status-pill";
 import { ProtectionCoverageCard } from "@/components/app/protection-coverage-card";
 import { ProtectionLockedCard } from "@/components/app/protection-locked-card";
 import { getOrCreatePublicSlug } from "@/lib/users/public-slug";
+import { maybeNotifySignup } from "@/lib/users/signup-notify";
 import { getEntitlement } from "@/lib/billing/entitlements";
 import { buildDashboardData } from "@/lib/selectors/dashboard";
 
@@ -56,6 +57,16 @@ export default async function AppHome() {
     },
     { onConflict: "id" }
   );
+
+  // One-time ops notification to hello@frugavo.com. Idempotent —
+  // sets app_users.signup_notified_at on first run so reloads don't
+  // double-send. Best-effort: any failure logs and continues.
+  void maybeNotifySignup({
+    clerkUserId: user.id,
+    email: user.emailAddresses[0]?.emailAddress ?? null,
+    firstName: user.firstName ?? null,
+    lastName: user.lastName ?? null,
+  });
 
   // Step 1 — does the user have any connected bank?
   const { data: items } = await supabaseAdmin
