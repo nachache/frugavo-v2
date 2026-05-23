@@ -197,36 +197,66 @@ export default async function AppHome() {
 
       {data && (
         <>
-          <IdentityHero
-            monthlySubCents={data.monthly.total_cents}
-            personality={data.personality}
-            publicSlug={publicSlug}
-            firstName={user.firstName ?? null}
-          />
-
           {/*
-            Paid users see the protection block elevated to position
-            #2 — Coverage card right after the identity hero, then
-            the live monitoring/changes/learn cards (which auto-hide
-            when empty). This makes the paid product feel central
-            instead of buried below the Overview.
+            Desktop layout: IdentityHero on the LEFT (5 cols),
+            Protection rail on the RIGHT (7 cols). Mobile stacks
+            normally — IdentityHero first, Protection block below.
+
+            For paid users the Protection rail holds Coverage +
+            monitoring/changes/learn cards. For free users it holds
+            the locked preview card.
           */}
-          {!showActivateCard && (
-            <div className="space-y-5 md:space-y-8">
-              <div className="flex items-center gap-2">
-                <span className="text-[12px] md:text-[13px] font-medium text-brand">
-                  Your protection
-                </span>
-                <span className="text-[12px] md:text-[12.5px] text-ink-muted">
-                  · features included in your Peace of Mind plan
-                </span>
-              </div>
-              <ProtectionCoverageCard userId={user.id} />
-              <MonitoringAlertsCard />
-              <WhatChangedCard />
-              <UncertainPromptCards />
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 md:gap-6 items-start">
+            <div className="lg:col-span-5">
+              <IdentityHero
+                monthlySubCents={data.monthly.total_cents}
+                personality={data.personality}
+                publicSlug={publicSlug}
+                firstName={user.firstName ?? null}
+              />
             </div>
-          )}
+
+            <div className="lg:col-span-7 space-y-5 md:space-y-6">
+              {!showActivateCard ? (
+                <>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[12px] md:text-[13px] font-medium text-brand">
+                      Your protection
+                    </span>
+                    <span className="text-[12px] md:text-[12.5px] text-ink-muted">
+                      · Peace of Mind plan
+                    </span>
+                  </div>
+                  <ProtectionCoverageCard userId={user.id} />
+                  <MonitoringAlertsCard />
+                  <WhatChangedCard />
+                  <UncertainPromptCards />
+                </>
+              ) : (
+                <ProtectionLockedCard
+                  title="Continuous monitoring"
+                  body="Daily checks across every connected account — new charges, price hikes, trial conversions, and unusual recurring activity."
+                  sampleRows={[
+                    {
+                      dot: "#10b981",
+                      title: "New subscription detected",
+                      sub: "Notion AI started billing $10/mo on May 12.",
+                    },
+                    {
+                      dot: "#f59e0b",
+                      title: "Price increase caught",
+                      sub: "Netflix went from $15.49 → $17.99/mo.",
+                    },
+                    {
+                      dot: "#dc2626",
+                      title: "Trial converting in 2 days",
+                      sub: "Apple Music will charge $10.99/mo on May 28.",
+                    },
+                  ]}
+                />
+              )}
+            </div>
+          </div>
 
           <OverviewCard
             monthly={data.monthly}
@@ -239,36 +269,9 @@ export default async function AppHome() {
             shockInsights={data.shock_insights}
           />
 
-          {/*
-            Free users see one locked-feature preview as the
-            "there's more here" anchor. Building one first per
-            product direction — if the visual lands we'll roll it
-            across MonitoringAlertsCard + WhatChangedCard +
-            UncertainPromptCards too.
-          */}
-          {showActivateCard && (
-            <ProtectionLockedCard
-              title="Continuous monitoring"
-              body="Daily checks across every connected account — new charges, price hikes, trial conversions, and unusual recurring activity."
-              sampleRows={[
-                {
-                  dot: "#10b981",
-                  title: "New subscription detected",
-                  sub: "Notion AI started billing $10/mo on May 12.",
-                },
-                {
-                  dot: "#f59e0b",
-                  title: "Price increase caught",
-                  sub: "Netflix went from $15.49 → $17.99/mo.",
-                },
-                {
-                  dot: "#dc2626",
-                  title: "Trial converting in 2 days",
-                  sub: "Apple Music will charge $10.99/mo on May 28.",
-                },
-              ]}
-            />
-          )}
+          {/* Locked-feature preview is now rendered inside the
+              Protection rail above for free users — kept in one
+              place to avoid two duplicate cards on the page. */}
 
           <ActionCenter
             worth_a_look={data.actions.worth_a_look}

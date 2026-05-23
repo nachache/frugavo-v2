@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { supabaseAdmin } from "@/lib/supabase";
+import { loadPreferences } from "@/lib/notifications/preferences";
 
 // Always-visible "what your protection is watching" card. Server
 // component — pulls live counts so the user sees the actual
@@ -88,9 +89,33 @@ async function fetchCoverage(userId: string): Promise<CoverageRow[]> {
   ];
 }
 
+// Friendly summary of the user's current digest cadence — shown
+// inline on the Coverage card so the user always sees "here's how
+// many emails Frugavo plans to send you" without digging into
+// settings. Reduces churn pressure from notification overload.
+function cadenceSummary(cadence: "daily" | "weekly" | "monthly" | "off"): {
+  label: string;
+  rough: string;
+} {
+  switch (cadence) {
+    case "daily":
+      return { label: "Daily digest", rough: "~30 emails / month" };
+    case "weekly":
+      return { label: "Weekly digest", rough: "~4 emails / month" };
+    case "monthly":
+      return { label: "Monthly digest", rough: "1 email / month" };
+    case "off":
+      return { label: "Digest off", rough: "urgent alerts only" };
+  }
+}
+
 export async function ProtectionCoverageCard({ userId }: { userId: string }) {
-  const rows = await fetchCoverage(userId);
+  const [rows, prefs] = await Promise.all([
+    fetchCoverage(userId),
+    loadPreferences(userId),
+  ]);
   const total = rows.reduce((acc, r) => acc + r.count, 0);
+  const cad = cadenceSummary(prefs.digest_cadence);
 
   return (
     <div className="rounded-2xl border border-hairline bg-surface p-5 md:p-7 animate-fadeUp">
@@ -146,20 +171,51 @@ export async function ProtectionCoverageCard({ userId }: { userId: string }) {
         ))}
       </div>
 
-      <div className="mt-4 pt-4 border-t border-hairline flex flex-wrap items-center gap-3 text-[12px] md:text-[12.5px] text-ink-muted">
+      <div className="mt-4 pt-4 border-t border-hairline">
+        {/* Cadence chip — tells the user exactly how often Frugavo
+            will email them. Click to change in settings. */}
         <Link
-          href="/app/alerts"
-          className="text-brand hover:underline"
+          href="/app/settings/notifications"
+          className="inline-flex items-center gap-2 rounded-full border border-hairline bg-canvas/40 px-3 h-8 text-[12px] font-medium text-ink hover:bg-ink/[0.04] transition"
         >
-          See all alerts →
+          <svg
+            width="13"
+            height="13"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="text-brand"
+            aria-hidden="true"
+          >
+            <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
+            <path d="M10 21a2 2 0 0 0 4 0" />
+          </svg>
+          <span>
+            {cad.label}
+            <span className="text-ink-muted font-normal"> · {cad.rough}</span>
+          </span>
+          <span className="text-[10.5px] text-ink-muted font-normal">
+            Change
+          </span>
         </Link>
-        <span className="text-ink-muted">·</span>
-        <Link
-          href="/app/protection"
-          className="text-brand hover:underline"
-        >
-          See what we&apos;ve caught for you →
-        </Link>
+        <div className="mt-3 flex flex-wrap items-center gap-3 text-[12px] md:text-[12.5px] text-ink-muted">
+          <Link
+            href="/app/alerts"
+            className="text-brand hover:underline"
+          >
+            See all alerts →
+          </Link>
+          <span className="text-ink-muted">·</span>
+          <Link
+            href="/app/protection"
+            className="text-brand hover:underline"
+          >
+            See what we&apos;ve caught for you →
+          </Link>
+        </div>
       </div>
     </div>
   );
