@@ -101,7 +101,7 @@ export async function GET(
 
     <text x="380" y="0" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif"
           font-size="18" font-weight="500" fill="#737373" letter-spacing="1.5"
-          text-transform="uppercase">ACTIVE SUBS</text>
+          text-transform="uppercase">RECURRING</text>
     <text x="380" y="56" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif"
           font-size="56" font-weight="700" fill="#fafafa" letter-spacing="-2"
           font-variant-numeric="tabular-nums">${subCount}</text>

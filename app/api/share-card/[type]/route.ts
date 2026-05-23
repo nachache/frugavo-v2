@@ -248,16 +248,17 @@ function renderIdentityCard(args: {
   </text>
   <text x="80" y="${580 + burnFontSize + 80}" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif"
         font-size="26" font-weight="500" fill="#d4d4d4">
-    $${Math.round(yearly_burn_cents / 100).toLocaleString("en-US")} a year · ${sub_count} subscription${sub_count === 1 ? "" : "s"}
+    $${Math.round(yearly_burn_cents / 100).toLocaleString("en-US")} a year · ${sub_count} recurring charge${sub_count === 1 ? "" : "s"}
   </text>
 
   <!-- divider -->
   <line x1="80" y1="930" x2="${W - 80}" y2="930" stroke="#262626" stroke-width="2"/>
 
-  <!-- top subs label -->
+  <!-- top recurring label — covers both subscriptions and other
+       recurring spend so it matches the headline above -->
   <text x="80" y="950" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif"
         font-size="20" font-weight="500" fill="#737373" letter-spacing="3">
-    TOP SUBSCRIPTIONS
+    TOP RECURRING CHARGES
   </text>
   ${subRows}
 
@@ -391,13 +392,21 @@ export async function GET(
 
   // The identity card is taller (1500h vs 1200h) and renders its own
   // full layout, so handle it before the simple card paths.
+  //
+  // Use the TOTAL recurring view (subs + other recurring) so the
+  // headline number reconciles with the items listed in the "Top
+  // recurring charges" panel below. Earlier we were mixing two
+  // filters — burn.monthly_cents (subs-only) for the headline but
+  // computeTopSubscriptions for the panel (which doesn't filter by
+  // category). That produced "$79/mo · 1 subscription" alongside
+  // three $500/mo "top subscriptions" — internally inconsistent.
   if (type === "identity") {
     const svg = renderIdentityCard({
       personality_label: personality.label,
       personality_sub: personality.sub,
-      monthly_burn_cents: burn.monthly_cents,
-      yearly_burn_cents: burn.yearly_cents,
-      sub_count: burn.active_subscription_count,
+      monthly_burn_cents: burn.total_monthly_cents,
+      yearly_burn_cents: burn.total_yearly_cents,
+      sub_count: burn.total_active_count,
       ai_monthly_cents: ai.monthly_cents,
       ai_count: ai.subscription_count,
       top_subs: topSubs.map((s) => ({

@@ -62,7 +62,7 @@ export async function generateMetadata({
   }
 
   const title = `${profile.personality_label} · ${fmtUsd(profile.monthly_burn_cents)}/mo`;
-  const description = `${profile.personality_sub} ${profile.subscription_count} active subscription${profile.subscription_count === 1 ? "" : "s"}.`;
+  const description = `${profile.personality_sub} ${profile.subscription_count} recurring charge${profile.subscription_count === 1 ? "" : "s"}.`;
 
   return {
     title,
@@ -118,7 +118,7 @@ export default async function PublicProfilePage({ params }: RouteProps) {
         </div>
         <div className="rounded-2xl border border-hairline bg-surface p-5">
           <div className="text-[11px] md:text-[12px] font-medium uppercase tracking-[0.12em] text-ink-muted">
-            Active subs
+            Recurring
           </div>
           <div className="mt-2 font-display text-[34px] md:text-[44px] font-bold tabular-nums leading-none text-ink">
             {profile.subscription_count}

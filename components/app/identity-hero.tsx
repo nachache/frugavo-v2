@@ -71,7 +71,7 @@ export function IdentityHero({
             </div>
             <ShareButtons
               shareType="identity"
-              shareText={`I'm "${personality.label}" — ${fmt(monthlySubCents)}/mo on subscriptions.`}
+              shareText={`I'm "${personality.label}" — ${fmt(monthlySubCents)}/mo on recurring charges.`}
               shareSlug={publicSlug ?? null}
             />
           </div>

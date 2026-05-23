@@ -186,7 +186,7 @@ export default async function AppHome() {
       {data && (
         <>
           <IdentityHero
-            monthlySubCents={data.monthly.sub_only_cents}
+            monthlySubCents={data.monthly.total_cents}
             personality={data.personality}
             publicSlug={publicSlug}
           />

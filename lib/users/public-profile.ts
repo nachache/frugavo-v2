@@ -69,11 +69,14 @@ export async function loadPublicProfile(
     totalSubCount: burn.active_subscription_count,
   });
 
+  // Match the share-card identity SVG which uses the TOTAL recurring
+  // view (subs + other) so the headline number reconciles with what
+  // ever else we surface elsewhere on the public profile.
   return {
     slug,
     personality_label: personality.label,
     personality_sub: personality.sub,
-    monthly_burn_cents: burn.monthly_cents,
-    subscription_count: burn.active_subscription_count,
+    monthly_burn_cents: burn.total_monthly_cents,
+    subscription_count: burn.total_active_count,
   };
 }
