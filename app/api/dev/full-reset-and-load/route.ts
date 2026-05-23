@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { currentUser } from "@clerk/nextjs/server";
 import { supabaseAdmin } from "@/lib/supabase";
 import { cacheDel, redis } from "@/lib/cache";
+import { normalizeDescriptor } from "@/lib/merchant-normalize";
 
 // POST /api/dev/full-reset-and-load
 //
@@ -255,32 +256,62 @@ export async function POST(req: NextRequest) {
   const plaidItemDbId = itemRow.id as string;
 
   // Transform Plaid v2 transactions into our plaid_transactions row
-  // shape. Plaid amount is positive for debits (purchases) and
-  // negative for credits (deposits/refunds). We store cents as a
-  // signed integer following the same convention so the recurrence
-  // detector sees what it expects.
+  // shape. Mirrors the same enrichment lib/plaid-sync.ts:buildTxnRow
+  // does at production-sync time so the detector sees the same
+  // shape it sees for real users:
+  //   - amount_cents NEGATIVE for outflows (Plaid is positive-outflow,
+  //     we store negative-outflow internally)
+  //   - merchant_key set via normalizeDescriptor + biller-passthrough
+  //     amount-tier trick
+  //   - canonical_name + normalized_descriptor populated
+  //
+  // The recurrence detector filters `merchant_key is not null` and
+  // operates on negative cents — without these fields zero
+  // subscriptions are detected.
   const rows = transactions
-    .filter((t) => t && t.transaction_id && t.date && typeof t.amount === "number")
+    .filter(
+      (t) => t && t.transaction_id && t.date && typeof t.amount === "number"
+    )
     .map((t) => {
-      const amountCents = Math.round((t.amount ?? 0) * 100);
+      const desc = t.merchant_name ?? t.name ?? "";
+      const norm = normalizeDescriptor(desc);
+      const baseKey = (norm.catalog_key ?? norm.merchant_name).toLowerCase();
+      const amountDollars = Math.abs(t.amount ?? 0);
+      let merchantKey = baseKey;
+      if (norm.biller_passthrough) {
+        const tier =
+          amountDollars < 50
+            ? Math.floor(amountDollars / 5)
+            : 10 + Math.floor(amountDollars / 20);
+        merchantKey = `${baseKey}_t${tier}`;
+      }
+      const normalizedDescriptor = desc
+        .toLowerCase()
+        .trim()
+        .replace(/\s+/g, " ");
       return {
         user_id: userId,
         plaid_item_id: plaidItemDbId,
         plaid_transaction_id: t.transaction_id!,
+        plaid_stream_id: null,
         account_id: t.account_id ?? "unknown",
-        amount_cents: amountCents,
+        // Negative = outflow (matches lib/plaid-sync.ts convention).
+        amount_cents: Math.round((t.amount ?? 0) * 100 * -1),
         currency: t.iso_currency_code ?? "USD",
-        iso_currency_code: t.iso_currency_code ?? "USD",
+        iso_currency_code: t.iso_currency_code ?? null,
         unofficial_currency_code: null,
         merchant_name: t.merchant_name ?? null,
-        name: t.name ?? t.merchant_name ?? "(unknown)",
-        description: t.name ?? null,
+        name: t.name ?? null,
+        description: desc,
         pfc_primary: t.personal_finance_category?.primary ?? null,
         pfc_detailed: t.personal_finance_category?.detailed ?? null,
         authorized_date: t.authorized_date ?? null,
         posted_date: t.date!,
         pending: t.pending ?? false,
         raw: t as unknown as Record<string, unknown>,
+        normalized_descriptor: normalizedDescriptor,
+        merchant_key: merchantKey,
+        canonical_name: norm.merchant_name,
       };
     });
 
