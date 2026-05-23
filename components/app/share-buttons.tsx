@@ -127,22 +127,32 @@ export function ShareButtons({
     async (target: Target) => {
       setBusy(target);
       try {
+        // X / Facebook / LinkedIn each have a server-side share URL
+        // that unfurls our /u/<slug> OG preview without us needing
+        // to attach an image client-side. Going direct = no SVG→PNG
+        // canvas conversion (which can hang in Safari), no system
+        // share sheet (which on desktop doesn't include LinkedIn),
+        // and a guaranteed personalized preview.
+        const compose = composeUrl(target, shareText, profileUrl);
+        if (target !== "instagram" && compose) {
+          window.open(compose, "_blank", "noopener,noreferrer");
+          flash("ok", "Opened in new tab");
+          return;
+        }
+
+        // Instagram path — needs the actual image, no URL-share API.
         const png = await buildPng();
         const file = new File([png], `frugavo-${shareType}.png`, {
           type: "image/png",
         });
 
-        // Try native share sheet — user picks the target. On mobile
-        // this puts the user one tap from posting to whichever app
-        // we hint at with the icon they clicked.
+        // Try the native share sheet so phone users can post directly
+        // into Instagram from the system picker.
         const nav = navigator as Navigator & {
           canShare?: (data: ShareData) => boolean;
         };
         if (nav.canShare && nav.canShare({ files: [file] })) {
           try {
-            // Include the canonical profile URL so the receiving app
-            // unfurls a personalized OG preview rather than the
-            // page URL (which would scrape the dashboard / homepage).
             const sharePayload: ShareData = {
               files: [file],
               title: "Frugavo",
@@ -159,16 +169,10 @@ export function ShareButtons({
           }
         }
 
-        // Desktop fallback — copy image, open compose URL.
+        // Desktop fallback for Instagram — copy the image, instruct
+        // the user to paste in Instagram.
         await copyImageToClipboard(png);
-        const compose = composeUrl(target, shareText, profileUrl);
-        if (compose) {
-          window.open(compose, "_blank", "noopener,noreferrer");
-          flash("ok", "Image copied — paste in the new tab");
-        } else {
-          // Instagram: no compose URL.
-          flash("ok", "Image copied — open Instagram to paste");
-        }
+        flash("ok", "Image copied — open Instagram to paste");
       } catch (e) {
         const msg = e instanceof Error ? e.message : String(e);
         if (msg.toLowerCase().includes("abort")) return;
@@ -177,7 +181,7 @@ export function ShareButtons({
         setBusy(null);
       }
     },
-    [buildPng, flash, shareText, shareType]
+    [buildPng, flash, profileUrl, shareText, shareType]
   );
 
   const downloadImage = useCallback(async () => {
