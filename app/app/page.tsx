@@ -14,6 +14,7 @@ import { MonitoringAlertsCard } from "@/components/app/monitoring-alerts-card";
 import { ActivateProtectionCard } from "@/components/app/activate-protection-card";
 import { BillingStatusBanner } from "@/components/app/billing-status-banner";
 import { ProtectionStatusPill } from "@/components/app/protection-status-pill";
+import { ProtectionCoverageCard } from "@/components/app/protection-coverage-card";
 import { getEntitlement } from "@/lib/billing/entitlements";
 import { buildDashboardData } from "@/lib/selectors/dashboard";
 
@@ -212,6 +213,13 @@ export default async function AppHome() {
                   · features included in your Peace of Mind plan
                 </span>
               </div>
+              {/*
+                ProtectionCoverageCard always renders for paid users —
+                it's what they see when nothing's happened yet. Below
+                it, the live cards (Monitoring/WhatChanged/Uncertain)
+                appear when they have something to say.
+              */}
+              <ProtectionCoverageCard userId={user.id} />
               <MonitoringAlertsCard />
               <WhatChangedCard />
               <UncertainPromptCards />
