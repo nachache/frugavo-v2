@@ -15,6 +15,7 @@ import { ActivateProtectionCard } from "@/components/app/activate-protection-car
 import { BillingStatusBanner } from "@/components/app/billing-status-banner";
 import { ProtectionStatusPill } from "@/components/app/protection-status-pill";
 import { ProtectionCoverageCard } from "@/components/app/protection-coverage-card";
+import { ProtectionLockedCard } from "@/components/app/protection-locked-card";
 import { getOrCreatePublicSlug } from "@/lib/users/public-slug";
 import { getEntitlement } from "@/lib/billing/entitlements";
 import { buildDashboardData } from "@/lib/selectors/dashboard";
@@ -192,6 +193,30 @@ export default async function AppHome() {
             firstName={user.firstName ?? null}
           />
 
+          {/*
+            Paid users see the protection block elevated to position
+            #2 — Coverage card right after the identity hero, then
+            the live monitoring/changes/learn cards (which auto-hide
+            when empty). This makes the paid product feel central
+            instead of buried below the Overview.
+          */}
+          {!showActivateCard && (
+            <div className="space-y-5 md:space-y-8">
+              <div className="flex items-center gap-2">
+                <span className="text-[12px] md:text-[13px] font-medium text-brand">
+                  Your protection
+                </span>
+                <span className="text-[12px] md:text-[12.5px] text-ink-muted">
+                  · features included in your Peace of Mind plan
+                </span>
+              </div>
+              <ProtectionCoverageCard userId={user.id} />
+              <MonitoringAlertsCard />
+              <WhatChangedCard />
+              <UncertainPromptCards />
+            </div>
+          )}
+
           <OverviewCard
             monthly={data.monthly}
             yearly={data.yearly}
@@ -204,34 +229,34 @@ export default async function AppHome() {
           />
 
           {/*
-            Paid-only cards. We render the monitoring/changes/learn
-            surfaces only for entitled users. Free users still see
-            Overview + ActionCenter — the scan IS the value demo,
-            and the activate card above the hero is the upsell.
-            Grouped under a clear section label so paid users can
-            see exactly which features their protection unlocks.
+            Free users see one locked-feature preview as the
+            "there's more here" anchor. Building one first per
+            product direction — if the visual lands we'll roll it
+            across MonitoringAlertsCard + WhatChangedCard +
+            UncertainPromptCards too.
           */}
-          {!showActivateCard && (
-            <div className="space-y-5 md:space-y-8">
-              <div className="flex items-center gap-2">
-                <span className="text-[12px] md:text-[13px] font-medium text-brand">
-                  Your protection
-                </span>
-                <span className="text-[12px] md:text-[12.5px] text-ink-muted">
-                  · features included in your Peace of Mind plan
-                </span>
-              </div>
-              {/*
-                ProtectionCoverageCard always renders for paid users —
-                it's what they see when nothing's happened yet. Below
-                it, the live cards (Monitoring/WhatChanged/Uncertain)
-                appear when they have something to say.
-              */}
-              <ProtectionCoverageCard userId={user.id} />
-              <MonitoringAlertsCard />
-              <WhatChangedCard />
-              <UncertainPromptCards />
-            </div>
+          {showActivateCard && (
+            <ProtectionLockedCard
+              title="Continuous monitoring"
+              body="Daily checks across every connected account — new charges, price hikes, trial conversions, and unusual recurring activity."
+              sampleRows={[
+                {
+                  dot: "#10b981",
+                  title: "New subscription detected",
+                  sub: "Notion AI started billing $10/mo on May 12.",
+                },
+                {
+                  dot: "#f59e0b",
+                  title: "Price increase caught",
+                  sub: "Netflix went from $15.49 → $17.99/mo.",
+                },
+                {
+                  dot: "#dc2626",
+                  title: "Trial converting in 2 days",
+                  sub: "Apple Music will charge $10.99/mo on May 28.",
+                },
+              ]}
+            />
           )}
 
           <ActionCenter

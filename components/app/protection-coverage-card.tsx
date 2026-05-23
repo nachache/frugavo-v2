@@ -96,8 +96,13 @@ export async function ProtectionCoverageCard({ userId }: { userId: string }) {
     <div className="rounded-2xl border border-hairline bg-surface p-5 md:p-7 animate-fadeUp">
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div>
-          <div className="text-[12px] md:text-[13px] font-medium text-brand">
-            Coverage
+          <div className="flex items-center gap-2">
+            <div className="text-[12px] md:text-[13px] font-medium text-brand">
+              Coverage
+            </div>
+            <span className="inline-flex items-center rounded-full border border-brand/25 bg-brand/[0.08] px-1.5 h-[18px] text-[9.5px] font-medium uppercase tracking-[0.1em] text-brand leading-none">
+              Protection
+            </span>
           </div>
           <h2 className="mt-1 font-display text-[20px] md:text-[24px] font-bold tracking-[-0.02em] leading-tight text-ink">
             What your protection is watching
