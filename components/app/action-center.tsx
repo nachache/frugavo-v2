@@ -290,7 +290,7 @@ export function ActionCenter({
             <button
               type="button"
               onClick={() => setVisibleCount((n) => n + PAGE_SIZE)}
-              className="inline-flex h-9 items-center gap-2 rounded-full border border-hairline bg-surface hover:bg-ink/[0.04] text-ink px-4 text-[13px] font-medium transition"
+              className="inline-flex h-9 items-center gap-2 rounded-full border border-hairline bg-surface hover:bg-ink/[0.04] text-ink px-4 text-[14px] font-medium transition"
             >
               Load {Math.min(PAGE_SIZE, sorted.length - visible.length)} more
             </button>
@@ -357,7 +357,7 @@ function SortControl({
     { value: "category", label: "Category", shortLabel: "Category" },
   ];
   return (
-    <div className="inline-flex items-center gap-1 p-1 rounded-full bg-ink/[0.04] text-[12px] mb-2">
+    <div className="inline-flex items-center gap-1 p-1 rounded-full bg-ink/[0.04] text-[13px] mb-2">
       {opts.map((o) => (
         <button
           key={o.value}
@@ -410,7 +410,7 @@ function Row({
           <div className="flex items-center gap-1.5 md:gap-2 flex-wrap min-w-0">
             <span
               className={[
-                "text-[13.5px] md:text-[15px] font-medium truncate group-hover:underline decoration-ink/30 underline-offset-2",
+                "text-[14.5px] md:text-[16px] font-medium truncate group-hover:underline decoration-ink/30 underline-offset-2",
                 pruned ? "line-through text-ink-muted" : "text-ink",
               ].join(" ")}
             >
@@ -425,7 +425,7 @@ function Row({
               ))}
             </span>
           </div>
-          <div className="mt-0.5 text-[11px] md:text-[12px] text-ink-muted truncate">
+          <div className="mt-0.5 text-[12px] md:text-[13px] text-ink-muted truncate">
             <span className="hidden sm:inline">
               {item.reason ?? prettyCategory(item.category)}
             </span>

@@ -247,7 +247,7 @@ function FeedbackButton({
       onClick={onClick}
       disabled={disabled}
       className={[
-        "inline-flex items-center h-9 px-3 rounded-full text-[12.5px] md:text-[13px] font-medium transition disabled:opacity-50 disabled:cursor-not-allowed",
+        "inline-flex items-center h-9 px-3 rounded-full text-[13px] md:text-[14px] font-medium transition disabled:opacity-50 disabled:cursor-not-allowed",
         cls,
       ].join(" ")}
     >

@@ -279,7 +279,7 @@ export function SubscriptionDetailView({
                         {pc.delta_pct.toFixed(1)}%
                       </span>
                     </div>
-                    <div className="mt-0.5 text-[12px] md:text-[13px] text-ink-muted">
+                    <div className="mt-0.5 text-[13px] md:text-[14px] text-ink-muted">
                       {fmtDate(pc.date_from)} → {fmtDate(pc.date_to)}
                       {pc.cycle_from && pc.cycle_to && (
                         <> · cycle {pc.cycle_from} → {pc.cycle_to}</>

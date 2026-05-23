@@ -185,7 +185,7 @@ function AlertRow({
       />
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-1.5 md:gap-2 min-w-0">
-          <div className="text-[13px] md:text-[14.5px] font-medium text-ink truncate min-w-0">
+          <div className="text-[14px] md:text-[15px] font-medium text-ink truncate min-w-0">
             {headline}
           </div>
           <span className="hidden sm:inline text-[10px] font-medium uppercase tracking-[0.1em] text-ink-muted shrink-0">
@@ -197,7 +197,7 @@ function AlertRow({
           </span>
         </div>
         {subLine && (
-          <div className="mt-0.5 text-[11.5px] md:text-[12px] text-ink-body truncate">
+          <div className="mt-0.5 text-[12.5px] md:text-[13px] text-ink-body truncate">
             {subLine}
           </div>
         )}

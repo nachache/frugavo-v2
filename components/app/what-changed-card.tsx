@@ -242,7 +242,7 @@ function ChangeRowItem({
         <div className="text-[14px] md:text-[15px] font-medium text-ink truncate group-hover:underline decoration-ink/30 underline-offset-2">
           {merchant}
         </div>
-        <div className="text-[11px] md:text-[12px] text-ink-muted">
+        <div className="text-[12px] md:text-[13px] text-ink-muted">
           {cfg.label} · {prettyCategory(category)}
         </div>
       </div>

@@ -95,11 +95,11 @@ export function OverviewCard({
               /mo
             </span>
           </div>
-          <div className="mt-3 text-[13px] md:text-[14px] text-ink-body">
+          <div className="mt-3 text-[14px] md:text-[15px] text-ink-body">
             {fmtRound(yearly.total_cents)}/yr · {monthly.total_count} currently
             running
           </div>
-          <div className="mt-1 text-[12px] md:text-[13px] text-ink-muted">
+          <div className="mt-1 text-[13px] md:text-[14px] text-ink-muted">
             ≈ {fmtRound(fiveYear)} over 5 years
           </div>
           {monthly.other_recurring_count > 0 && (
@@ -325,7 +325,7 @@ function Sparkline({ data }: { data: MonthBucket[] }) {
       </div>
       {h && (
         <div
-          className="pointer-events-none absolute -top-1 -translate-y-full -translate-x-1/2 rounded-lg border border-ink/15 bg-ink text-canvas px-2.5 py-1.5 text-[11px] whitespace-nowrap z-10"
+          className="pointer-events-none absolute -top-1 -translate-y-full -translate-x-1/2 rounded-lg border border-ink/15 bg-ink text-canvas px-2.5 py-1.5 text-[12px] whitespace-nowrap z-10"
           style={{ left: `min(max(${(h.x / W) * 100}%, 60px), calc(100% - 60px))` }}
         >
           <div className="font-medium">
@@ -451,7 +451,7 @@ function Donut({ categories }: { categories: CategoryTotal[] }) {
               onPointerEnter={() => setHoverIdx(i)}
               onPointerLeave={() => setHoverIdx(null)}
               className={[
-                "flex items-center gap-2 text-[11px] md:text-[12px] cursor-pointer rounded px-1 -mx-1 transition-colors",
+                "flex items-center gap-2 text-[12px] md:text-[13px] cursor-pointer rounded px-1 -mx-1 transition-colors",
                 isHover ? "bg-ink/[0.04]" : "",
               ].join(" ")}
             >

@@ -347,7 +347,7 @@ export function SubscriptionList({
                     <span className="flex-1 text-[14px] font-semibold text-ink">
                       {CATEGORY_LABEL[category]}
                     </span>
-                    <span className="text-[12.5px] text-ink-muted tnum">
+                    <span className="text-[13.5px] text-ink-muted tnum">
                       {subs.length} · {formatCurrency(subtotal / 100)}/mo
                     </span>
                     <ChevronDown
@@ -451,7 +451,7 @@ function SortToggle({
           key={o.value}
           onClick={() => onChange(o.value)}
           className={cn(
-            "h-7 px-3 rounded-full text-[11.5px] font-medium transition",
+            "h-7 px-3 rounded-full text-[12.5px] font-medium transition",
             value === o.value
               ? "bg-ink text-white"
               : "text-ink-muted hover:text-ink"
@@ -553,7 +553,7 @@ function SubscriptionRow({
           </span>
           <span className="text-[11.5px] font-medium text-ink-muted">/mo</span>
         </div>
-        <div className="text-[11.5px] text-ink-muted">
+        <div className="text-[12.5px] text-ink-muted">
           {formatCurrency(annual / 100, false)}/yr
           {sub.last_charged_at && (
             <>
