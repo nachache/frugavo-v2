@@ -5,7 +5,10 @@ export type AlertType =
   | "price_increase"
   | "renewal_upcoming"
   | "dormant_resumed"
-  | "high_charge_amount";
+  | "high_charge_amount"
+  | "trial_converting"
+  | "missing_renewal"
+  | "duplicate_subscription";
 
 export type AlertSeverity = "info" | "notice" | "urgent";
 

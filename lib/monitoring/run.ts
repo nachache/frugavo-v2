@@ -17,8 +17,12 @@ import {
   detectUpcomingRenewals,
   detectDormantResumed,
   detectHighCharges,
+  detectTrialConversions,
+  detectMissingRenewals,
+  detectDuplicateSubscriptions,
 } from "./detectors";
 import type { CandidateAlert } from "./types";
+import { dispatchUrgentForUser } from "@/lib/notifications/dispatch";
 
 type SnapshotRecord = { rows: SnapshotRow[] };
 
@@ -189,6 +193,23 @@ export async function runMonitoringForUser(args: {
   } catch (e) {
     console.warn("[monitoring] detectHighCharges failed", e);
   }
+  try {
+    candidates.push(
+      ...detectTrialConversions({ chargeHistoryByMerchant, asOf })
+    );
+  } catch (e) {
+    console.warn("[monitoring] detectTrialConversions failed", e);
+  }
+  try {
+    candidates.push(...detectMissingRenewals({ current, asOf }));
+  } catch (e) {
+    console.warn("[monitoring] detectMissingRenewals failed", e);
+  }
+  try {
+    candidates.push(...detectDuplicateSubscriptions({ current }));
+  } catch (e) {
+    console.warn("[monitoring] detectDuplicateSubscriptions failed", e);
+  }
 
   if (candidates.length === 0) return { alerts_written: 0 };
 
@@ -244,5 +265,30 @@ export async function runMonitoringForUser(args: {
     }
     written += count ?? 0;
   }
+
+  // 7. Notify — fire urgent emails for any alert that's brand new from
+  // THIS scan. The upsert above writes scan_run_id = current scanRunId
+  // only on newly-inserted rows (existing rows are skipped intact via
+  // ignoreDuplicates), so the query is straightforward. The email
+  // dispatch table dedups by (alert_id, channel) so a re-run of the
+  // same scan won't double-send.
+  if (written > 0) {
+    const { data: newAlerts } = await supabaseAdmin
+      .from("monitoring_alerts")
+      .select("id")
+      .eq("user_id", userId)
+      .eq("scan_run_id", scanRunId);
+    const ids = ((newAlerts ?? []) as Array<{ id: string }>).map(
+      (r) => r.id
+    );
+    if (ids.length > 0) {
+      try {
+        await dispatchUrgentForUser({ userId, alertIds: ids });
+      } catch (e) {
+        console.warn("[monitoring] urgent dispatch failed", e);
+      }
+    }
+  }
+
   return { alerts_written: written };
 }

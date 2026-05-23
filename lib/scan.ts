@@ -90,7 +90,12 @@ export type ScanResult = {
   error?: string;
 };
 
-export type ScanSource = "plaid" | "webhook" | "manual" | "first_connect";
+export type ScanSource =
+  | "plaid"
+  | "webhook"
+  | "manual"
+  | "first_connect"
+  | "cron";
 
 export async function runScanForUser(
   userId: string,

@@ -63,6 +63,9 @@ const TYPE_LABEL: Record<string, string> = {
   renewal_upcoming: "Renewal",
   dormant_resumed: "Resumed",
   high_charge_amount: "Unusual charge",
+  trial_converting: "Trial converting",
+  missing_renewal: "Missing renewal",
+  duplicate_subscription: "Duplicate",
 };
 
 export function MonitoringAlertsCard() {

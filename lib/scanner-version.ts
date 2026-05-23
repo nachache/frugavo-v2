@@ -21,4 +21,4 @@
 // looking at an old snapshot understands why the result differs from
 // today's engine.
 
-export const SCANNER_VERSION = "3.7.0-peace-of-mind-monitoring";
+export const SCANNER_VERSION = "3.9.0-trial-missing-duplicate-notifs";

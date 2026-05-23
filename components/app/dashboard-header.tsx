@@ -95,6 +95,16 @@ export function DashboardHeader({ lastScannedAt }: Props) {
           </svg>
           Share your numbers
         </Link>
+        <span className="text-ink-muted/40">·</span>
+        <Link
+          href="/app/protection"
+          className="inline-flex items-center gap-1.5 text-ink-muted hover:text-ink transition"
+        >
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+          </svg>
+          Protection history
+        </Link>
       </div>
     </div>
   );

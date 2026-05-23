@@ -4,6 +4,7 @@ import Link from "next/link";
 import { supabaseAdmin } from "@/lib/supabase";
 import { runScanForUser } from "@/lib/scan";
 import { DashboardHeader } from "@/components/app/dashboard-header";
+import { TimezoneCapture } from "@/components/app/timezone-capture";
 import { IdentityHero } from "@/components/app/identity-hero";
 import { OverviewCard } from "@/components/app/overview-card";
 import { ActionCenter } from "@/components/app/action-center";
@@ -126,6 +127,7 @@ export default async function AppHome() {
 
   return (
     <section className="container-page py-6 md:py-12 max-w-[1200px] space-y-5 md:space-y-8">
+      <TimezoneCapture />
       <DashboardHeader lastScannedAt={latestScanFinishedAt} />
 
       {data && (
