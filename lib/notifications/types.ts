@@ -17,10 +17,21 @@ export const URGENT_ALERT_TYPES: AlertType[] = [
   "price_increase",
 ];
 
+// Digest cadence — how often non-urgent alerts are bundled. Urgent
+// alerts (controlled separately by urgent_immediate_enabled) ignore
+// this and fire instantly regardless.
+//
+// 'off' means no digest at all — urgent alerts still fire if that
+// toggle is on, but everything else stays silent.
+export type DigestCadence = "daily" | "weekly" | "monthly" | "off";
+
 export type NotificationPreferences = {
   user_id: string;
   email_enabled: boolean;
+  // Retained for backward compat; new code should read digest_cadence.
+  // True iff digest_cadence !== 'off'.
   digest_enabled: boolean;
+  digest_cadence: DigestCadence;
   urgent_immediate_enabled: boolean;
   enabled_types: Record<string, boolean>;
   quiet_hours_local: string | null;
@@ -30,6 +41,7 @@ export type NotificationPreferences = {
 export const DEFAULT_PREFS: Omit<NotificationPreferences, "user_id"> = {
   email_enabled: true,
   digest_enabled: true,
+  digest_cadence: "weekly",
   urgent_immediate_enabled: true,
   enabled_types: {
     new_subscription: true,

@@ -163,8 +163,11 @@ function shell(opts: {
     </td></tr>
     <tr><td style="padding:16px 32px 28px 32px;">${opts.body}</td></tr>
     <tr><td style="padding:0 32px 28px 32px;">
-      <div style="border-top:1px solid ${COLOR_BORDER};margin-top:8px;padding-top:16px;font-size:12px;color:${COLOR_INK_MUTED};line-height:1.5;">
-        You're receiving this because you have an active Frugavo protection. Manage at <a href="${base}/app/settings" style="color:${COLOR_INK_MUTED};">app/settings</a>.
+      <div style="border-top:1px solid ${COLOR_BORDER};margin-top:8px;padding-top:16px;font-size:12px;color:${COLOR_INK_MUTED};line-height:1.6;">
+        You're receiving this because you have an active Frugavo protection.<br>
+        <a href="${base}/app/settings/notifications" style="color:${COLOR_INK_MUTED};text-decoration:underline;">Reduce email frequency</a>
+        &nbsp;·&nbsp;
+        <a href="${base}/app/settings" style="color:${COLOR_INK_MUTED};text-decoration:underline;">Manage protection</a>
       </div>
     </td></tr>
   </table>

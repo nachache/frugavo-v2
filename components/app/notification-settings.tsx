@@ -5,7 +5,40 @@
 // small "saved" pill on success.
 
 import { useState, useTransition } from "react";
-import type { NotificationPreferences } from "@/lib/notifications/types";
+import type {
+  NotificationPreferences,
+  DigestCadence,
+} from "@/lib/notifications/types";
+
+type CadenceMeta = {
+  key: DigestCadence;
+  label: string;
+  description: string;
+};
+
+const CADENCE_OPTIONS: CadenceMeta[] = [
+  {
+    key: "daily",
+    label: "Daily",
+    description: "One digest at 7am your local time.",
+  },
+  {
+    key: "weekly",
+    label: "Weekly",
+    description: "One digest Monday 7am. Recommended for most people.",
+  },
+  {
+    key: "monthly",
+    label: "Monthly",
+    description: "One digest the 1st of each month. Quietest option.",
+  },
+  {
+    key: "off",
+    label: "Off",
+    description:
+      "No digest at all. Urgent alerts above still fire if you have them on.",
+  },
+];
 
 type AlertTypeMeta = {
   key: string;
@@ -144,17 +177,57 @@ export function NotificationSettings({
                 onChange={(on) => persist({ urgent_immediate_enabled: on })}
               />
             </div>
-            <div className="mt-4 pt-4 border-t border-hairline flex items-start justify-between gap-3">
-              <div>
-                <div className="text-[14px] font-medium text-ink">Daily digest at 7am</div>
-                <div className="mt-1 text-[12.5px] text-ink-body">
-                  Everything non-urgent bundled into one email per day.
+            <div className="mt-4 pt-4 border-t border-hairline">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <div className="text-[14px] font-medium text-ink">
+                    Digest frequency
+                  </div>
+                  <div className="mt-1 text-[12.5px] text-ink-body">
+                    How often we bundle non-urgent alerts into a single
+                    email. Lower frequency = quieter inbox.
+                  </div>
                 </div>
               </div>
-              <Toggle
-                checked={prefs.digest_enabled}
-                onChange={(on) => persist({ digest_enabled: on })}
-              />
+              <div
+                role="radiogroup"
+                aria-label="Digest frequency"
+                className="mt-3 grid grid-cols-1 gap-2"
+              >
+                {CADENCE_OPTIONS.map((opt) => {
+                  const checked = prefs.digest_cadence === opt.key;
+                  return (
+                    <label
+                      key={opt.key}
+                      className={[
+                        "flex items-start gap-3 rounded-xl border px-3 py-2.5 cursor-pointer transition",
+                        checked
+                          ? "border-brand bg-brand/5"
+                          : "border-hairline hover:bg-ink/[0.02]",
+                      ].join(" ")}
+                    >
+                      <input
+                        type="radio"
+                        name="digest_cadence"
+                        value={opt.key}
+                        checked={checked}
+                        onChange={() =>
+                          persist({ digest_cadence: opt.key })
+                        }
+                        className="mt-1 h-4 w-4 accent-brand"
+                      />
+                      <div className="min-w-0">
+                        <div className="text-[13.5px] font-medium text-ink leading-tight">
+                          {opt.label}
+                        </div>
+                        <div className="mt-0.5 text-[12px] text-ink-body leading-snug">
+                          {opt.description}
+                        </div>
+                      </div>
+                    </label>
+                  );
+                })}
+              </div>
             </div>
           </>
         )}

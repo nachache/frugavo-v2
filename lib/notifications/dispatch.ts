@@ -192,9 +192,18 @@ export async function dispatchDigestForUser(opts: {
   }
 
   const prefs = await loadPreferences(opts.userId);
-  if (!emailAllowed(prefs) || !prefs.digest_enabled) {
+  if (!emailAllowed(prefs) || prefs.digest_cadence === "off") {
     out.ok = true;
     out.reason = "user_opted_out";
+    return out;
+  }
+  // Cadence gate. The biweekly cron fires every other day; if the user
+  // chose weekly or monthly, only send when "today" is their cadence
+  // anchor (Monday for weekly, 1st of month for monthly). Daily users
+  // get every run.
+  if (!cadenceFiresToday(prefs.digest_cadence)) {
+    out.ok = true;
+    out.reason = "cadence_not_today";
     return out;
   }
 
@@ -301,4 +310,23 @@ export async function dispatchDigestForUser(opts: {
   out.sent = send.ok;
   if (!send.ok) out.reason = send.error ?? "send_failed";
   return out;
+}
+
+// Returns true if the given digest cadence should fire on the
+// current day (server clock, UTC-normalized). Used by the digest
+// cron so weekly/monthly users only receive on their anchor days.
+function cadenceFiresToday(
+  cadence: "daily" | "weekly" | "monthly" | "off"
+): boolean {
+  if (cadence === "off") return false;
+  if (cadence === "daily") return true;
+  const now = new Date();
+  if (cadence === "weekly") {
+    // Monday = 1 (Sun=0, Sat=6). Anchor digests to Monday.
+    return now.getUTCDay() === 1;
+  }
+  if (cadence === "monthly") {
+    return now.getUTCDate() === 1;
+  }
+  return false;
 }
