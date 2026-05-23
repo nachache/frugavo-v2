@@ -110,6 +110,29 @@ export default async function WelcomePage() {
     (c) => c.category !== "other" && c.subscription_count > 0
   );
 
+  // Build the personalized protection pitch — one calm, specific
+  // sentence shown on the upsell stage. Priorities:
+  //   1. If we have a "would have caught" candidate (top sub
+  //      renewing soon), name it directly.
+  //   2. Otherwise lean on the shock insight headline if available.
+  //   3. Otherwise a generic but emotionally-specific fallback.
+  const topSub = top[0];
+  const fmtUsd = (c: number) =>
+    `$${(c / 100).toLocaleString("en-US", {
+      minimumFractionDigits: c % 100 === 0 ? 0 : 2,
+      maximumFractionDigits: 2,
+    })}`;
+
+  let protectionPitch: string;
+  if (topSub) {
+    protectionPitch = `Frugavo would catch ${topSub.merchant_name} the next time it bills (around ${fmtUsd(topSub.monthly_cents)}), flag any price hike, and alert you before a trial converts — automatically, every day.`;
+  } else if (shock[0]?.headline) {
+    protectionPitch = `${shock[0].headline} Frugavo will keep watching every day so the next surprise doesn't catch you.`;
+  } else {
+    protectionPitch =
+      "Frugavo will alert you before subscriptions renew, catch unusual recurring charges, and flag price increases — automatically.";
+  }
+
   return (
     <OnboardingReveal
       subscriptionCount={burn.active_subscription_count}
@@ -120,19 +143,22 @@ export default async function WelcomePage() {
       topCategory={
         topCategoryRaw
           ? {
-              label: CATEGORY_LABEL[topCategoryRaw.category] ?? topCategoryRaw.category,
+              label:
+                CATEGORY_LABEL[topCategoryRaw.category] ??
+                topCategoryRaw.category,
               monthly_cents: topCategoryRaw.monthly_cents,
             }
           : null
       }
       topSubscription={
-        top[0]
-          ? { name: top[0].merchant_name, monthly_cents: top[0].monthly_cents }
+        topSub
+          ? { name: topSub.merchant_name, monthly_cents: topSub.monthly_cents }
           : null
       }
       moneyLeakCount={leaks.length}
-      shockHeadline={shock[0]?.headline ?? null}
       personality={{ label: personality.label, sub: personality.sub }}
+      protectionPitch={protectionPitch}
+      firstName={user.firstName ?? null}
     />
   );
 }

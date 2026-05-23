@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { currentUser } from "@clerk/nextjs/server";
 import { getStripe } from "@/lib/billing/stripe";
-import { BillingSuccessPoller } from "@/components/app/billing-success-poller";
+import { ProtectionActivated } from "@/components/app/protection-activated";
 
 // /app/billing/success — the post-payment landing page.
 //
@@ -43,9 +43,16 @@ export default async function BillingSuccessPage({
     redirect("/app");
   }
 
+  // Post-payment uses the same ProtectionActivated transition the
+  // free-user welcome flow uses. The component polls /api/billing/check
+  // until the webhook + projector flip the entitlement, then redirects
+  // to the dashboard. Visual consistency across both paid and free
+  // activation paths is intentional — the same emotional resolution.
   return (
-    <section className="container-page py-12 md:py-24 max-w-[640px]">
-      <BillingSuccessPoller sessionId={sessionId} />
-    </section>
+    <ProtectionActivated
+      variant="activated"
+      pollUrl={`/api/billing/check?session_id=${encodeURIComponent(sessionId)}`}
+      redirectTo="/app"
+    />
   );
 }
