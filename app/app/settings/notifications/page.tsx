@@ -17,10 +17,10 @@ export default async function NotificationSettingsPage() {
           Notifications
         </h1>
         <p className="mt-3 text-[15px] leading-relaxed text-ink-body">
-          Choose what Frugavo is allowed to email you about. Urgent alerts
-          (trial conversions, big price hikes, unusual charges) arrive as
-          they happen. Everything else lands in a single daily digest at 7am
-          your local time.
+          Choose what Frugavo is allowed to email you about, and how often.
+          Urgent alerts (trial conversions, big price hikes, unusual charges)
+          arrive as they happen. Everything else is bundled into a digest at
+          the frequency you pick — daily, weekly, monthly, or off entirely.
         </p>
       </div>
 

@@ -11,7 +11,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:smoke": "vitest run --config vitest.smoke.config.ts",
-    "verify:scan": "tsx scripts/verify-scan.ts"
+    "verify:scan": "tsx scripts/verify-scan.ts",
+    "stripe:configure-portal": "tsx scripts/configure-portal.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.30.0",
