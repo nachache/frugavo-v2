@@ -11,6 +11,8 @@ import { ActionCenter } from "@/components/app/action-center";
 import { WhatChangedCard } from "@/components/app/what-changed-card";
 import { UncertainPromptCards } from "@/components/app/uncertain-prompt-cards";
 import { MonitoringAlertsCard } from "@/components/app/monitoring-alerts-card";
+import { ActivateProtectionCard } from "@/components/app/activate-protection-card";
+import { getEntitlement } from "@/lib/billing/entitlements";
 import { buildDashboardData } from "@/lib/selectors/dashboard";
 
 // /app — the authenticated dashboard root.
@@ -105,6 +107,21 @@ export default async function AppHome() {
   const data = await buildDashboardData(user.id);
   const latestScanFinishedAt = data?.meta.last_scanned_at ?? null;
 
+  // Entitlement check — drives the Activate Protection card above
+  // IdentityHero when the user isn't currently paying. trialing /
+  // active / grace_period / cancelled_active → no card.
+  const entitlement = await getEntitlement(user.id);
+  const showActivateCard =
+    entitlement.entitlement_state === "none" ||
+    entitlement.entitlement_state === "expired" ||
+    entitlement.entitlement_state === "past_due";
+  const activateVariant: "none" | "expired" | "past_due" =
+    entitlement.entitlement_state === "expired"
+      ? "expired"
+      : entitlement.entitlement_state === "past_due"
+        ? "past_due"
+        : "none";
+
   // Top subscription gets an explicit domain so its logo can render
   // in the merged Overview "Biggest sub" pinned row.
   const topSubWithDomain =
@@ -129,6 +146,8 @@ export default async function AppHome() {
     <section className="container-page py-6 md:py-12 max-w-[1200px] space-y-5 md:space-y-8">
       <TimezoneCapture />
       <DashboardHeader lastScannedAt={latestScanFinishedAt} />
+
+      {showActivateCard && <ActivateProtectionCard variant={activateVariant} />}
 
       {data && (
         <>

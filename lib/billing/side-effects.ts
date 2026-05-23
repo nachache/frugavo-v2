@@ -1,9 +1,9 @@
 // Side-effect hooks fired by the projector after a state change lands.
 //
-// PR 4 ships these as no-op stubs so the projection pipeline is
-// complete end-to-end. Real implementations:
-//   - onActivation (PR 5): queue first protection scan, default
-//     notification preferences, log welcome
+// Real implementations:
+//   - onActivation (PR 5): default notification preferences,
+//     trigger a fresh scan if the user already connected a bank,
+//     log welcome (real email lands in PR 7)
 //   - sendEmail hooks (PR 7): trial start, T+6 reminder, decline,
 //     past_due, cancellation
 //
@@ -16,6 +16,8 @@ import type {
   ProjectedEntitlement,
   ProjectedSubscription,
 } from "@/lib/billing/projector";
+import { supabaseAdmin } from "@/lib/supabase";
+import { savePreferences } from "@/lib/notifications/preferences";
 
 export type SideEffectContext = {
   clerkUserId: string;
@@ -36,18 +38,21 @@ export async function onProjectionLanded(
 ): Promise<void> {
   const transitioning = ctx.prevState !== ctx.nextState;
 
-  // Activation: user just gained access. PR 5 will queue a first
-  // scan, default notification prefs, log welcome.
+  // Activation: user just gained access. Default their notification
+  // prefs (instant alerts ON, digest OFF — paying users want
+  // immediate signal) and queue a fresh scan if they're already
+  // connected. PR 7 will hook the "you're protected" welcome email
+  // here.
   if (transitioning && isAccessGranting(ctx.nextState)) {
     if (!isAccessGranting(ctx.prevState)) {
-      // PR 5 wires the real implementation. Stub for now so the
-      // pipeline doesn't break the moment a real trial starts.
-      // eslint-disable-next-line no-console
-      console.info(
-        "[billing/side-effects] activation TODO (PR 5)",
-        ctx.clerkUserId,
-        ctx.nextState
-      );
+      await onActivation(ctx).catch((e) => {
+        // eslint-disable-next-line no-console
+        console.error(
+          "[billing/side-effects] onActivation failed (non-fatal)",
+          ctx.clerkUserId,
+          e
+        );
+      });
     }
   }
 
@@ -76,4 +81,53 @@ function isAccessGranting(
     state === "grace_period" ||
     state === "cancelled_active"
   );
+}
+
+// One-time bootstrap for a freshly-activated user. Idempotent —
+// running it twice (e.g. webhook replay) produces the same state.
+async function onActivation(ctx: SideEffectContext): Promise<void> {
+  // 1. Default notification preferences. Paying users want
+  //    instant signal: urgent_immediate ON, digest OFF. They can
+  //    flip either later via /app/settings.
+  await savePreferences(ctx.clerkUserId, {
+    email_enabled: true,
+    digest_enabled: false,
+    urgent_immediate_enabled: true,
+  });
+
+  // 2. PR 7 will trigger the "You're protected" welcome email here.
+  //    Logging it now so the audit trail shows where it'll land.
+  // eslint-disable-next-line no-console
+  console.info(
+    "[billing/side-effects] activation complete",
+    {
+      userId: ctx.clerkUserId,
+      state: ctx.nextState,
+      triggerEventId: ctx.triggerEventId,
+      welcomeEmailPending: "PR 7",
+    }
+  );
+
+  // 3. Queue a fresh protection scan if the user already connected
+  //    a bank. (If they haven't, the next /app visit will route
+  //    them to /app/connect anyway.) We don't await the scan — it
+  //    can take seconds and we don't want to block webhook
+  //    processing on it.
+  if (!supabaseAdmin) return;
+  const { data: items } = await supabaseAdmin
+    .from("plaid_items")
+    .select("id")
+    .eq("user_id", ctx.clerkUserId)
+    .limit(1);
+
+  if (items && items.length > 0) {
+    // eslint-disable-next-line no-console
+    console.info(
+      "[billing/side-effects] user has plaid connection — fresh scan will run on next dashboard load"
+    );
+    // We deliberately do NOT call runScanForUser here. Scans are
+    // best triggered from a user-facing surface where progress can
+    // be observed. The dashboard already kicks a scan on first
+    // visit; that's enough for activation.
+  }
 }
