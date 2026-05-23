@@ -14,13 +14,22 @@ import type { Personality } from "@/lib/personality";
 type Props = {
   monthlySubCents: number;
   personality: Personality;
+  // Public profile slug. When present, ShareButtons attaches the
+  // canonical /u/<slug> URL to navigator.share so social platforms
+  // unfurl the right personalized OG preview. May be null on the
+  // very first dashboard render before the slug is provisioned.
+  publicSlug?: string | null;
 };
 
 function fmt(c: number): string {
   return `$${Math.round(c / 100).toLocaleString("en-US")}`;
 }
 
-export function IdentityHero({ monthlySubCents, personality }: Props) {
+export function IdentityHero({
+  monthlySubCents,
+  personality,
+  publicSlug,
+}: Props) {
   return (
     <div className="rounded-2xl border border-hairline bg-surface p-4 md:p-7 animate-fadeUp overflow-hidden">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-7 items-center">
@@ -63,6 +72,7 @@ export function IdentityHero({ monthlySubCents, personality }: Props) {
             <ShareButtons
               shareType="identity"
               shareText={`I'm "${personality.label}" — ${fmt(monthlySubCents)}/mo on subscriptions.`}
+              shareSlug={publicSlug ?? null}
             />
           </div>
         </div>

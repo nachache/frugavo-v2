@@ -29,18 +29,51 @@ type Props = {
   shareType: string;
   shareText: string;
   compact?: boolean;
+  // Public profile slug. When provided, the share payload includes
+  // the canonical /u/<slug> URL so social platforms unfurl with
+  // the personalized OG preview rather than scraping the homepage.
+  shareSlug?: string | null;
 };
 
 type Target = "x" | "facebook" | "linkedin" | "instagram";
 
-const PLATFORM_COMPOSE_URL: Record<Target, ((text: string) => string) | null> = {
-  x: (text) => `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`,
-  facebook: () => `https://www.facebook.com/`,
-  linkedin: () => `https://www.linkedin.com/feed/?shareActive=true`,
-  instagram: null, // Instagram has no web compose — copy + paste only.
-};
+// Compose URLs that benefit from a URL param to attach a link to
+// the user's personalized profile preview. Twitter accepts `url=…`
+// which it then unfurls server-side; Facebook + LinkedIn read OG
+// tags from whatever URL is shared. Instagram has no compose URL.
+function composeUrl(target: Target, text: string, url: string | null): string | null {
+  switch (target) {
+    case "x":
+      return url
+        ? `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`
+        : `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`;
+    case "facebook":
+      return url
+        ? `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`
+        : `https://www.facebook.com/`;
+    case "linkedin":
+      return url
+        ? `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(url)}`
+        : `https://www.linkedin.com/feed/?shareActive=true`;
+    case "instagram":
+      return null;
+  }
+}
 
-export function ShareButtons({ shareType, shareText, compact }: Props) {
+export function ShareButtons({
+  shareType,
+  shareText,
+  compact,
+  shareSlug,
+}: Props) {
+  // Build the canonical share URL on the client. Using
+  // window.location.origin lets the same code work locally and in
+  // production without an env var, and the slug comes from the
+  // server-rendered parent so we never expose anyone else's data.
+  const profileUrl =
+    typeof window !== "undefined" && shareSlug
+      ? `${window.location.origin}/u/${shareSlug}`
+      : null;
   const pngBlobRef = useRef<Blob | null>(null);
   const [status, setStatus] = useState<
     null | { kind: "ok" | "err"; msg: string }
@@ -107,11 +140,16 @@ export function ShareButtons({ shareType, shareText, compact }: Props) {
         };
         if (nav.canShare && nav.canShare({ files: [file] })) {
           try {
-            await nav.share({
+            // Include the canonical profile URL so the receiving app
+            // unfurls a personalized OG preview rather than the
+            // page URL (which would scrape the dashboard / homepage).
+            const sharePayload: ShareData = {
               files: [file],
               title: "Frugavo",
               text: shareText,
-            });
+            };
+            if (profileUrl) sharePayload.url = profileUrl;
+            await nav.share(sharePayload);
             flash("ok", "Shared");
             return;
           } catch (e) {
@@ -123,9 +161,9 @@ export function ShareButtons({ shareType, shareText, compact }: Props) {
 
         // Desktop fallback — copy image, open compose URL.
         await copyImageToClipboard(png);
-        const composeFn = PLATFORM_COMPOSE_URL[target];
-        if (composeFn) {
-          window.open(composeFn(shareText), "_blank", "noopener,noreferrer");
+        const compose = composeUrl(target, shareText, profileUrl);
+        if (compose) {
+          window.open(compose, "_blank", "noopener,noreferrer");
           flash("ok", "Image copied — paste in the new tab");
         } else {
           // Instagram: no compose URL.

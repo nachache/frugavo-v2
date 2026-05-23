@@ -15,6 +15,7 @@ import { ActivateProtectionCard } from "@/components/app/activate-protection-car
 import { BillingStatusBanner } from "@/components/app/billing-status-banner";
 import { ProtectionStatusPill } from "@/components/app/protection-status-pill";
 import { ProtectionCoverageCard } from "@/components/app/protection-coverage-card";
+import { getOrCreatePublicSlug } from "@/lib/users/public-slug";
 import { getEntitlement } from "@/lib/billing/entitlements";
 import { buildDashboardData } from "@/lib/selectors/dashboard";
 
@@ -110,6 +111,11 @@ export default async function AppHome() {
   const data = await buildDashboardData(user.id);
   const latestScanFinishedAt = data?.meta.last_scanned_at ?? null;
 
+  // Public share slug — lazily provisioned on first dashboard view.
+  // Drives the canonical /u/<slug> URL the share buttons attach to
+  // navigator.share so social previews unfurl personalized.
+  const publicSlug = await getOrCreatePublicSlug(user.id);
+
   // Entitlement check — drives the Activate Protection card above
   // IdentityHero when the user isn't currently paying, plus the
   // dunning banner for grace_period / cancelled_active / past_due.
@@ -182,6 +188,7 @@ export default async function AppHome() {
           <IdentityHero
             monthlySubCents={data.monthly.sub_only_cents}
             personality={data.personality}
+            publicSlug={publicSlug}
           />
 
           <OverviewCard
