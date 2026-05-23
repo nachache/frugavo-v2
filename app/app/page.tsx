@@ -13,6 +13,7 @@ import { UncertainPromptCards } from "@/components/app/uncertain-prompt-cards";
 import { MonitoringAlertsCard } from "@/components/app/monitoring-alerts-card";
 import { ActivateProtectionCard } from "@/components/app/activate-protection-card";
 import { BillingStatusBanner } from "@/components/app/billing-status-banner";
+import { ProtectionStatusPill } from "@/components/app/protection-status-pill";
 import { getEntitlement } from "@/lib/billing/entitlements";
 import { buildDashboardData } from "@/lib/selectors/dashboard";
 
@@ -160,6 +161,18 @@ export default async function AppHome() {
       <TimezoneCapture />
       <DashboardHeader lastScannedAt={latestScanFinishedAt} />
 
+      {/* Inline status — visible signal that protection is active.
+          Renders for trialing / active / cancelled_active; silent
+          for grace/past_due (banner above already shouts), and for
+          'none' (activate card below does the talking). */}
+      <div className="-mt-2">
+        <ProtectionStatusPill
+          state={entitlement.entitlement_state}
+          trialEndsAt={entitlement.trial_ends_at}
+          expiresAt={entitlement.expires_at}
+        />
+      </div>
+
       {bannerVariant && <BillingStatusBanner variant={bannerVariant} />}
       {showActivateCard && <ActivateProtectionCard variant={activateVariant} />}
 
@@ -186,13 +199,23 @@ export default async function AppHome() {
             surfaces only for entitled users. Free users still see
             Overview + ActionCenter — the scan IS the value demo,
             and the activate card above the hero is the upsell.
+            Grouped under a clear section label so paid users can
+            see exactly which features their protection unlocks.
           */}
           {!showActivateCard && (
-            <>
+            <div className="space-y-5 md:space-y-8">
+              <div className="flex items-center gap-2">
+                <span className="text-[12px] md:text-[13px] font-medium text-brand">
+                  Your protection
+                </span>
+                <span className="text-[12px] md:text-[12.5px] text-ink-muted">
+                  · features included in your Peace of Mind plan
+                </span>
+              </div>
               <MonitoringAlertsCard />
               <WhatChangedCard />
               <UncertainPromptCards />
-            </>
+            </div>
           )}
 
           <ActionCenter

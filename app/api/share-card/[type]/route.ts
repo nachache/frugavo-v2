@@ -378,7 +378,13 @@ export async function GET(
       status: 200,
       headers: {
         "Content-Type": "image/svg+xml; charset=utf-8",
-        "Cache-Control": "private, max-age=3600",
+        // No-store: this endpoint is per-user authenticated content
+        // served at a path that doesn't include the user id. Even
+        // `private` caching would let User B's browser serve User A's
+        // SVG after a logout/login on the same machine. Re-rendering
+        // is cheap (<200ms server-side). DO NOT enable caching unless
+        // the URL becomes user-keyed.
+        "Cache-Control": "no-store",
       },
     });
   }
@@ -405,7 +411,13 @@ export async function GET(
       status: 200,
       headers: {
         "Content-Type": "image/svg+xml; charset=utf-8",
-        "Cache-Control": "private, max-age=3600",
+        // No-store: this endpoint is per-user authenticated content
+        // served at a path that doesn't include the user id. Even
+        // `private` caching would let User B's browser serve User A's
+        // SVG after a logout/login on the same machine. Re-rendering
+        // is cheap (<200ms server-side). DO NOT enable caching unless
+        // the URL becomes user-keyed.
+        "Cache-Control": "no-store",
       },
     });
   }
