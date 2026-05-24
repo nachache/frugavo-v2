@@ -273,13 +273,13 @@ export function ActionCenter({
 
       <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-b border-hairline">
         <div className="flex items-center gap-1 -mb-px overflow-x-auto">
-          <TabBtn active={tab === "worth"} onClick={() => changeTab("worth")} label="Worth a look" count={worth_a_look.length} />
-          <TabBtn active={tab === "watching"} onClick={() => changeTab("watching")} label="Watching" count={watching.length} />
-          <TabBtn active={tab === "pruned"} onClick={() => changeTab("pruned")} label="Pruned" count={pruned.length} />
+          <TabBtn active={tab === "worth"} onClick={() => changeTab("worth")} label="Worth a look" shortLabel="New" count={worth_a_look.length} />
+          <TabBtn active={tab === "watching"} onClick={() => changeTab("watching")} label="Watching" shortLabel="Watch" count={watching.length} />
+          <TabBtn active={tab === "pruned"} onClick={() => changeTab("pruned")} label="Pruned" shortLabel="Pruned" count={pruned.length} />
           {hidden.length > 0 && (
-            <TabBtn active={tab === "hidden"} onClick={() => changeTab("hidden")} label="Hidden" count={hidden.length} muted />
+            <TabBtn active={tab === "hidden"} onClick={() => changeTab("hidden")} label="Hidden" shortLabel="Hidden" count={hidden.length} muted />
           )}
-          <TabBtn active={tab === "all"} onClick={() => changeTab("all")} label="All" count={all.length} />
+          <TabBtn active={tab === "all"} onClick={() => changeTab("all")} label="All" shortLabel="All" count={all.length} />
         </div>
         <SortControl value={sort} onChange={setSort} />
       </div>
@@ -325,12 +325,14 @@ function TabBtn({
   active,
   onClick,
   label,
+  shortLabel,
   count,
   muted,
 }: {
   active: boolean;
   onClick: () => void;
   label: string;
+  shortLabel?: string;
   count: number;
   muted?: boolean;
 }) {
@@ -339,7 +341,9 @@ function TabBtn({
       type="button"
       onClick={onClick}
       className={[
-        "relative h-10 px-3 md:px-4 border-b-2 inline-flex items-center gap-2 text-[13px] md:text-[14px] font-medium transition whitespace-nowrap",
+        // Tighter padding on mobile so all tabs fit without horizontal
+        // scroll. Was px-3 / px-4 — now px-2 / px-4.
+        "relative h-10 px-2 md:px-4 border-b-2 inline-flex items-center gap-1.5 md:gap-2 text-[12.5px] md:text-[14px] font-medium transition whitespace-nowrap",
         active
           ? "border-ink text-ink"
           : muted
@@ -347,10 +351,13 @@ function TabBtn({
             : "border-transparent text-ink-muted hover:text-ink",
       ].join(" ")}
     >
-      {label}
+      {/* Use the short label on phone, full label on md+. Keeps the
+          tab strip on one line on a 360px viewport. */}
+      <span className="md:hidden">{shortLabel ?? label}</span>
+      <span className="hidden md:inline">{label}</span>
       <span
         className={[
-          "inline-flex items-center justify-center min-w-[20px] h-5 rounded-full px-1.5 text-[11px] tabular-nums",
+          "inline-flex items-center justify-center min-w-[18px] h-4 md:h-5 rounded-full px-1 md:px-1.5 text-[10.5px] md:text-[11px] tabular-nums",
           active ? "bg-ink text-canvas" : "bg-ink/5 text-ink-muted",
         ].join(" ")}
       >

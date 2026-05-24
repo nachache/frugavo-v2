@@ -148,6 +148,44 @@ export type ActionItem = {
   override_type: string | null;
 };
 
+// Dedupe subscription rows that point at the same real merchant.
+// See use site in buildDashboardData for full rationale.
+function dedupeByMerchantAndAmount<
+  T extends {
+    merchant_name: string;
+    amount_cents: number;
+    updated_at?: string | null;
+  },
+>(rows: T[]): T[] {
+  const seen = new Map<string, T>();
+  for (const r of rows) {
+    const normName = (r.merchant_name ?? "")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "");
+    if (!normName) {
+      // No name to dedupe on; pass through with a unique key.
+      seen.set(`__noname_${(r as { id?: string }).id ?? Math.random()}`, r);
+      continue;
+    }
+    // Amount bucket: $1 granularity. Matching merchant + same dollar
+    // bucket = same product. A real price increase ($14.99 → $17.99)
+    // changes the bucket and stays as two distinct rows, which is
+    // correct — the engine treats those as different streams.
+    const bucket = Math.round(Math.abs(r.amount_cents) / 100);
+    const key = `${normName}__${bucket}`;
+    const existing = seen.get(key);
+    if (!existing) {
+      seen.set(key, r);
+    } else {
+      // Keep the most-recently-updated row.
+      const aTime = new Date(existing.updated_at ?? 0).getTime();
+      const bTime = new Date(r.updated_at ?? 0).getTime();
+      if (bTime >= aTime) seen.set(key, r);
+    }
+  }
+  return Array.from(seen.values());
+}
+
 export async function buildDashboardData(
   userId: string
 ): Promise<DashboardData | null> {
@@ -157,15 +195,27 @@ export async function buildDashboardData(
   const { data: subsData } = await supabaseAdmin
     .from("subscriptions")
     .select(
-      "id, merchant_name, merchant_key, category, amount_cents, currency, frequency, status, classification, last_charged_at, next_expected_charge_at, user_decision, recurring_type, confidence_score"
+      "id, merchant_name, merchant_key, category, amount_cents, currency, frequency, status, classification, last_charged_at, next_expected_charge_at, user_decision, recurring_type, confidence_score, updated_at"
     )
     .eq("user_id", userId);
-  const subs = (subsData ?? []) as Array<
+  const subsRaw = (subsData ?? []) as Array<
     LedgerSubscription & {
       user_decision: string | null;
       next_expected_charge_at: string | null;
+      updated_at?: string | null;
     }
   >;
+
+  // Dedupe rows that represent the same underlying merchant. Legacy
+  // scans wrote slightly different merchant_keys for the same merchant
+  // ('planet_fitness' vs 'planetfitness'), producing two subscription
+  // rows with two different subscription_keys (hash of merchant_key)
+  // that the upsert can't collapse on the next scan.
+  //
+  // Dedupe key: normalize merchant_name (lowercase, strip spaces +
+  // punctuation) + amount_cents bucket. When duplicates exist, keep
+  // the most-recently-updated row.
+  const subs = dedupeByMerchantAndAmount(subsRaw);
 
   const charges: LedgerCharge[] = [];
   let offset = 0;

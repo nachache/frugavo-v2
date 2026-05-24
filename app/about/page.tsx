@@ -6,9 +6,9 @@ import { Footer } from "@/components/sections/footer";
 import { ToastProvider } from "@/components/shared/toast";
 
 export const metadata: Metadata = {
-  title: "About Frugavo — Cancel the subscriptions you forgot you had",
+  title: "About Frugavo — Your subscription watchdog",
   description:
-    "What Frugavo is, why it exists, and where it's going. A pre-launch consumer SaaS for North America.",
+    "Why Frugavo exists, how it watches your recurring charges, and where it's headed. Built for people who want their subscriptions monitored automatically instead of audited once a year.",
   alternates: { canonical: "/about" },
 };
 

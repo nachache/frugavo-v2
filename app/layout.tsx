@@ -38,11 +38,11 @@ export const metadata: Metadata = {
   metadataBase: new URL("https://frugavo.com"),
   title: "Frugavo — Your subscription watchdog",
   description:
-    "89% of people guess too low. Frugavo connects to your bank, finds every recurring charge, and shows you the real number — with categories, trends, and a personality profile of your spending. Free during early access.",
+    "Frugavo watches every recurring charge on your accounts and alerts you before trials convert, prices rise, or unusual charges hit. Connect your bank in 60 seconds. 7 days free, cancel anytime.",
   openGraph: {
     title: "Frugavo — Your subscription watchdog",
     description:
-      "Find the subscriptions you forgot you're paying for. Real charges, real totals, a personality profile of your spending.",
+      "Continuous monitoring for every recurring charge. We catch trial conversions, price hikes, and unusual subscription activity — automatically, every day.",
     url: "https://frugavo.com",
     siteName: "Frugavo",
     type: "website",
@@ -51,7 +51,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "Frugavo — Your subscription watchdog",
     description:
-      "Find every subscription you forgot you had. Real charges, real totals, real history.",
+      "Frugavo watches your subscriptions every day so you don't have to. Trial alerts, price-hike alerts, unusual charge alerts. 7 days free.",
   },
   icons: { icon: "/favicon.svg" },
 };

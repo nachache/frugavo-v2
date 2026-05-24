@@ -60,13 +60,13 @@ export const howItWorks = {
       n: "02",
       icon: "Search",
       title: "See every recurring charge",
-      body: "Frugavo scans 12 months of transactions and shows you every recurring bill in one list — with monthly and annual totals.",
+      body: "Frugavo scans 12 months of transactions and shows you every subscription and bill in one list — with monthly and annual totals.",
     },
     {
       n: "03",
       icon: "Zap",
-      title: "Cancel with one tap",
-      body: "Tap Cancel and we open the provider’s real cancel page with a pre-filled email ready to send. Then Plaid watches your next billing cycle to confirm the charge actually stopped.",
+      title: "Watch every day after that",
+      body: "Frugavo keeps watching your accounts. We alert you before trials convert, when prices rise, and when an unusual charge hits — automatically, every day.",
     },
   ],
 };

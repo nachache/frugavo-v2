@@ -44,7 +44,11 @@ type Props = {
   onDone: () => void;
 };
 
-const HOLD_BEFORE_DISMISS_MS = 4_800;
+// The reveal NEVER auto-dismisses. The user manually closes via the
+// "See my dashboard" button (or by tapping anywhere outside the
+// card / pressing Escape). 4.8s auto-dismiss was eating the verdict
+// before users could read it.
+const FINALE_LANDS_AT_MS = 4_600;
 
 function fmtBig(cents: number): string {
   return `$${(cents / 100).toLocaleString("en-US", {
@@ -70,17 +74,18 @@ export function ScanRevealOverlay({
     [annualSavingsCents]
   );
 
-  // Auto-dismiss + escape-key dismiss.
+  // Escape-key dismiss only — no auto-close. After FINALE_LANDS_AT_MS
+  // we reveal the explicit close button below the verdict so the user
+  // has time to read the line before deciding to dismiss.
   const dismissedRef = useRef(false);
+  const [finaleLanded, setFinaleLanded] = useState(false);
   useEffect(() => {
-    if (!visible) return;
+    if (!visible) {
+      setFinaleLanded(false);
+      return;
+    }
     dismissedRef.current = false;
-    const t = setTimeout(() => {
-      if (!dismissedRef.current) {
-        dismissedRef.current = true;
-        onDone();
-      }
-    }, HOLD_BEFORE_DISMISS_MS);
+    const t = setTimeout(() => setFinaleLanded(true), FINALE_LANDS_AT_MS);
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape" && !dismissedRef.current) {
         dismissedRef.current = true;
@@ -229,15 +234,40 @@ export function ScanRevealOverlay({
               </motion.div>
             </motion.div>
 
-            {/* Subtle CTA hint */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 4.4, duration: 0.4 }}
-              className="mt-7 text-[11.5px] text-canvas/45"
-            >
-              tap anywhere to continue
-            </motion.div>
+            {/* Real CTA button — appears only after the finale lands,
+                so the user has time to read the verdict before they
+                can dismiss it. Click button (or click outside / press
+                Escape) closes. */}
+            {finaleLanded && (
+              <motion.button
+                type="button"
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3 }}
+                onClick={() => {
+                  if (!dismissedRef.current) {
+                    dismissedRef.current = true;
+                    onDone();
+                  }
+                }}
+                className="mt-7 inline-flex items-center justify-center gap-2 h-11 px-6 rounded-full bg-canvas text-ink text-[14px] font-semibold hover:bg-canvas/90 transition"
+              >
+                See my dashboard
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                >
+                  <polyline points="9 18 15 12 9 6" />
+                </svg>
+              </motion.button>
+            )}
           </motion.div>
 
           {/* Soft confetti burst behind the savings line */}
