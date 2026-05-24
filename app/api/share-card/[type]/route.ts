@@ -327,10 +327,16 @@ export async function GET(
   }
 
   // ---- Pull subscriptions + charges ----
+  // recurring_type + confidence_score are REQUIRED here. Without them
+  // the surface-rules selectors default everything to uncertain and
+  // the card renders $0/mo / "Quietly Watching" no matter how many
+  // confirmed subs the user actually has. (See commit history — this
+  // was the bug that made the share card show 0 while the dashboard
+  // showed $782.)
   const { data: subsData } = await supabaseAdmin
     .from("subscriptions")
     .select(
-      "id, merchant_name, merchant_key, category, amount_cents, currency, frequency, status, classification, last_charged_at"
+      "id, merchant_name, merchant_key, category, amount_cents, currency, frequency, status, classification, last_charged_at, recurring_type, confidence_score"
     )
     .eq("user_id", user.id);
   const subs: LedgerSubscription[] = (subsData ?? []) as LedgerSubscription[];

@@ -274,8 +274,30 @@ export async function buildDashboardData(
 
   // First pass — build action items WITHOUT tags so we can rank them
   // by monthly cost and assign "Biggest line item" to top N.
+  //
+  // CRITICAL TIER FILTER. Per the trust-rebuild brief: the action
+  // center must NEVER show commerce items (CVS, Starbucks, Sephora,
+  // Olive Garden, Whole Foods). Those live in the collapsed
+  // "Recurring spending patterns" accordion ONLY. Confirmed
+  // subscriptions and bills are the things the user wants to review,
+  // cancel, keep, or hide. Uncertain items are internal-only.
+  //
+  // If the user later promotes a commerce item via the accordion's
+  // "Actually a subscription?" button, the override sets recurring_type
+  // → confirmed_subscription on the next render and it will appear
+  // here. The filter is safe across that round-trip.
   const baseActions = subs
-    .filter((s) => s.classification === "confirmed")
+    .filter((s) => {
+      if (s.classification !== "confirmed") return false;
+      // Allow null tier (pre-migration rows) so we don't regress
+      // anyone's existing dashboard during the transition window.
+      // Once everyone re-scans, the only nullable rows will be the
+      // ones the new classifier explicitly marked uncertain.
+      const tier = s.recurring_type ?? null;
+      if (tier === "recurring_commerce") return false;
+      if (tier === "uncertain_recurring") return false;
+      return true;
+    })
     .map((s) => {
       const m = monthlyEq(s.amount_cents, s.frequency);
       return {
