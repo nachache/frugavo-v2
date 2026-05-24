@@ -1,10 +1,13 @@
 // Small inline status pill shown next to the dashboard header. Tells
 // the user at a glance:
-//   - "Trial · 6 days left"  — trialing
-//   - "Protected"            — active
-//   - "Protection ending"    — cancelled_active
+//   - "Protected since [date]"  — trialing or active
+//   - "Protection ending"       — cancelled_active
 //   - (renders nothing for grace/past_due — the BillingStatusBanner
 //     above is already shouting at them)
+//
+// Critic round 2: the "Trial · 7 days left" pill was conversion
+// pressure inside the most-trusted surface on the page. Replaced
+// with "Protected since [date]" — same trust signal, no countdown.
 //
 // Server component — no interactivity, just a label.
 
@@ -21,6 +24,10 @@ type Props = {
     | "none";
   trialEndsAt: string | null;
   expiresAt: string | null;
+  // ISO date the user joined Frugavo. Used as the "Protected since"
+  // anchor for both trialing and active states. Falls back to a
+  // plain "Protected" label when null.
+  protectionStartedAt: string | null;
 };
 
 function daysUntil(iso: string | null): number | null {
@@ -30,27 +37,30 @@ function daysUntil(iso: string | null): number | null {
   return Math.ceil(ms / 86_400_000);
 }
 
+function fmtShortDate(iso: string | null): string | null {
+  if (!iso) return null;
+  return new Date(iso).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+  });
+}
+
 export function ProtectionStatusPill({
   state,
-  trialEndsAt,
+  trialEndsAt: _trialEndsAt,
   expiresAt,
+  protectionStartedAt,
 }: Props) {
+  // Intentionally unused for now — kept on the props so the cancel /
+  // dunning surfaces can read it without prop drilling later. Marks
+  // it as referenced for the linter.
+  void _trialEndsAt;
   let label: string | null = null;
   let tone: "trial" | "active" | "ending" | null = null;
 
-  if (state === "trialing") {
-    const days = daysUntil(trialEndsAt);
-    label =
-      days === null
-        ? "Trial active"
-        : days === 0
-          ? "Trial · ends today"
-          : days === 1
-            ? "Trial · 1 day left"
-            : `Trial · ${days} days left`;
-    tone = "trial";
-  } else if (state === "active") {
-    label = "Protected";
+  if (state === "trialing" || state === "active") {
+    const since = fmtShortDate(protectionStartedAt);
+    label = since ? `Protected since ${since}` : "Protected";
     tone = "active";
   } else if (state === "cancelled_active") {
     const days = daysUntil(expiresAt);
@@ -63,11 +73,9 @@ export function ProtectionStatusPill({
   if (!label || !tone) return null;
 
   const toneClass =
-    tone === "trial"
+    tone === "active"
       ? "border-brand/30 bg-brand/10 text-brand"
-      : tone === "active"
-        ? "border-brand/30 bg-brand/10 text-brand"
-        : "border-accent/30 bg-accent/10 text-accent";
+      : "border-accent/30 bg-accent/10 text-accent";
 
   return (
     <Link

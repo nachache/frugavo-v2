@@ -384,25 +384,37 @@ export async function buildDashboardData(
     rankedByPrice.slice(0, 3).map((b) => b.sub.id)
   );
 
-  // "Might be forgotten" — bumped from 30 → 60 days. The 30-day
-  // threshold tagged virtually every active sub (anything that bills
-  // monthly will look "stale" 31 days into its next cycle). At 60
-  // days the tag means something: it's a sub that's genuinely
-  // dormant or whose billing has paused. Per dashboard critic: when
-  // the tag is on every row it means nothing.
-  const sixtyDaysAgo = new Date(asOf);
-  sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60);
-  const cutoff = sixtyDaysAgo.toISOString().slice(0, 10);
+  // "Unused 90+ days" — renamed from "Might be forgotten" and raised
+  // from 60 → 90 days. Critic round 2: when 7 of 7 items said "Might
+  // be forgotten" the label meant nothing. Two changes:
+  //   1. Threshold is now 90 days so the tag only catches truly
+  //      dormant subscriptions, not normal billing-cycle gaps.
+  //   2. Even among qualifiers, we cap the tag to the top 3 stalest
+  //      subs (longest gap since last_charged_at). Three is enough
+  //      to draw the eye without spamming the grid.
+  const ninetyDaysAgo = new Date(asOf);
+  ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
+  const cutoff = ninetyDaysAgo.toISOString().slice(0, 10);
+
+  // Build the qualifying-stale set, sort by oldest last_charged_at
+  // first, take the top 3 ids — only these get the badge.
+  const staleQualifiers = baseActions
+    .filter(
+      ({ sub: s }) =>
+        s.last_charged_at &&
+        s.last_charged_at < cutoff &&
+        s.status === "active"
+    )
+    .sort((a, b) =>
+      (a.sub.last_charged_at ?? "").localeCompare(b.sub.last_charged_at ?? "")
+    );
+  const staleTaggedIds = new Set(staleQualifiers.slice(0, 3).map((q) => q.sub.id));
 
   const allActions: ActionItem[] = baseActions.map(({ sub: s, monthly: m }) => {
     const tags: string[] = [];
     if (biggestIds.has(s.id)) tags.push("Biggest line item");
-    if (
-      s.last_charged_at &&
-      s.last_charged_at < cutoff &&
-      s.status === "active"
-    ) {
-      tags.push("Might be forgotten");
+    if (staleTaggedIds.has(s.id)) {
+      tags.push("Unused 90+ days");
     }
     const ov = s.merchant_key ? overrideByMerchant.get(s.merchant_key) ?? null : null;
     return {

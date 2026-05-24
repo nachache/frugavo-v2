@@ -69,8 +69,13 @@ export function IdentityHero({
         <div className="text-[13px] md:text-[14px] font-medium text-ink-muted">
           {greeting}
         </div>
+        {/* Personality labels already lead with "The " (e.g. "The
+            Streaming Collector"). Previously we wrote "you're the"
+            ahead of the span which produced "you're the The …" —
+            critic flagged the double article. Drop the leading
+            "you're the" and let the label stand on its own. */}
         <div className="mt-1.5 font-display text-[28px] sm:text-[32px] md:text-[38px] font-bold tracking-[-0.02em] text-ink leading-[1.08]">
-          you&apos;re the
+          You&apos;re
           <br />
           <span className="text-brand">{personality.label}</span>.
         </div>
@@ -80,41 +85,45 @@ export function IdentityHero({
       </div>
 
       {/* Share — single button, expands to the picker on click.
-          Single button feels less like a shotgun of CTAs and gives
-          the dashboard room to breathe. The full ShareButtons row
-          still does the actual platform-specific work. */}
-      <div className="mt-5 md:mt-6 pt-4 md:pt-5 border-t border-hairline px-1 md:px-2">
-        {shareOpen ? (
-          <div>
-            <div className="flex items-center justify-between mb-2.5">
-              <div className="text-[11.5px] md:text-[12px] font-medium uppercase tracking-[0.12em] text-ink-muted">
-                Share your card
+          Wrapped in a soft canvas panel so it reads as a dedicated
+          "share affordance" instead of a naked button sitting
+          under the prose. Was bare; critic said the button looked
+          like a label. The bg-canvas/40 wrapper gives it a clear
+          home without competing with the personality copy. */}
+      <div className="mt-5 md:mt-6">
+        <div className="rounded-2xl bg-canvas/50 border border-hairline/60 px-4 py-3 md:px-5 md:py-4">
+          {shareOpen ? (
+            <div>
+              <div className="flex items-center justify-between mb-2.5">
+                <div className="text-[11.5px] md:text-[12px] font-medium uppercase tracking-[0.12em] text-ink-muted">
+                  Share your card
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShareOpen(false)}
+                  className="text-[11.5px] text-ink-muted hover:text-ink transition"
+                  aria-label="Close share options"
+                >
+                  Done
+                </button>
               </div>
-              <button
-                type="button"
-                onClick={() => setShareOpen(false)}
-                className="text-[11.5px] text-ink-muted hover:text-ink transition"
-                aria-label="Close share options"
-              >
-                Done
-              </button>
+              <ShareButtons
+                shareType="identity"
+                shareText={`I'm "${personality.label}" — ${fmt(monthlySubCents)}/mo on recurring charges.`}
+                shareSlug={publicSlug ?? null}
+              />
             </div>
-            <ShareButtons
-              shareType="identity"
-              shareText={`I'm "${personality.label}" — ${fmt(monthlySubCents)}/mo on recurring charges.`}
-              shareSlug={publicSlug ?? null}
-            />
-          </div>
-        ) : (
-          <button
-            type="button"
-            onClick={() => setShareOpen(true)}
-            className="inline-flex items-center gap-2 h-10 px-4 rounded-full bg-ink text-canvas text-[13px] font-medium hover:bg-ink/85 transition"
-          >
-            <Share2 size={14} strokeWidth={2.2} aria-hidden="true" />
-            Share your card
-          </button>
-        )}
+          ) : (
+            <button
+              type="button"
+              onClick={() => setShareOpen(true)}
+              className="inline-flex items-center gap-2 h-10 px-4 rounded-full bg-ink text-canvas text-[13px] font-medium hover:bg-ink/85 transition w-full justify-center md:w-auto"
+            >
+              <Share2 size={14} strokeWidth={2.2} aria-hidden="true" />
+              Share your card
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );

@@ -162,18 +162,12 @@ export function ProtectionPanel({ data, state }: Props) {
                 <ActionRow key={a.id} action={a} />
               ))}
             </ul>
-            {/* Quiet-flex footer — the 'we caught nothing because nothing
-                slipped past' line. Was a top-level stat box; demoted
-                here per critic. Only renders when surprises === 0
-                (when non-zero it'd appear as an alert in the feed). */}
-            {data.stats.surprises_count === 0 &&
-              data.since_signup.days_protected > 0 && (
-                <div className="mt-4 text-[11.5px] md:text-[12px] text-ink-muted">
-                  0 surprises slipped past us in{" "}
-                  {data.since_signup.days_protected} day
-                  {data.since_signup.days_protected === 1 ? "" : "s"}.
-                </div>
-              )}
+            {/* Quiet-flex footer removed. Critic round 2: "0 surprises
+                slipped past us in 3 days" still reads as bragging
+                about a non-event even at footer size. Honest signal,
+                wrong placement. The cumulative "since you joined"
+                framing below covers the same ground for empty months
+                without spamming the active feed. */}
           </>
         ) : (
           // Empty / quiet-month state per the design caution: never
@@ -291,14 +285,24 @@ function WatchingRow({
           )}
         </div>
       </div>
-      {item.subscription_id && (
-        <a
-          href={`/app/subscriptions/${item.subscription_id}`}
-          className="text-[11.5px] md:text-[12px] font-medium text-brand hover:text-brand-hover transition shrink-0"
-        >
-          Cancel?
-        </a>
-      )}
+      {/* "Review" matches the verb on the list and never commits the
+          user to an outcome. Cancel CTA lives inside the detail view,
+          where the user has the full price + cadence context. Critic
+          round 2: alert said "Cancel?", list said "Review", same user
+          same sub two mental models.
+          When subscription_id is null this is a grouped row (e.g.
+          "4 subscriptions skipped this cycle") — link goes to the
+          full alerts inbox instead of a single subscription page. */}
+      <a
+        href={
+          item.subscription_id
+            ? `/app/subscriptions/${item.subscription_id}`
+            : "/app/alerts"
+        }
+        className="text-[11.5px] md:text-[12px] font-medium text-brand hover:text-brand-hover transition shrink-0"
+      >
+        Review
+      </a>
     </li>
   );
 }

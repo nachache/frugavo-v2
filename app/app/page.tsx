@@ -234,6 +234,14 @@ export default async function AppHome({
           state={entitlement.entitlement_state}
           trialEndsAt={entitlement.trial_ends_at}
           expiresAt={entitlement.expires_at}
+          // Sign-up date powers the "Protected since [date]" pill.
+          // Clerk createdAt is a number (ms) — convert to ISO so the
+          // pill can render a consistent short date.
+          protectionStartedAt={
+            user.createdAt
+              ? new Date(user.createdAt).toISOString()
+              : null
+          }
         />
       </div>
 

@@ -264,10 +264,35 @@ function smoothPath(points: { x: number; y: number }[]): string {
   return out.join(" ");
 }
 
-function Sparkline({ data }: { data: MonthBucket[] }) {
+function Sparkline({ data: dataRaw }: { data: MonthBucket[] }) {
   const W = 1000;
   const H = 240;
   const PAD = 8;
+  // Drop the trailing point when it represents the current month and
+  // we're not yet far enough into it for the partial total to look
+  // honest. The old chart ended with a dramatic crash to zero in the
+  // current month (e.g. May 1st showing $0) which read as "did I
+  // lose my subscriptions?". Cutoff: keep the partial month only if
+  // ≥ 80% of the way through; otherwise hide it.
+  const data = useMemo(() => {
+    if (dataRaw.length === 0) return dataRaw;
+    const last = dataRaw[dataRaw.length - 1];
+    const now = new Date();
+    const thisMonth =
+      now.toISOString().slice(0, 7); // YYYY-MM
+    if (last.month === thisMonth) {
+      const dom = now.getDate();
+      const daysInMonth = new Date(
+        now.getFullYear(),
+        now.getMonth() + 1,
+        0
+      ).getDate();
+      if (dom / daysInMonth < 0.8) {
+        return dataRaw.slice(0, -1);
+      }
+    }
+    return dataRaw;
+  }, [dataRaw]);
   const max = Math.max(1, ...data.map((d) => d.spend_cents));
 
   const points = useMemo(() => {
@@ -526,8 +551,19 @@ function Donut({
   });
 
   const hover = hoverIdx !== null ? seg[hoverIdx] : null;
-  const centerLabel = hover ? fmtRound(hover.monthly_cents) : fmtRound(total);
-  const centerSub = hover ? prettyCategory(hover.category) : "per month";
+  // Default state intentionally hides the dollar total. The hero
+  // number above the donut already anchors $X/mo — repeating it in
+  // the donut center made the same figure show up three times in the
+  // top fold (critic round 2). On hover or click, the slice's
+  // category + dollar replaces the default label so the chart is
+  // still informative.
+  const slicesCount = seg.length;
+  const centerLabel = hover ? fmtRound(hover.monthly_cents) : `${slicesCount}`;
+  const centerSub = hover
+    ? prettyCategory(hover.category)
+    : slicesCount === 1
+      ? "category"
+      : "categories";
 
   return (
     <div className="flex flex-col items-center gap-3 w-full">
@@ -572,10 +608,27 @@ function Donut({
             />
           );
         })}
-        <text x={cx} y={cy + 2} textAnchor="middle" fontFamily="system-ui, sans-serif" fontSize="18" fontWeight="700" fill="#0a0a0a">
+        <text
+          x={cx}
+          y={cy + 4}
+          textAnchor="middle"
+          fontFamily="system-ui, sans-serif"
+          fontSize={hover ? 18 : 28}
+          fontWeight="700"
+          fill="#0a0a0a"
+        >
           {centerLabel}
         </text>
-        <text x={cx} y={cy + 20} textAnchor="middle" fontFamily="system-ui, sans-serif" fontSize="9" fontWeight="500" fill="#737373" letterSpacing="1">
+        <text
+          x={cx}
+          y={cy + 22}
+          textAnchor="middle"
+          fontFamily="system-ui, sans-serif"
+          fontSize="9"
+          fontWeight="500"
+          fill="#737373"
+          letterSpacing="1"
+        >
           {centerSub.toUpperCase()}
         </text>
         <style>{`

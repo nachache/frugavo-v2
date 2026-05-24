@@ -395,16 +395,25 @@ export async function buildProtectionPanelData(
   }
   const recentTrimmed = collapsed.slice(0, 5);
 
-  // ── Watching list: upcoming + recently-flagged active alerts ───
-  // These are the items the watchdog is actively monitoring RIGHT
-  // NOW — renewals about to happen, trials about to convert, charges
-  // that didn't bill. Lets the user act (cancel before the renewal,
-  // confirm the missing renewal).
+  // ── Watching list: actionable alerts only ──────────────────────
+  // Critic round 2: the watching list was duplicating the subscription
+  // grid (Amazon Prime, AMC, Disney+ etc. appearing twice on the same
+  // page). The fix: scope this section to items where the user can
+  // meaningfully ACT before the next charge:
+  //
+  //   - trial_converting   → cancel before the trial bills
+  //   - missing_renewal    → confirm whether the sub stopped
+  //
+  // Dropped from this section (they live in the main subs list now):
+  //   - renewal_upcoming   → normal renewal, no action needed
+  //   - new_subscription   → informational, already detected
+  //
+  // When nothing actionable is in flight, the entire panel section
+  // hides (length === 0) so we don't show a "we're watching" header
+  // over an empty list.
   const WATCHING_TYPES = new Set([
-    "renewal_upcoming",
     "trial_converting",
     "missing_renewal",
-    "new_subscription",
   ]);
   const watchingList: WatchingItem[] = [];
   for (const a of recentAlerts) {
@@ -439,18 +448,39 @@ export async function buildProtectionPanelData(
       amount_cents: amount,
     });
   }
-  // Most urgent first (missing_renewal > trial_converting >
-  // renewal_upcoming > new_subscription).
+  // Most urgent first (missing_renewal > trial_converting).
   const urgency: Record<string, number> = {
     missing_renewal: 0,
     trial_converting: 1,
-    renewal_upcoming: 2,
-    new_subscription: 3,
   };
   watchingList.sort(
     (a, b) => (urgency[a.reason] ?? 9) - (urgency[b.reason] ?? 9)
   );
-  const watchingTrimmed = watchingList.slice(0, 4);
+
+  // Collapse 3+ missing_renewal entries into one row. Critic round 2:
+  // four near-identical "hasn't billed this cycle" entries read like
+  // a log file. One synthetic row points the user at the alerts page
+  // where they can review them individually.
+  const missing = watchingList.filter((w) => w.reason === "missing_renewal");
+  const others = watchingList.filter((w) => w.reason !== "missing_renewal");
+  const collapsedWatching: WatchingItem[] = [];
+  if (missing.length >= 3) {
+    collapsedWatching.push({
+      id: `watch_group_missing_${missing[0].alert_id}`,
+      alert_id: missing[0].alert_id,
+      merchant_name: `${missing.length} subscriptions skipped this cycle`,
+      // No specific subscription_id — clicking "Review" should take
+      // the user to the filtered alerts inbox, not a single sub.
+      subscription_id: null,
+      when_label: "Review individually on the alerts page",
+      reason: "missing_renewal",
+      amount_cents: null,
+    });
+  } else {
+    collapsedWatching.push(...missing);
+  }
+  collapsedWatching.push(...others);
+  const watchingTrimmed = collapsedWatching.slice(0, 4);
 
   // ── cumulative totals ───────────────────────────────────────────
   // Sum of all cancels ever, annualized.
