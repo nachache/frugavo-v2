@@ -51,6 +51,12 @@ type Body = {
   subscription_id?: string;
   override_type?: UserOverride["override_type"];
   override_value?: Record<string, unknown>;
+  // Optional tier override. Lets the dashboard's Bills tab move an
+  // item to subscriptions (and vice versa) without going through the
+  // classifier. Writes directly to subscriptions.recurring_type.
+  // Allowed values: 'confirmed_subscription' | 'recurring_bill'.
+  // Independent of override_type — both can be set in one request.
+  force_tier?: "confirmed_subscription" | "recurring_bill";
 };
 
 type SubRow = {
@@ -249,6 +255,23 @@ export async function POST(req: NextRequest) {
       updated_at: new Date().toISOString(),
     })
     .eq("id", sub.id);
+
+  // Tier reclassification — moves a row between subscription and bill
+  // tiers without changing its classification or override_type. Used
+  // by the dashboard's Bills tab "Move to subscriptions" action and
+  // the Subs tab "Mark as bill" action.
+  if (
+    body.force_tier === "confirmed_subscription" ||
+    body.force_tier === "recurring_bill"
+  ) {
+    await supabaseAdmin
+      .from("subscriptions")
+      .update({
+        recurring_type: body.force_tier,
+        confidence_score: 99, // user-asserted = highest confidence
+      })
+      .eq("id", sub.id);
+  }
 
   // Apply any edits the user specified (amount or cadence).
   if (override_type === "wrong_amount" && override_value?.amount_cents) {

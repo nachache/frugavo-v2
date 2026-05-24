@@ -39,6 +39,10 @@ type Props = {
   pruned: ActionItem[];
   hidden: ActionItem[];
   potential_yearly_savings_cents: number;
+  // Mode = 'bills' suppresses the Cancel button (you don't "cancel"
+  // your mortgage), and offers a "Reclassify as subscription" action
+  // instead. Default 'subscriptions' keeps the original cancel flow.
+  mode?: "subscriptions" | "bills";
 };
 
 function fmt(c: number, opts: { withCents?: boolean } = {}): string {
@@ -74,7 +78,9 @@ export function ActionCenter({
   pruned,
   hidden,
   potential_yearly_savings_cents,
+  mode = "subscriptions",
 }: Props) {
+  const isBills = mode === "bills";
   const router = useRouter();
   const [tab, setTab] = useState<Tab>("worth");
   const [sort, setSort] = useState<Sort>("price");
@@ -185,14 +191,15 @@ export function ActionCenter({
 
   function postFeedback(
     subscription_id: string,
-    override_type: "confirmed" | "cancelled"
+    override_type: "confirmed" | "cancelled",
+    extra?: { force_tier?: "confirmed_subscription" | "recurring_bill" }
   ) {
     startTransition(async () => {
       try {
         await fetch("/api/feedback", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ subscription_id, override_type }),
+          body: JSON.stringify({ subscription_id, override_type, ...extra }),
         });
         router.refresh();
       } catch {
@@ -207,6 +214,15 @@ export function ActionCenter({
 
   function onCancelClick(item: ActionItem) {
     setCancelTarget(toSubLike(item));
+  }
+
+  // Tier reclassification — moves a row between subscription and bill
+  // tiers. On Bills tab "Move to subscriptions"; on Subs tab "Mark as
+  // a bill". User-asserted so confidence_score is set to 99 server-side.
+  function onReclassify(item: ActionItem) {
+    postFeedback(item.subscription_id, "confirmed", {
+      force_tier: isBills ? "confirmed_subscription" : "recurring_bill",
+    });
   }
 
   // Called by CancelModal once the cancellation is recorded via
@@ -241,7 +257,7 @@ export function ActionCenter({
 
       <div className="flex items-baseline justify-between gap-3 flex-wrap mb-1">
         <h2 className="font-display text-[20px] md:text-[24px] font-bold tracking-[-0.01em] text-ink leading-tight">
-          Your subscriptions
+          {isBills ? "Your bills" : "Your subscriptions"}
         </h2>
         {potential_yearly_savings_cents > 0 && worth_a_look.length > 0 && (
           <div className="text-right">
@@ -280,6 +296,8 @@ export function ActionCenter({
                 tab={tab}
                 onCancel={() => onCancelClick(item)}
                 onKeep={() => onKeep(item)}
+                onReclassify={() => onReclassify(item)}
+                isBills={isBills}
               />
             ))}
           </div>
@@ -385,11 +403,15 @@ function Row({
   tab,
   onCancel,
   onKeep,
+  onReclassify,
+  isBills,
 }: {
   item: ActionItem;
   tab: Tab;
   onCancel: () => void;
   onKeep: () => void;
+  onReclassify: () => void;
+  isBills: boolean;
 }) {
   const muted = tab === "hidden" || item.override_type === "not_subscription" || item.override_type === "not_recurring";
   const pruned = tab === "pruned" || item.override_type === "cancelled";
@@ -462,21 +484,43 @@ function Row({
 
         {tab === "worth" || tab === "all" ? (
           <div className="hidden md:flex items-center gap-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
+            {/* Cancel only appears for subscriptions. You don't cancel
+                a mortgage or utility — the action would be misleading
+                on the Bills tab. */}
+            {!isBills && (
+              <button
+                type="button"
+                onClick={onCancel}
+                className="inline-flex h-8 items-center justify-center gap-1 rounded-full border border-hairline bg-surface px-3 text-[12px] font-medium text-ink hover:border-accent hover:bg-accent hover:text-white transition"
+              >
+                <X size={11} />
+                Cancel
+              </button>
+            )}
+            {!isBills && (
+              <button
+                type="button"
+                onClick={onKeep}
+                className="inline-flex h-8 items-center justify-center gap-1 rounded-full border border-hairline bg-surface px-3 text-[12px] font-medium text-ink hover:bg-ink/[0.04] transition"
+              >
+                <Check size={11} />
+                Keep
+              </button>
+            )}
+            {/* Tier reclassify — on Bills tab, "Move to subscriptions".
+                On Subs tab, "Mark as bill". Same /api/feedback endpoint,
+                different force_tier value. */}
             <button
               type="button"
-              onClick={onCancel}
-              className="inline-flex h-8 items-center justify-center gap-1 rounded-full border border-hairline bg-surface px-3 text-[12px] font-medium text-ink hover:border-accent hover:bg-accent hover:text-white transition"
+              onClick={onReclassify}
+              className="inline-flex h-8 items-center justify-center gap-1 rounded-full border border-hairline bg-surface px-3 text-[12px] font-medium text-ink-body hover:text-ink hover:bg-ink/[0.04] transition"
+              title={
+                isBills
+                  ? "This is actually a subscription"
+                  : "This is actually a bill"
+              }
             >
-              <X size={11} />
-              Cancel
-            </button>
-            <button
-              type="button"
-              onClick={onKeep}
-              className="inline-flex h-8 items-center justify-center gap-1 rounded-full border border-hairline bg-surface px-3 text-[12px] font-medium text-ink hover:bg-ink/[0.04] transition"
-            >
-              <Check size={11} />
-              Keep
+              {isBills ? "Move to subscriptions" : "Mark as a bill"}
             </button>
           </div>
         ) : null}

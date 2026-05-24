@@ -384,6 +384,7 @@ export default async function AppHome({
             />
           ) : (
             <ActionCenter
+              mode="bills"
               worth_a_look={data.bill_actions.worth_a_look}
               watching={data.bill_actions.watching}
               pruned={data.bill_actions.pruned}
