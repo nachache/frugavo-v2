@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef } from "react";
 import { createPortal } from "react-dom";
 import { formatCurrency } from "@/lib/utils";
 import { playCelebrationChime } from "@/lib/celebration-sound";
+import { dollarsToThingSentence } from "@/lib/dollar-things";
 
 // The "you just cancelled something — feel good about it" moment.
 //
@@ -68,7 +69,9 @@ export function CancelCelebration({
 
   useEffect(() => {
     if (!visible) return;
-    timer.current = setTimeout(onDone, 1_800);
+    // 2.6s — long enough to read the dollar-to-things line below the
+    // savings number, short enough not to feel like a wait.
+    timer.current = setTimeout(onDone, 2_600);
     // Optional chime, gated on the user's localStorage preference.
     // No-op for users who haven't enabled it.
     playCelebrationChime();
@@ -76,6 +79,13 @@ export function CancelCelebration({
       if (timer.current) clearTimeout(timer.current);
     };
   }, [visible, onDone]);
+
+  // Dollar-to-things translator. Deterministic on the amount so the
+  // same cancellation gives the same line across re-renders.
+  const thingSentence = useMemo(
+    () => (visible ? dollarsToThingSentence(annualSaved) : ""),
+    [visible, annualSaved]
+  );
 
   // Portal to <body> so the celebration escapes any transformed
   // ancestor (e.g. ActionCenter's animate-fadeUp). Without this the
@@ -150,6 +160,16 @@ export function CancelCelebration({
             <div className="mt-1 text-[12.5px] text-emerald-900/70">
               saved per year
             </div>
+            {/* Dollar-to-things line. Lands a beat after the number so
+                the user reads the saving first, then the meaning. */}
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.55, duration: 0.4, ease: "easeOut" }}
+              className="mt-3 text-[13px] text-emerald-950/85 font-medium leading-snug max-w-[260px] mx-auto"
+            >
+              {thingSentence}
+            </motion.div>
           </motion.div>
         </motion.div>
       )}

@@ -2,18 +2,29 @@
 
 // DashboardHeader — page title, subtitle, utility row.
 //
-// Utility row (per ticket P2.13) holds:
+// Utility row holds:
 //   • Last scanned X ago
-//   • Re-scan button
-//   • Share link (P0.2 — small affordance to /app/share since the
-//     share UI no longer lives on the main dashboard)
+//   • Re-scan button → triggers the ScanRevealOverlay theatrical
+//     reveal, then refreshes the page so the dashboard reflects
+//     any newly-detected items.
+//   • Share link
+//   • Protection history
 
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { ScanRevealOverlay } from "./scan-reveal-overlay";
 
 type Props = {
   lastScannedAt: string | null;
+  // Reveal payload — passed from the page so the overlay knows what
+  // numbers to animate to. These are the CURRENT dashboard totals;
+  // any new detections from the re-scan land on the next render.
+  reveal: {
+    monthly_cents: number;
+    annual_savings_cents: number;
+    top_rows: { name: string; monthly_cents: number }[];
+  };
 };
 
 function timeAgo(iso: string | null): string {
@@ -28,19 +39,31 @@ function timeAgo(iso: string | null): string {
   return `Last scanned ${day} day${day === 1 ? "" : "s"} ago`;
 }
 
-export function DashboardHeader({ lastScannedAt }: Props) {
+export function DashboardHeader({ lastScannedAt, reveal }: Props) {
   const router = useRouter();
   const [rescanning, startRescan] = useTransition();
+  const [showReveal, setShowReveal] = useState(false);
 
   function onRescan() {
+    // Open the overlay immediately so the user gets a sense of progress.
+    // The actual API call runs in parallel. The overlay's 4.8s hold is
+    // longer than a typical re-scan, so by the time it dismisses the
+    // server has the new numbers ready for router.refresh().
+    setShowReveal(true);
     startRescan(async () => {
       try {
         await fetch("/api/scan/rescan", { method: "POST" });
-        router.refresh();
       } catch {
-        // best-effort
+        // best-effort — overlay still plays
       }
     });
+  }
+
+  function onRevealDone() {
+    setShowReveal(false);
+    // Refresh AFTER the overlay dismisses so the new numbers swap in
+    // behind the curtain, not while the user is still reading.
+    router.refresh();
   }
 
   return (
@@ -81,6 +104,13 @@ export function DashboardHeader({ lastScannedAt }: Props) {
           </svg>
           {rescanning ? "Scanning…" : "Re-scan"}
         </button>
+        <ScanRevealOverlay
+          visible={showReveal}
+          monthlyCents={reveal.monthly_cents}
+          annualSavingsCents={reveal.annual_savings_cents}
+          topRows={reveal.top_rows}
+          onDone={onRevealDone}
+        />
         <span className="text-ink-muted/40">·</span>
         <Link
           href="/app/share"
