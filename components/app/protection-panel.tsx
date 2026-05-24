@@ -40,6 +40,8 @@ import {
   Eye,
   Scissors,
   AlertCircle,
+  Binoculars,
+  Clock,
 } from "lucide-react";
 import type { ProtectionPanelData, PanelVerb } from "@/lib/protection/panel";
 
@@ -211,6 +213,31 @@ export function ProtectionPanel({ data, state }: Props) {
         )}
       </div>
 
+      {/* WATCHING — upcoming charges + flagged items. Lets the user
+          act before the charge hits (cancel before renewal, confirm
+          a missing one). Hidden when the watchdog isn't currently
+          tracking any near-term events. */}
+      {data.watching.length > 0 && (
+        <div className="px-5 md:px-6 pb-5 md:pb-6 border-t border-hairline pt-5 md:pt-6">
+          <div className="flex items-center gap-2 mb-3">
+            <Binoculars
+              size={14}
+              strokeWidth={2.2}
+              className="text-brand"
+              aria-hidden="true"
+            />
+            <div className="text-[12px] md:text-[13px] font-semibold text-ink">
+              What we&apos;re watching for you
+            </div>
+          </div>
+          <ul className="space-y-2.5">
+            {data.watching.map((w) => (
+              <WatchingRow key={w.id} item={w} />
+            ))}
+          </ul>
+        </div>
+      )}
+
       {/* CTAs */}
       <div className="grid grid-cols-1 md:grid-cols-2 border-t border-hairline">
         <CtaButton
@@ -224,6 +251,56 @@ export function ProtectionPanel({ data, state }: Props) {
         />
       </div>
     </div>
+  );
+}
+
+function WatchingRow({
+  item,
+}: {
+  item: ProtectionPanelData["watching"][number];
+}) {
+  const reasonLabel =
+    item.reason === "missing_renewal"
+      ? "Missing renewal"
+      : item.reason === "trial_converting"
+        ? "Trial converting"
+        : item.reason === "renewal_upcoming"
+          ? "Upcoming renewal"
+          : item.reason === "new_subscription"
+            ? "New charge"
+            : "Watching";
+  return (
+    <li className="flex items-center gap-3">
+      <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-brand/12 text-brand shrink-0">
+        <Clock size={13} strokeWidth={2.2} aria-hidden="true" />
+      </span>
+      <div className="min-w-0 flex-1">
+        <div className="flex items-baseline gap-2 flex-wrap">
+          <span className="text-[13.5px] md:text-[14px] font-medium text-ink truncate">
+            {item.merchant_name}
+          </span>
+          <span className="text-[11px] md:text-[12px] text-ink-muted">
+            · {reasonLabel}
+          </span>
+        </div>
+        <div className="mt-0.5 text-[12px] md:text-[13px] text-ink-muted">
+          {item.when_label}
+          {item.amount_cents != null && item.amount_cents > 0 && (
+            <span className="tabular-nums">
+              {" "}· ${(item.amount_cents / 100).toFixed(2)}
+            </span>
+          )}
+        </div>
+      </div>
+      {item.subscription_id && (
+        <a
+          href={`/app/subscriptions/${item.subscription_id}`}
+          className="text-[11.5px] md:text-[12px] font-medium text-brand hover:text-brand-hover transition shrink-0"
+        >
+          Cancel?
+        </a>
+      )}
+    </li>
   );
 }
 

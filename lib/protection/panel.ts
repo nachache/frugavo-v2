@@ -36,6 +36,23 @@ export type RecentAction = {
   when: string;
 };
 
+// Upcoming charge the watchdog is monitoring. Used by the "what
+// we're watching" subsection on the protection panel.
+export type WatchingItem = {
+  id: string;
+  alert_id: string;             // monitoring_alerts.id for ack/dismiss
+  merchant_name: string;
+  subscription_id: string | null;
+  // Human-readable timing: 'renews tomorrow', 'renews in 4 days',
+  // '9 days late', 'starting next week'.
+  when_label: string;
+  // Why we're watching: 'renewal_upcoming', 'trial_converting',
+  // 'missing_renewal', 'new_subscription'.
+  reason: string;
+  // Amount we expect on this cycle, if known.
+  amount_cents: number | null;
+};
+
 export type ProtectionPanelData = {
   // Top-line guarding figure. Scoped to the active dashboard tab —
   // caller passes the right `tier_filter` to choose subs vs bills vs
@@ -65,8 +82,14 @@ export type ProtectionPanelData = {
     surprises_count: number;
   };
   // Recent verb-led timeline. Most recent first. Cap at 5 for the
-  // panel; the full history lives at /app/alerts.
+  // panel; the full history lives at /app/alerts. Subs only — bills
+  // get filtered out at the DB query level.
   recent_actions: RecentAction[];
+  // "What we're watching for you" — upcoming renewals + trial
+  // conversions + missing renewals the watchdog is monitoring right
+  // now. Lets the user act ("Cancel before tomorrow") instead of
+  // discovering the charge after it hits.
+  watching: WatchingItem[];
   // Cumulative since-signup figures for empty / quiet months. Lets
   // the panel never look dead even when nothing happened this month.
   since_signup: {
@@ -88,6 +111,7 @@ const EMPTY: ProtectionPanelData = {
     surprises_count: 0,
   },
   recent_actions: [],
+  watching: [],
   since_signup: {
     user_since_iso: null,
     days_protected: 0,
@@ -236,13 +260,29 @@ export async function buildProtectionPanelData(
       when: c.created_at as string,
     });
   }
-  // Add recent alerts.
-  const { data: recentAlerts } = await supabaseAdmin
+  // Add recent alerts — SUBS ONLY. Bill / commerce alerts should
+  // never appear in the protection feed; protection is about
+  // catching subscription surprises. We pull the user's sub-tier
+  // subscription IDs once and exclude alerts pointing at any other
+  // tier.
+  const { data: nonSubIdRows } = await supabaseAdmin
+    .from("subscriptions")
+    .select("id")
+    .eq("user_id", userId)
+    .neq("recurring_type", "confirmed_subscription");
+  const nonSubIds = new Set(
+    (nonSubIdRows ?? []).map((r) => r.id as string)
+  );
+  const { data: recentAlertsRaw } = await supabaseAdmin
     .from("monitoring_alerts")
-    .select("id, alert_type, merchant_name, details, created_at")
+    .select("id, subscription_id, alert_type, merchant_name, details, created_at, status")
     .eq("user_id", userId)
     .order("created_at", { ascending: false })
-    .limit(10);
+    .limit(40); // pull more, filter, then trim
+  const recentAlerts = (recentAlertsRaw ?? []).filter(
+    (a) =>
+      !a.subscription_id || !nonSubIds.has(a.subscription_id as string)
+  );
   for (const a of recentAlerts ?? []) {
     const merchant =
       (a.merchant_name as string | null) ?? "a subscription";
@@ -312,6 +352,63 @@ export async function buildProtectionPanelData(
   recent.sort((a, b) => (a.when < b.when ? 1 : -1));
   const recentTrimmed = recent.slice(0, 5);
 
+  // ── Watching list: upcoming + recently-flagged active alerts ───
+  // These are the items the watchdog is actively monitoring RIGHT
+  // NOW — renewals about to happen, trials about to convert, charges
+  // that didn't bill. Lets the user act (cancel before the renewal,
+  // confirm the missing renewal).
+  const WATCHING_TYPES = new Set([
+    "renewal_upcoming",
+    "trial_converting",
+    "missing_renewal",
+    "new_subscription",
+  ]);
+  const watchingList: WatchingItem[] = [];
+  for (const a of recentAlerts) {
+    if (a.status !== "active") continue;
+    if (!WATCHING_TYPES.has(a.alert_type as string)) continue;
+    const d = (a.details as Record<string, unknown>) ?? {};
+    let whenLabel = "soon";
+    if (a.alert_type === "renewal_upcoming") {
+      const date = (d.next_charge_date as string) ?? (d.expected_date as string);
+      whenLabel = date ? humanWhen(date) : "soon";
+    } else if (a.alert_type === "trial_converting") {
+      const date = (d.converts_at as string) ?? (d.expected_date as string);
+      whenLabel = date ? humanWhen(date) : "converting soon";
+    } else if (a.alert_type === "missing_renewal") {
+      const date = (d.expected_date as string) ?? null;
+      whenLabel = date ? `${daysSince(date)} days late` : "missing this cycle";
+    } else if (a.alert_type === "new_subscription") {
+      whenLabel = "new — confirming pattern";
+    }
+    const amount =
+      (typeof d.amount_cents === "number" ? d.amount_cents : null) ??
+      (typeof d.expected_amount_cents === "number"
+        ? (d.expected_amount_cents as number)
+        : null);
+    watchingList.push({
+      id: `watch_${a.id}`,
+      alert_id: a.id as string,
+      merchant_name: (a.merchant_name as string | null) ?? "a charge",
+      subscription_id: (a.subscription_id as string | null) ?? null,
+      when_label: whenLabel,
+      reason: a.alert_type as string,
+      amount_cents: amount,
+    });
+  }
+  // Most urgent first (missing_renewal > trial_converting >
+  // renewal_upcoming > new_subscription).
+  const urgency: Record<string, number> = {
+    missing_renewal: 0,
+    trial_converting: 1,
+    renewal_upcoming: 2,
+    new_subscription: 3,
+  };
+  watchingList.sort(
+    (a, b) => (urgency[a.reason] ?? 9) - (urgency[b.reason] ?? 9)
+  );
+  const watchingTrimmed = watchingList.slice(0, 4);
+
   // ── cumulative totals ───────────────────────────────────────────
   // Sum of all cancels ever, annualized.
   const { data: allCancels } = await supabaseAdmin
@@ -363,6 +460,7 @@ export async function buildProtectionPanelData(
       surprises_count: surprisesCount,
     },
     recent_actions: recentTrimmed,
+    watching: watchingTrimmed,
     since_signup: {
       user_since_iso: userSince,
       days_protected: daysProtected,
@@ -370,4 +468,25 @@ export async function buildProtectionPanelData(
       total_events: (allCancels ?? []).length,
     },
   };
+}
+
+// ── Date helpers for watching labels ───────────────────────────────
+function humanWhen(iso: string): string {
+  const target = new Date(iso).getTime();
+  const now = Date.now();
+  const ms = target - now;
+  const day = 86_400_000;
+  const days = Math.round(ms / day);
+  if (days <= 0) return "today";
+  if (days === 1) return "renews tomorrow";
+  if (days <= 14) return `renews in ${days} days`;
+  if (days <= 60) return `renews in ${Math.round(days / 7)} weeks`;
+  return `renews ${new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`;
+}
+
+function daysSince(iso: string): number {
+  return Math.max(
+    0,
+    Math.round((Date.now() - new Date(iso).getTime()) / 86_400_000)
+  );
 }
