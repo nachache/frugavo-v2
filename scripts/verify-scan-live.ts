@@ -137,19 +137,21 @@ type ExpectedItem = {
 };
 
 // PFC tags that indicate the recurring group is a sub or a bill.
-// Anything outside this set is recurring commerce (groceries, gas,
-// coffee) and excluded from the expected set even if cadence-qualified.
-const SUB_PFC = new Set([
-  "ENTERTAINMENT",
-  "GENERAL_SERVICES",
-  "PERSONAL_CARE", // gym
-]);
-const BILL_PFC = new Set([
-  "RENT_AND_UTILITIES",
-  "LOAN_PAYMENTS",
-  "GOVERNMENT_AND_NON_PROFIT", // city taxes
-  "MEDICAL", // insurance, daycare
-]);
+//
+// Switched from primary-only to a mix of primary + detailed lookups
+// because primary-alone misclassifies:
+//   - PERSONAL_CARE includes gyms (sub) AND salons (commerce)
+//   - MEDICAL includes insurance/daycare (bill) AND pharmacies (commerce)
+//   - GENERAL_MERCHANDISE includes Amazon Prime (sub) AND retail (commerce)
+//
+// Anything not matching these is recurring commerce and excluded from
+// the EXPECTED set even if cadence-qualified.
+const SUB_PRIMARIES = new Set(["ENTERTAINMENT"]);
+const SUB_DETAILED_HINTS = [
+  "GYMS_AND_FITNESS_CENTERS", // PERSONAL_CARE_GYMS_AND_FITNESS_CENTERS
+  "SUBSCRIPTION", // any *_SUBSCRIPTIONS detailed code
+];
+const BILL_PRIMARIES = new Set(["RENT_AND_UTILITIES", "LOAN_PAYMENTS"]);
 const BILL_DETAILED_HINTS = [
   "TELECOMMUNICATION",
   "INSURANCE",
@@ -158,6 +160,26 @@ const BILL_DETAILED_HINTS = [
   "WATER",
   "TELEPHONE",
   "RENT",
+  "CHILDCARE",
+];
+// Detailed codes that are commerce even when primary looks bill-y
+// (e.g. MEDICAL_PHARMACIES, PERSONAL_CARE_HAIR_AND_BEAUTY).
+const COMMERCE_DETAILED_HINTS = [
+  "PHARMACIES",
+  "HAIR_AND_BEAUTY",
+  "DEPARTMENT_STORES",
+  "SUPERSTORES",
+  "DISCOUNT_STORES",
+  "RESTAURANT",
+  "FAST_FOOD",
+  "COFFEE",
+  "GROCERIES",
+  "GAS",
+  "PARKING",
+  "TAXIS_AND_RIDE_SHARES",
+  "PUBLIC_TRANSIT",
+  "HARDWARE_STORES",
+  "CLOTHING",
 ];
 
 function median(nums: number[]): number {
@@ -280,10 +302,19 @@ async function deriveExpectedSet(): Promise<{
 
     const pfcUp = (rep.pfc_primary ?? "").toUpperCase();
     const pfcDetailedUp = (rep.pfc_detailed ?? "").toUpperCase();
+    // Commerce detailed hint wins outright — even if primary is
+    // PERSONAL_CARE, a salon (HAIR_AND_BEAUTY) is commerce.
+    const looksLikeCommerce = COMMERCE_DETAILED_HINTS.some((h) =>
+      pfcDetailedUp.includes(h)
+    );
     const looksLikeBill =
-      BILL_PFC.has(pfcUp) ||
-      BILL_DETAILED_HINTS.some((h) => pfcDetailedUp.includes(h));
-    const looksLikeSub = SUB_PFC.has(pfcUp);
+      !looksLikeCommerce &&
+      (BILL_PRIMARIES.has(pfcUp) ||
+        BILL_DETAILED_HINTS.some((h) => pfcDetailedUp.includes(h)));
+    const looksLikeSub =
+      !looksLikeCommerce &&
+      (SUB_PRIMARIES.has(pfcUp) ||
+        SUB_DETAILED_HINTS.some((h) => pfcDetailedUp.includes(h)));
 
     if (looksLikeBill) {
       exp.expected_tier = "bill";
@@ -292,8 +323,8 @@ async function deriveExpectedSet(): Promise<{
       exp.expected_tier = "subscription";
       subs.push(exp);
     } else {
-      // Not subscription, not bill — probably commerce. Excluded from
-      // the expected set, recorded for the trace.
+      // Commerce or unclassifiable — excluded from EXPECTED, recorded
+      // for the trace so we can see what the test chose to ignore.
       rejected_due_to_pfc.push(exp);
     }
   }
@@ -392,12 +423,18 @@ async function testErrorPath() {
 // --- Anti-fragmentation: synthetic fixture, not live data --------------
 async function testAntiFragmentationSynthetic() {
   // Two triplets. Each triplet's variants describe the same merchant
-  // under different descriptor forms. The resolver must collapse each
-  // triplet to a single canonical_merchant_key.
-  const apple = [
-    "APPLE.COM/BILL 866-712-7753",
-    "APL*ITUNES.COM",
-    "APPLE SERVICES 800-275-2273",
+  // PRODUCT under different descriptor forms. The resolver must
+  // collapse each triplet to a single canonical_merchant_key.
+  //
+  // Picking single-product merchants (Netflix, Spotify) intentionally
+  // — Apple's billing surface covers several distinct products
+  // (Music, iTunes, Services, TV+, iCloud) that legitimately resolve
+  // to different keys. That's correct behavior; not a test we should
+  // run.
+  const netflix = [
+    "NETFLIX.COM",
+    "NETFLIX 866-579-7172",
+    "Netflix",
   ];
   const spotify = ["PAYPAL *SPOTIFY", "SPOTIFY USA", "Spotify"];
 
@@ -445,16 +482,72 @@ async function testAntiFragmentationSynthetic() {
     return { ok: llmMatch, keys: llmKeys, canonical };
   }
 
-  const a = await collapseCheck("apple", apple);
+  const n = await collapseCheck("netflix", netflix);
   const s = await collapseCheck("spotify", spotify);
-  const passed = a.ok && s.ok;
+  const passed = n.ok && s.ok;
   record(
     "Anti-fragmentation (synthetic)",
     passed,
     passed
-      ? `apple→"${a.canonical}", spotify→"${s.canonical}"`
-      : `apple keys=[${a.keys.join(",")}] spotify keys=[${s.keys.join(",")}]`
+      ? `netflix→"${n.canonical}", spotify→"${s.canonical}"`
+      : `netflix keys=[${n.keys.join(",")}] spotify keys=[${s.keys.join(",")}]`
   );
+}
+
+// Diagnostic trace for a missed expected item. Tells us where in the
+// pipeline it got lost: not in raw data, no canonical key, sub row
+// has wrong tier, Claude said is_subscription=false, etc.
+async function traceMiss(missed: ExpectedItem, allSubs: Sub[]) {
+  console.log(`\n  ─── ${missed.merchant_label} (expected ${missed.expected_tier}, ${fmtUsd(missed.median_amount_cents)}/mo) ───`);
+  const label = missed.merchant_label.toLowerCase();
+  // 1) Raw transactions
+  const { data: raw } = await supa
+    .from("plaid_transactions")
+    .select(
+      "description, merchant_key, canonical_merchant_key, canonical_display_name, pfc_primary, pfc_detailed"
+    )
+    .eq("user_id", USER_ID)
+    .or(
+      `description.ilike.*${label}*,merchant_name.ilike.*${label}*,canonical_merchant_key.ilike.*${label.replace(/\s+/g, "_")}*`
+    )
+    .limit(5);
+  const rawTxns = raw ?? [];
+  if (rawTxns.length === 0) {
+    console.log(`    raw: NONE FOUND — merchant absent from plaid_transactions matching label`);
+  } else {
+    for (const r of rawTxns.slice(0, 3)) {
+      console.log(
+        `    raw: "${r.description}" merchant_key=${r.merchant_key} canonical=${r.canonical_merchant_key ?? "(none)"} pfc=${r.pfc_primary}/${r.pfc_detailed}`
+      );
+    }
+  }
+  // 2) Subscriptions row state
+  const matching = allSubs.filter(
+    (s) =>
+      (s.merchant_name ?? "").toLowerCase().includes(label) ||
+      (s.merchant_key ?? "").toLowerCase().includes(label.replace(/\s+/g, "_"))
+  );
+  if (matching.length === 0) {
+    console.log(`    sub: NONE — never reached the subscriptions table (Gate A or detector minimums)`);
+  } else {
+    for (const s of matching) {
+      console.log(
+        `    sub: name="${s.merchant_name}" key="${s.merchant_key}" classification=${s.classification} tier=${s.recurring_type} conf=${s.confidence_score}`
+      );
+      const sigs = (s.classification_signals ?? []).filter(
+        (x) =>
+          x.startsWith("llm_") ||
+          x.startsWith("tier") ||
+          x.startsWith("soft_review") ||
+          x.startsWith("descriptor:") ||
+          x.startsWith("pfc_") ||
+          x.startsWith("gateB_disqualified")
+      );
+      if (sigs.length > 0) {
+        console.log(`      signals: ${sigs.slice(0, 8).join(", ")}`);
+      }
+    }
+  }
 }
 
 // --- Recall + precision against the ledger-derived expected set --------
@@ -518,14 +611,24 @@ async function testRecallAndPrecision() {
 
   const totalExpected = expected.subs.length + expected.bills.length;
   const totalFound = subRecall.found.length + billRecall.found.length;
-  const passed = subRecall.missed.length === 0 && billRecall.missed.length === 0;
+  const allMissed = [...subRecall.missed, ...billRecall.missed];
+  const passed = allMissed.length === 0;
   record(
     `Recall (ledger-derived: ${totalExpected} expected)`,
     passed,
     passed
       ? `all ${totalExpected} found (${expected.subs.length} subs + ${expected.bills.length} bills)`
-      : `MISSED ${totalExpected - totalFound}/${totalExpected}: ${[...subRecall.missed, ...billRecall.missed].map((m) => m.merchant_label).join(", ")}`
+      : `MISSED ${totalExpected - totalFound}/${totalExpected}: ${allMissed.map((m) => m.merchant_label).join(", ")}`
   );
+
+  // Diagnostic trace for every missed item.
+  if (allMissed.length > 0) {
+    console.log(`\n=== MISS TRACE (${allMissed.length}) ===`);
+    for (const m of allMissed) {
+      await traceMiss(m, allSubs);
+    }
+    console.log(`=== END TRACE ===\n`);
+  }
 
   // --- Precision guard ---
   // The four poison rows (internal transfer, card payment, ATM fee /

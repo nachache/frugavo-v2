@@ -195,24 +195,23 @@ export async function runScanForUser(
   await emit(scanId, { type: "progress", scan_id: scanId, phase: "reading" });
 
   // ---- Step 2: read stored transactions for this user ----
-  const { txns, raw: storedRows } = await readStoredTransactions(userId);
+  // `raw` is no longer consumed (v3 deleted the LLM resolver path)
+  // but readStoredTransactions still returns it for legacy callers
+  // and test fixtures.
+  const { txns } = await readStoredTransactions(userId);
 
-  // ---- Step 2.5: canonical merchant identity resolution ----
-  // THE RECALL FIX. We call Claude in batch on every distinct
-  // descriptor that doesn't yet have a canonical_merchant_key set
-  // in plaid_transactions, then UPDATE the table with the result.
-  // The next time readStoredTransactions runs (e.g. on the next
-  // scan), those rows already have a canonical key so the resolver
-  // is a no-op for them — that's how the second scan stays at 0
-  // resolution calls.
-  //
-  // We mutate the in-memory txns array AFTER the UPDATE lands so the
-  // detector groups by canonical key on this very scan, not next one.
-  const resolveMetrics = await resolveAndPersistCanonicalKeys({
-    userId,
-    storedRows,
-    txns,
-  });
+  // ---- Step 2.5 — REMOVED ----
+  // The LLM resolver layer (canonical merchant identity via Claude)
+  // is bypassed in v3. Plaid's merchant_name field handles identity
+  // resolution for the ~95% common case; for the long tail, the
+  // classifier (Stage 5) receives the raw descriptor + merchant_name
+  // + PFC and uses world knowledge to recognize the merchant in one
+  // call. Removing the resolver removed ~350 lines of preprocessing
+  // and the entire fragmentation-induced miss class. The
+  // canonical_merchant_key column on plaid_transactions still exists
+  // for old rows — readStoredTransactions COALESCEs it with
+  // merchant_key, so legacy data isn't disturbed.
+  const resolveMetrics = { distinct: 0, resolved: 0, cache_hit_pct: 100 };
 
   // ---- Step 3: optional Plaid /transactions/recurring/get enrichment ----
   // Fetched once per item. Only used for PFC + status hints on
@@ -562,30 +561,48 @@ async function processDetectedStream(args: {
       shadowSignals.push(`override:${scored.override_type}`);
     }
 
-    // ---- Tier assignment ----
-    // Combines: classifier verdict + Beta/pattern log-odds +
-    // merchant-category prior (PFC). Writes recurring_type and
-    // confidence_score on the row so every downstream surface
-    // (dashboard, reveal, personality, share card, money-leaks,
-    // protection insights) reads from a single tagged column.
-    const tier = assignTier({
-      classification: verdict.classification,
-      pfc_primary: pfcPrimary,
-      pfc_detailed: pfcDetailed,
-      combined_log_odds: scored.combined_log_odds,
-      // Dictionary membership lets known subs (Apple, Amazon Prime,
-      // Adobe, etc.) resist demotion to commerce when Plaid's PFC
-      // is ambiguous (GENERAL_MERCHANDISE etc.).
-      in_dictionary: features.in_dictionary,
-      user_override: override?.override_type ?? null,
-    });
-    tierType = tier.recurring_type;
-    tierConfidence = tier.confidence_score;
-    shadowSignals.push(
-      `tier:${tier.recurring_type}`,
-      `conf:${tier.confidence_score}`,
-      `tier_reason:${tier.reason}`
-    );
+    // ---- v3 TIER ASSIGNMENT — TRUST CLAUDE ----
+    // The classifier returned a tier directly. We use it as the
+    // authoritative answer for confirmed rows. No PFC priors, no
+    // dictionary boosts, no per-tier log-odds math.
+    //
+    // User overrides still win outright (they live in user_overrides
+    // and are read in step 2 of scoreCandidate — that path is preserved
+    // for downstream call sites).
+    const overrideType = override?.override_type ?? null;
+    if (overrideType === "not_subscription" || overrideType === "not_recurring") {
+      tierType = "uncertain_recurring";
+      tierConfidence = 0;
+      shadowSignals.push(`tier_reason:user_override_${overrideType}`);
+    } else if (
+      overrideType === "confirmed" ||
+      overrideType === "wrong_amount" ||
+      overrideType === "wrong_cadence"
+    ) {
+      tierType = "confirmed_subscription";
+      tierConfidence = 99;
+      shadowSignals.push(`tier_reason:user_override_${overrideType}`);
+    } else if (verdict.classification === "needs_review") {
+      tierType = "uncertain_recurring";
+      tierConfidence = Math.round((verdict.llm?.confidence ?? 0) * 100);
+      shadowSignals.push("tier_reason:classifier_needs_review");
+    } else {
+      // confirmed branch — read tier off the LLM verdict.
+      const llmTier = verdict.llm?.tier;
+      tierType =
+        llmTier === "confirmed_subscription" ||
+        llmTier === "recurring_bill" ||
+        llmTier === "recurring_commerce"
+          ? llmTier
+          : "confirmed_subscription"; // safe default for missing tier
+      tierConfidence = Math.round(
+        Math.max(0, Math.min(1, verdict.llm?.confidence ?? 0.85)) * 100
+      );
+      shadowSignals.push(
+        `tier_reason:llm_${llmTier ?? "missing"}`,
+        `llm_reason:${(verdict.llm?.reason ?? "").slice(0, 80)}`
+      );
+    }
   } catch (e) {
     // eslint-disable-next-line no-console
     console.warn("[scan] shadow scoring failed", e);

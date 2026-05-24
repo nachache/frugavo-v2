@@ -110,13 +110,27 @@ export type LlmClassifyResponse = {
 
 // ---------- Gate A: hard denylist ----------
 
+// HARD-DENY PFC primaries. These are unambiguous non-recurring-spend
+// categories: money movement, taxes, income.
+//
+// NOTE: LOAN_PAYMENTS was previously here (inherited from the v1
+// binary classifier where "loan" wasn't recognized as a tier). In the
+// new 4-tier model, mortgages / car loans / student loans / credit
+// card loans are legitimate recurring_bill candidates and must reach
+// the classifier. Moved to soft-route via PFC_PRIMARY_SOFT_REVIEW.
 const PFC_PRIMARY_DENY = new Set<string>([
   "TRANSFER_IN",
   "TRANSFER_OUT",
-  "LOAN_PAYMENTS",
   "BANK_FEES",
   "INCOME",
   "TAX",
+]);
+
+// Soft-route PFC primaries. Pass Gate A with a soft_review signal so
+// the classifier can decide. Used for categories that COULD be a
+// recurring bill but historically got over-rejected.
+const PFC_PRIMARY_SOFT_REVIEW = new Set<string>([
+  "LOAN_PAYMENTS",
 ]);
 
 const PFC_DETAILED_DENY_TOKENS = [
@@ -146,7 +160,8 @@ const DESCRIPTOR_DENY_GROUPS: { name: string; pattern: RegExp }[] = [
   { name: "fee",        pattern: /\b(cover\s+fee|service\s+fee|transfer\s+fee|atm\s+fee|nsf\s+fee|overdraft\s+fee)\b/i },
   // Payroll providers + the generic "payroll" word.
   { name: "payroll",    pattern: /\b(payroll|gusto|adp\s+payroll|paychex|justworks|rippling|deel|wagepoint|payworks|ceridian|pc[\-\s]?payworks|mb[\-\s]?payworks|ach\s+credit|temp\s+wages|temp\s+staffing|tempstars[\-\s]?temp)\b/i },
-  { name: "loan",       pattern: /\b(mortgage|loan|bdc|banque\s+developpement|loan\s+payment|line\s+of\s+credit)\b/i },
+  // "loan" pattern moved from hard reject to soft route. Mortgages,
+  // car loans, student loans are legitimate recurring_bill candidates.
   { name: "transfer_to_account", pattern: /\bpc\s+to\s+\d/i },
   { name: "card_payment", pattern: /\b(credit\s*card[^a-z]*payment|automatic\s+payment|auto[\s-]?pay\b|cc\s+payment|card\s+payment|payment\s+received|payment\s+-?\s*thank|thank\s+you[^a-z]*payment)\b/i },
   { name: "bank_internal", pattern: /\b(cd\s+deposit|certificate\s+of\s+deposit|savings\s+transfer|sweep\s+to\s+savings|investment\s+contribution|brokerage\s+transfer|round[\-\s]?up|abm\s+withdrawal|atm\s+withdrawal|bank\s+withdrawal|scotia\s+direct|scotiaconnect|cash\s+sent|cash\s+withdrawal)\b/i },
@@ -172,11 +187,13 @@ const DESCRIPTOR_SOFT_REVIEW_GROUPS: { name: string; pattern: RegExp }[] = [
   // because they share words with one-off supply invoices.
   { name: "b2b_supply", pattern: /\b((dental|medical|laboratory|optical|orthodontic|veterinary)\s+(supply|supplies|laboratory|labs?|equipment|distributor))\b/i },
   { name: "b2b_lab",    pattern: /\b(dental\s+lab|dental\s+laboratory|medical\s+lab|pathology\s+lab|optical\s+lab|practicon|orascoptic|cintas|safco)\b/i },
-  // Property / rent. Recurring residential rent should land as
-  // recurring_bill, not be deleted. Software products with
-  // "Properties" in the name (HubSpot Marketing Hub etc.) shouldn't
-  // be deleted either.
+  // Property / rent. Recurring residential rent is a recurring_bill,
+  // not a deletion. Software products with "Properties" in the name
+  // shouldn't be hard-rejected either.
   { name: "rent",       pattern: /\b(property\s+group|real\s+estate|propert(?:y|ies)\s+(?:llc|inc|management)|landlord|rent\s+payment|lease\s+payment|huntington\s+property)\b/i },
+  // Loan / mortgage patterns. Recurring_bill in the new 4-tier model
+  // — let the classifier decide.
+  { name: "loan",       pattern: /\b(mortgage|loan|bdc|banque\s+developpement|loan\s+payment|line\s+of\s+credit)\b/i },
   // Generic vendor / invoice language. Some SaaS shows up as
   // "VENDOR PAYMENT TO X" depending on the bank's renderer.
   { name: "vendor",     pattern: /\b(holdings?|invoice|payment\s+to)\b/i },
@@ -225,7 +242,8 @@ export type GateAResult =
   | { passed: false; reason: string };
 
 export function gateA(input: ClassifyInput): GateAResult {
-  if (input.pfcPrimary && PFC_PRIMARY_DENY.has(input.pfcPrimary.toUpperCase())) {
+  const pfcUp = (input.pfcPrimary ?? "").toUpperCase();
+  if (pfcUp && PFC_PRIMARY_DENY.has(pfcUp)) {
     return { passed: false, reason: `pfc_primary:${input.pfcPrimary}` };
   }
   if (input.pfcDetailed) {
@@ -245,8 +263,13 @@ export function gateA(input: ClassifyInput): GateAResult {
       return { passed: false, reason: `descriptor:${name}` };
     }
   }
-  // Soft-route patterns: pass Gate A but mark for forced needs_review
-  // unless the classifier explicitly confirms otherwise.
+  // PFC primary soft-route (LOAN_PAYMENTS). Pass but mark.
+  if (pfcUp && PFC_PRIMARY_SOFT_REVIEW.has(pfcUp)) {
+    return { passed: true, softReviewReason: `soft_review:pfc_${pfcUp.toLowerCase()}` };
+  }
+  // Descriptor soft-route patterns: pass Gate A but mark for the
+  // classifier to weigh in. Without confirmation they'd land
+  // needs_review by default.
   for (const { name, pattern } of DESCRIPTOR_SOFT_REVIEW_GROUPS) {
     if (pattern.test(text)) {
       return { passed: true, softReviewReason: `soft_review:${name}` };
@@ -450,19 +473,25 @@ export async function classifyStream(
   };
 }
 
-// ---------- Classifier brain (v2) ----------
+// ---------- Classifier brain (v3) ----------
+//
+// v3 architectural shift: Claude returns the tier directly. We stopped
+// preprocessing (no LLM resolver, no PFC priors, no dictionary boost,
+// no tier-assignment math). Plaid's merchant_name is the identity
+// signal. The classifier sees raw candidate context and produces a
+// trusted verdict.
 //
 // Pin the prompt + model version into the snapshot so replay can
 // prove it's reading the same verdicts. Bump on any prompt change.
-export const CLASSIFY_LLM_VERSION = "classify-v2-haiku-4-5-20251001";
+export const CLASSIFY_LLM_VERSION = "classify-v3-haiku-4-5-20251001";
 
-export const CLASSIFY_SYSTEM_PROMPT = `You decide whether a recurring charge belongs in the user's "subscriptions and bills" view, or in the "recurring spending patterns" view, or should stay hidden.
+export const CLASSIFY_SYSTEM_PROMPT = `You are the classifier brain for a personal-finance app that detects recurring charges. You receive a candidate recurring stream and decide which tier it belongs to. Use your world knowledge to identify merchants — descriptors are noisy bank-statement strings (billing suffixes, store numbers, processor prefixes).
 
 TIERS
-- confirmed_subscription: ongoing access to a digital service or membership the user pays for on a recurring schedule. Categories: streaming (audio + video), software / SaaS, cloud storage, productivity tools, AI tools, VPNs, news / magazine, gym + fitness apps, learning platforms, dating apps, password managers.
-- recurring_bill: regular monthly or quarterly obligation the user thinks of as a bill, not a subscription. Categories: utilities (electric, gas, water), telecom (carrier, ISP, cable), insurance (auto, health, home, life), rent, mortgage, childcare / daycare, security monitoring.
-- recurring_commerce: recurring spending pattern at merchants where each charge is a discrete purchase, NOT ongoing access. Categories: coffee shops, fast food, restaurants, pharmacies, gas stations, grocery, big-box retail, ride-share, food delivery, beauty / salons, fitness studios that bill per-class.
-- uncertain_recurring: cannot tell, low-confidence merchant identification, or descriptor looks like internal bank movement, transfer, or generic noise.
+- confirmed_subscription: ongoing access to a digital service or membership the user pays for on a recurring schedule. Streaming, software / SaaS, cloud storage, productivity tools, AI tools, VPNs, news / magazines, gym memberships, learning platforms, password managers, paid newsletters. The user thinks of these as "things I'm subscribed to."
+- recurring_bill: regular obligation the user thinks of as a bill, not a subscription. Utilities (electric, gas, water), telecom (carriers, ISPs, cable, mobile), insurance (auto, health, home, life, renters), rent, mortgage, car loans, student loans, credit card autopay loans, childcare / daycare, security monitoring, HOA dues, property taxes paid monthly.
+- recurring_commerce: recurring spending pattern at merchants where each charge is a discrete purchase, NOT ongoing access. Coffee shops, fast food, restaurants, pharmacies, gas stations, grocery, big-box retail, ride-share, food delivery, beauty / salons, clothing stores. The merchant might be visited regularly but each transaction is its own purchase.
+- uncertain_recurring: cannot identify the merchant confidently, or the descriptor looks like internal bank movement, generic noise, or money transfer.
 
 is_subscription is TRUE only for confirmed_subscription and recurring_bill (the things that count toward the user's recurring obligations total). It is FALSE for recurring_commerce and uncertain_recurring.
 
