@@ -113,7 +113,12 @@ export async function runScanForUser(
   source: ScanSource = "first_connect"
 ): Promise<ScanResult> {
   const t0 = Date.now();
-  if (!plaidClient || !supabaseAdmin) {
+  // supabaseAdmin is required (we read + write tables). plaidClient
+  // is only needed to PULL new transactions from Plaid; if absent,
+  // we skip Step 1 (sync) and re-classify whatever's already in
+  // plaid_transactions. This lets verify:scan:live / replay / CI
+  // run without Plaid credentials.
+  if (!supabaseAdmin) {
     return {
       scan_id: "",
       detected: 0,
@@ -168,8 +173,13 @@ export async function runScanForUser(
   await emit(scanId, { type: "progress", scan_id: scanId, phase: "connecting" });
 
   // ---- Step 1: sync every item's transactions via /transactions/sync ----
+  // Skipped when plaidClient is absent (verify / replay / CI paths).
+  // The pipeline still runs against the transactions already in DB.
   let syncMetrics = { items: 0, added: 0, modified: 0, removed: 0, pages: 0 };
-  try {
+  if (!plaidClient) {
+    // eslint-disable-next-line no-console
+    console.warn("[scan] plaidClient unavailable — skipping sync, will re-classify existing transactions");
+  } else try {
     const sync = await syncAllItemsForUser(userId);
     syncMetrics = {
       items: sync.items,
