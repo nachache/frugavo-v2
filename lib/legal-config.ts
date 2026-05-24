@@ -35,13 +35,19 @@ export type LegalConfig = {
   supportPhone: string | null;
 };
 
-// Placeholders. These will surface as "[UPDATE BEFORE LAUNCH]" in the
-// footer and privacy page so we can't accidentally ship to production
-// with them in place.
+// Operating entity is 2752676 Ontario Inc., registered at the
+// founder's home address in Ottawa pending dedicated office space.
+// All footer / privacy / terms references read from here.
 export const LEGAL: LegalConfig = {
-  legalName: "[UPDATE BEFORE LAUNCH] Frugavo, Inc.",
+  legalName: "2752676 Ontario Inc. (operating as Frugavo)",
   brandName: "Frugavo",
-  address: null,
+  address: {
+    line1: "3546 Wyman Cres",
+    city: "Ottawa",
+    region: "ON",
+    postalCode: "",
+    country: "Canada",
+  },
   supportEmail: "hello@frugavo.com",
   privacyEmail: "privacy@frugavo.com",
   securityEmail: "security@frugavo.com",

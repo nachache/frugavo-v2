@@ -4,7 +4,27 @@ import { motion } from "framer-motion";
 import { ArrowRight, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { HeroDemoCard } from "@/components/sections/hero-demo-card";
+import dynamic from "next/dynamic";
+
+// Client-only: the HeroDemoCard relies on refs, animation loops, and
+// CSS-in-JS that only kick in after hydration. SSR'd it bleeds raw
+// "Step 1 of 3 / Connecting securely / $0.00/mo / 0 charges" text
+// into the first paint before styles apply. Disabling SSR + a sized
+// placeholder eliminates the flash and prevents layout shift.
+const HeroDemoCard = dynamic(
+  () =>
+    import("@/components/sections/hero-demo-card").then((m) => m.HeroDemoCard),
+  {
+    ssr: false,
+    loading: () => (
+      <div
+        aria-hidden="true"
+        className="rounded-3xl border border-hairline bg-canvas/40"
+        style={{ minHeight: 560 }}
+      />
+    ),
+  }
+);
 import { hero } from "@/lib/content";
 
 // The hero previously displayed a live-incrementing dollar counter labeled
@@ -135,11 +155,10 @@ export function Hero() {
           </motion.ul>
         </div>
 
-        {/* RIGHT — animated demo card. Hidden on mobile to cut
-            ~600px of vertical bloat; the headline + CTA do the
-            work above the fold and the inbox-demo section
-            below provides the visual proof. */}
-        <div className="relative hidden md:block">
+        {/* RIGHT — animated demo card. Visible on mobile too;
+            the user prefers the motion / visual proof above the
+            fold even at the cost of a bit more scroll. */}
+        <div className="relative">
           <HeroDemoCard />
         </div>
       </div>

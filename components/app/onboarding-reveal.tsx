@@ -47,6 +47,15 @@ type Props = {
   // unusual recurring charges automatically."
   protectionPitch: string;
   firstName: string | null;
+  // Top 5-8 detected items shown in the feedback gate (Stage 0)
+  // so the user can mark anything that isn't actually a subscription.
+  // Each item's subscription_id flows into /api/feedback as an
+  // "not_subscription" override when the user checks it.
+  topDetected: {
+    subscription_id: string;
+    name: string;
+    monthly_cents: number;
+  }[];
 };
 
 function fmtBig(c: number): string {
@@ -63,11 +72,18 @@ function fmt(c: number): string {
 
 export function OnboardingReveal(props: Props) {
   const router = useRouter();
-  const [stage, setStage] = useState<"reveal" | "upsell" | "preview">(
-    "reveal"
-  );
+  void router; // reserved for future direct navigation
+  // 4-stage flow: feedback (mark non-subs) → reveal (cinematic) →
+  // upsell (Activate Protection) → preview/activated (transition).
+  const [stage, setStage] = useState<
+    "feedback" | "reveal" | "upsell" | "preview"
+  >(props.topDetected.length > 0 ? "feedback" : "reveal");
   const [activating, setActivating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Subscription ids the user marked as "not a subscription" in the
+  // feedback gate. Sent to /api/feedback when they advance.
+  const [excludedIds, setExcludedIds] = useState<Set<string>>(new Set());
+  const [submittingFeedback, setSubmittingFeedback] = useState(false);
 
   async function activate() {
     setActivating(true);
@@ -87,10 +103,159 @@ export function OnboardingReveal(props: Props) {
     }
   }
 
+  async function submitFeedbackAndAdvance() {
+    if (excludedIds.size === 0) {
+      setStage("reveal");
+      return;
+    }
+    setSubmittingFeedback(true);
+    try {
+      // Fire-and-forget per-item. /api/feedback writes overrides +
+      // re-scores. We don't await to keep the UI snappy; the user
+      // is moving to the reveal regardless.
+      await Promise.all(
+        Array.from(excludedIds).map((id) =>
+          fetch("/api/feedback", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              subscription_id: id,
+              override_type: "not_subscription",
+            }),
+          }).catch(() => null)
+        )
+      );
+    } finally {
+      setSubmittingFeedback(false);
+      setStage("reveal");
+    }
+  }
+
+  function toggleExclude(id: string) {
+    setExcludedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
   // Continue without activating — show the "Preview enabled"
   // transition for ~2.5s, then drop into the dashboard.
   if (stage === "preview") {
     return <ProtectionActivated variant="preview" />;
+  }
+
+  // Stage 0 — FEEDBACK GATE. Single card asking the user to
+  // confirm what's a subscription. Plants the emotional anchor
+  // ("did you know about all these?") and improves detector
+  // accuracy by writing user_overrides for the excluded items.
+  if (stage === "feedback") {
+    return (
+      <RevealShell>
+        <div className="text-center max-w-[640px] mx-auto animate-revealUp">
+          <div className="text-[12px] md:text-[14px] font-medium uppercase tracking-[0.18em] text-canvas/55">
+            Before we show you the damage
+          </div>
+          <h1 className="mt-4 md:mt-6 font-display text-[28px] md:text-[44px] font-bold tracking-[-0.03em] leading-[1.06]">
+            Did you know about all of these?
+          </h1>
+          <p className="mt-3 md:mt-4 text-[14.5px] md:text-[17px] text-canvas/80 leading-relaxed max-w-[520px] mx-auto">
+            Uncheck anything that isn&apos;t actually a subscription. We&apos;ll
+            exclude it from your totals and learn for next time.
+          </p>
+
+          <ul className="mt-7 md:mt-9 grid grid-cols-1 gap-2 max-w-[460px] mx-auto text-left">
+            {props.topDetected.slice(0, 8).map((it) => {
+              const excluded = excludedIds.has(it.subscription_id);
+              return (
+                <li key={it.subscription_id}>
+                  <button
+                    type="button"
+                    onClick={() => toggleExclude(it.subscription_id)}
+                    className={[
+                      "w-full flex items-center gap-3 rounded-2xl border px-3.5 py-3 text-left transition",
+                      excluded
+                        ? "border-canvas/15 bg-canvas/[0.03] opacity-55"
+                        : "border-canvas/20 bg-canvas/[0.06] hover:bg-canvas/[0.09]",
+                    ].join(" ")}
+                  >
+                    <span
+                      className={[
+                        "h-5 w-5 rounded-md border flex items-center justify-center shrink-0",
+                        excluded
+                          ? "border-canvas/30 bg-transparent"
+                          : "border-brand bg-brand",
+                      ].join(" ")}
+                      aria-hidden="true"
+                    >
+                      {!excluded && (
+                        <svg
+                          width="11"
+                          height="11"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="#0a0a0a"
+                          strokeWidth="3.5"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        >
+                          <polyline points="20 6 9 17 4 12" />
+                        </svg>
+                      )}
+                    </span>
+                    <span
+                      className={[
+                        "flex-1 min-w-0 text-[14.5px] md:text-[15.5px] font-medium",
+                        excluded
+                          ? "text-canvas/55 line-through"
+                          : "text-canvas",
+                      ].join(" ")}
+                    >
+                      {it.name}
+                    </span>
+                    <span className="shrink-0 text-[13.5px] md:text-[14px] font-medium tabular-nums text-canvas/75">
+                      {fmt(it.monthly_cents)}/mo
+                    </span>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+
+          <div className="mt-4 text-[12px] md:text-[12.5px] text-canvas/55">
+            {excludedIds.size === 0
+              ? "All of these look like subscriptions"
+              : `${excludedIds.size} excluded — we'll remember`}
+          </div>
+
+          <button
+            type="button"
+            onClick={submitFeedbackAndAdvance}
+            disabled={submittingFeedback}
+            className="mt-7 md:mt-9 inline-flex items-center justify-center gap-2 h-12 px-7 rounded-full bg-canvas text-ink font-medium text-[14px] hover:bg-canvas/90 transition disabled:opacity-70"
+          >
+            {submittingFeedback ? "Saving…" : "Continue"}
+            {!submittingFeedback && (
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <line x1="5" y1="12" x2="19" y2="12" />
+                <polyline points="12 5 19 12 12 19" />
+              </svg>
+            )}
+          </button>
+        </div>
+      </RevealShell>
+    );
   }
 
   if (stage === "upsell") {

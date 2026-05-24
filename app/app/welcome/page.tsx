@@ -159,6 +159,11 @@ export default async function WelcomePage() {
       personality={{ label: personality.label, sub: personality.sub }}
       protectionPitch={protectionPitch}
       firstName={user.firstName ?? null}
+      topDetected={top.slice(0, 8).map((t) => ({
+        subscription_id: t.id,
+        name: t.merchant_name,
+        monthly_cents: t.monthly_cents,
+      }))}
     />
   );
 }

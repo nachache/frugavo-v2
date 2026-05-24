@@ -178,18 +178,21 @@ function renderIdentityCard(args: {
   const burnFontSize =
     burnLen >= 11 ? 140 : burnLen >= 9 ? 160 : burnLen >= 7 ? 180 : 200;
 
-  // Build the top-3 rows as SVG <text>s.
+  // Build the top-3 rows as SVG <text>s. Larger font sizes than
+  // before — the card scales down to ~280px wide on mobile, so
+  // 28px SVG text renders at ~7px on a phone. Bumping to 42px
+  // keeps it legible without exploding desktop sharing previews.
   const subRows = top_subs
     .slice(0, 3)
     .map((s, i) => {
-      const y = 980 + i * 60;
+      const y = 1000 + i * 78;
       const left = escapeXml(s.name);
       const right = `$${(s.monthly_cents / 100).toFixed(0)}/mo`;
       return `
     <text x="80" y="${y}" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif"
-          font-size="28" font-weight="500" fill="#e5e5e5" letter-spacing="-0.2">${left}</text>
+          font-size="42" font-weight="500" fill="#e5e5e5" letter-spacing="-0.3">${left}</text>
     <text x="${W - 80}" y="${y}" text-anchor="end" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif"
-          font-size="28" font-weight="600" fill="#fafafa" letter-spacing="-0.2" font-variant-numeric="tabular-nums">${right}</text>`;
+          font-size="42" font-weight="600" fill="#fafafa" letter-spacing="-0.3" font-variant-numeric="tabular-nums">${right}</text>`;
     })
     .join("");
 
@@ -218,7 +221,7 @@ function renderIdentityCard(args: {
 
   <!-- "personality" eyebrow -->
   <text x="80" y="260" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif"
-        font-size="22" font-weight="500" fill="#a3a3a3" letter-spacing="3" text-rendering="optimizeLegibility">
+        font-size="30" font-weight="500" fill="#a3a3a3" letter-spacing="4" text-rendering="optimizeLegibility">
     SUBSCRIPTION PERSONALITY
   </text>
 
@@ -229,8 +232,8 @@ function renderIdentityCard(args: {
   </text>
 
   <!-- personality sub line -->
-  <text x="80" y="420" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif"
-        font-size="26" font-weight="500" fill="#a3a3a3" letter-spacing="-0.3">
+  <text x="80" y="430" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif"
+        font-size="34" font-weight="500" fill="#a3a3a3" letter-spacing="-0.3">
     ${escapeXml(personality_sub.slice(0, 80))}
   </text>
 
@@ -239,15 +242,15 @@ function renderIdentityCard(args: {
 
   <!-- "you spend" label + big burn number -->
   <text x="80" y="580" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif"
-        font-size="22" font-weight="500" fill="#a3a3a3" letter-spacing="3">
+        font-size="30" font-weight="500" fill="#a3a3a3" letter-spacing="4">
     YOU SPEND
   </text>
   <text x="80" y="${580 + burnFontSize + 20}" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif"
         font-size="${burnFontSize}" font-weight="800" fill="#fafafa" letter-spacing="-4" font-variant-numeric="tabular-nums">
     ${burnText}<tspan font-size="${Math.round(burnFontSize * 0.4)}" font-weight="500" fill="#737373">/mo</tspan>
   </text>
-  <text x="80" y="${580 + burnFontSize + 80}" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif"
-        font-size="26" font-weight="500" fill="#d4d4d4">
+  <text x="80" y="${580 + burnFontSize + 90}" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif"
+        font-size="34" font-weight="500" fill="#d4d4d4">
     $${Math.round(yearly_burn_cents / 100).toLocaleString("en-US")} a year · ${sub_count} recurring charge${sub_count === 1 ? "" : "s"}
   </text>
 
@@ -256,8 +259,8 @@ function renderIdentityCard(args: {
 
   <!-- top recurring label — covers both subscriptions and other
        recurring spend so it matches the headline above -->
-  <text x="80" y="950" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif"
-        font-size="20" font-weight="500" fill="#737373" letter-spacing="3">
+  <text x="80" y="960" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif"
+        font-size="28" font-weight="500" fill="#737373" letter-spacing="4">
     TOP RECURRING CHARGES
   </text>
   ${subRows}
