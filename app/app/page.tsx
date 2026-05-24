@@ -15,6 +15,8 @@ import { ActivateProtectionCard } from "@/components/app/activate-protection-car
 import { BillingStatusBanner } from "@/components/app/billing-status-banner";
 import { ProtectionStatusPill } from "@/components/app/protection-status-pill";
 import { ProtectionCoverageCard } from "@/components/app/protection-coverage-card";
+import { ProtectionPanel } from "@/components/app/protection-panel";
+import { buildProtectionPanelData } from "@/lib/protection/panel";
 import { ProtectionLockedCard } from "@/components/app/protection-locked-card";
 import { SpendingPatternsAccordion } from "@/components/app/spending-patterns-accordion";
 import { DashboardTabs } from "@/components/app/dashboard-tabs";
@@ -146,6 +148,13 @@ export default async function AppHome({
   // IdentityHero when the user isn't currently paying, plus the
   // dunning banner for grace_period / cancelled_active / past_due.
   const entitlement = await getEntitlement(user.id);
+
+  // New ProtectionPanel data — replaces the legacy coverage card.
+  // Scoped to the active tab so "Guarding $X/mo" always reconciles
+  // with the tab hero number.
+  const protectionPanelData = await buildProtectionPanelData(user.id, {
+    tier: activeTab,
+  });
   const showActivateCard =
     entitlement.entitlement_state === "none" ||
     entitlement.entitlement_state === "expired" ||
@@ -291,7 +300,10 @@ export default async function AppHome({
                       · Peace of Mind plan
                     </span>
                   </div>
-                  <ProtectionCoverageCard userId={user.id} />
+                  <ProtectionPanel
+                    data={protectionPanelData}
+                    state="active"
+                  />
                   <MonitoringAlertsCard />
                   <WhatChangedCard />
                   <UncertainPromptCards />

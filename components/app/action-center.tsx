@@ -22,7 +22,25 @@
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Check, X } from "lucide-react";
+import { Check, X, Sparkles, Eye, Scissors, EyeOff, List } from "lucide-react";
+
+type TabIcon = "sparkles" | "eye" | "scissors" | "eye-off" | "list";
+
+function TabIconGlyph({ name }: { name: TabIcon }) {
+  const props = { size: 12, strokeWidth: 2.2, "aria-hidden": true } as const;
+  switch (name) {
+    case "sparkles":
+      return <Sparkles {...props} />;
+    case "eye":
+      return <Eye {...props} />;
+    case "scissors":
+      return <Scissors {...props} />;
+    case "eye-off":
+      return <EyeOff {...props} />;
+    case "list":
+      return <List {...props} />;
+  }
+}
 import { MerchantLogo } from "./merchant-logo";
 import { CancelModal } from "./cancel-modal";
 import { CancelCelebration } from "./cancel-celebration";
@@ -273,13 +291,13 @@ export function ActionCenter({
 
       <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-b border-hairline">
         <div className="flex items-center gap-1 -mb-px overflow-x-auto">
-          <TabBtn active={tab === "worth"} onClick={() => changeTab("worth")} label="Worth a look" shortLabel="New" count={worth_a_look.length} />
-          <TabBtn active={tab === "watching"} onClick={() => changeTab("watching")} label="Watching" shortLabel="Watch" count={watching.length} />
-          <TabBtn active={tab === "pruned"} onClick={() => changeTab("pruned")} label="Pruned" shortLabel="Pruned" count={pruned.length} />
+          <TabBtn active={tab === "worth"} onClick={() => changeTab("worth")} label="Worth a look" shortLabel="New" count={worth_a_look.length} icon="sparkles" />
+          <TabBtn active={tab === "watching"} onClick={() => changeTab("watching")} label="Watching" shortLabel="Watch" count={watching.length} icon="eye" />
+          <TabBtn active={tab === "pruned"} onClick={() => changeTab("pruned")} label="Pruned" shortLabel="Pruned" count={pruned.length} icon="scissors" />
           {hidden.length > 0 && (
-            <TabBtn active={tab === "hidden"} onClick={() => changeTab("hidden")} label="Hidden" shortLabel="Hidden" count={hidden.length} muted />
+            <TabBtn active={tab === "hidden"} onClick={() => changeTab("hidden")} label="Hidden" shortLabel="Hidden" count={hidden.length} icon="eye-off" muted />
           )}
-          <TabBtn active={tab === "all"} onClick={() => changeTab("all")} label="All" shortLabel="All" count={all.length} />
+          <TabBtn active={tab === "all"} onClick={() => changeTab("all")} label="All" shortLabel="All" count={all.length} icon="list" />
         </div>
         <SortControl value={sort} onChange={setSort} />
       </div>
@@ -328,6 +346,7 @@ function TabBtn({
   shortLabel,
   count,
   muted,
+  icon,
 }: {
   active: boolean;
   onClick: () => void;
@@ -335,6 +354,7 @@ function TabBtn({
   shortLabel?: string;
   count: number;
   muted?: boolean;
+  icon?: TabIcon;
 }) {
   return (
     <button
@@ -351,6 +371,10 @@ function TabBtn({
             : "border-transparent text-ink-muted hover:text-ink",
       ].join(" ")}
     >
+      {/* Icon glyph — small affordance for what each tab represents.
+          Renders at the same color as the label so active/inactive
+          states track the text. */}
+      {icon && <TabIconGlyph name={icon} />}
       {/* Use the short label on phone, full label on md+. Keeps the
           tab strip on one line on a 360px viewport. */}
       <span className="md:hidden">{shortLabel ?? label}</span>
