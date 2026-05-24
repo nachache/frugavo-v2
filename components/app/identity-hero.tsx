@@ -1,14 +1,15 @@
 // IdentityHero — first card on the dashboard.
 //
 // Layout: vertical stack (image at top, personality + sub in the
-// middle, share buttons at the bottom). The vertical layout lets
-// the parent page place IdentityHero next to a sibling
-// Protection rail on desktop without each fighting for horizontal
-// real estate.
-//
-// Server component — embeds the client <ShareButtons /> for the
-// actual sharing primitives.
+// middle, share toggle at the bottom). The 5-social-icon row used
+// to live inline; per dashboard critic it read like "CTA shotgun."
+// Now it's a single 'Share' button that expands to the full picker
+// on click — same primitives, less visual noise.
 
+"use client";
+
+import { useState } from "react";
+import { Share2 } from "lucide-react";
 import { ShareButtons } from "./share-buttons";
 import type { Personality } from "@/lib/personality";
 
@@ -37,6 +38,7 @@ export function IdentityHero({
   firstName,
 }: Props) {
   const greeting = firstName ? `Hey ${firstName} —` : "Here's your card —";
+  const [shareOpen, setShareOpen] = useState(false);
 
   return (
     // Reduced outer padding (was p-4 md:p-6 → p-3 md:p-4) and removed
@@ -77,16 +79,42 @@ export function IdentityHero({
         </div>
       </div>
 
-      {/* Share buttons at the bottom */}
+      {/* Share — single button, expands to the picker on click.
+          Single button feels less like a shotgun of CTAs and gives
+          the dashboard room to breathe. The full ShareButtons row
+          still does the actual platform-specific work. */}
       <div className="mt-5 md:mt-6 pt-4 md:pt-5 border-t border-hairline px-1 md:px-2">
-        <div className="text-[11.5px] md:text-[12px] font-medium uppercase tracking-[0.12em] text-ink-muted mb-2.5">
-          Share your card
-        </div>
-        <ShareButtons
-          shareType="identity"
-          shareText={`I'm "${personality.label}" — ${fmt(monthlySubCents)}/mo on recurring charges.`}
-          shareSlug={publicSlug ?? null}
-        />
+        {shareOpen ? (
+          <div>
+            <div className="flex items-center justify-between mb-2.5">
+              <div className="text-[11.5px] md:text-[12px] font-medium uppercase tracking-[0.12em] text-ink-muted">
+                Share your card
+              </div>
+              <button
+                type="button"
+                onClick={() => setShareOpen(false)}
+                className="text-[11.5px] text-ink-muted hover:text-ink transition"
+                aria-label="Close share options"
+              >
+                Done
+              </button>
+            </div>
+            <ShareButtons
+              shareType="identity"
+              shareText={`I'm "${personality.label}" — ${fmt(monthlySubCents)}/mo on recurring charges.`}
+              shareSlug={publicSlug ?? null}
+            />
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setShareOpen(true)}
+            className="inline-flex items-center gap-2 h-10 px-4 rounded-full bg-ink text-canvas text-[13px] font-medium hover:bg-ink/85 transition"
+          >
+            <Share2 size={14} strokeWidth={2.2} aria-hidden="true" />
+            Share your card
+          </button>
+        )}
       </div>
     </div>
   );

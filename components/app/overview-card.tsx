@@ -656,24 +656,36 @@ function InsightsColumn({
   const CAP = 4;
   const visible = showAll ? items : items.slice(0, CAP);
 
+  // Hide the AI Stack pinned row when the user has none — a $0/mo
+  // "None detected" stat is dead pixels per the dashboard critic.
+  const showAiStack = aiSpend.subscription_count > 0;
+  // Money leaks copy: drop the '0 high' jargon. Plain English when
+  // there's a single flag, count when there are multiple.
+  const moneyLeakDetail = (() => {
+    if (moneyLeaks.length === 0) return "Nothing flagged";
+    if (moneyLeaks.length === 1) {
+      const m = moneyLeaks[0];
+      if (m.kind === "price_creep") return "1 price increase spotted";
+      if (m.kind === "dormant_subscription") return "1 dormant sub";
+      if (m.kind === "overlapping_ai_tools") return "Overlapping AI tools";
+      if (m.kind === "rising_monthly_spend") return "Monthly spend rising";
+      return "1 issue spotted";
+    }
+    return `${moneyLeaks.length} issues spotted`;
+  })();
+
   return (
     <div className="space-y-3">
       {/* Pinned stat rows */}
       <div className="space-y-2.5">
-        <PinnedStat
-          dot="bg-brand"
-          label="AI stack"
-          value={
-            aiSpend.subscription_count === 0
-              ? "$0/mo"
-              : `${fmtBig(aiSpend.monthly_cents)}/mo`
-          }
-          detail={
-            aiSpend.subscription_count === 0
-              ? "None detected"
-              : `${aiSpend.subscription_count} tool${aiSpend.subscription_count === 1 ? "" : "s"}`
-          }
-        />
+        {showAiStack && (
+          <PinnedStat
+            dot="bg-brand"
+            label="AI stack"
+            value={`${fmtBig(aiSpend.monthly_cents)}/mo`}
+            detail={`${aiSpend.subscription_count} tool${aiSpend.subscription_count === 1 ? "" : "s"}`}
+          />
+        )}
         {topSubscription && (
           <PinnedStat
             dot="bg-accent"
@@ -687,11 +699,7 @@ function InsightsColumn({
           dot="bg-danger"
           label="Money leaks"
           value={String(moneyLeaks.length)}
-          detail={
-            moneyLeaks.length === 0
-              ? "Nothing flagged"
-              : `${moneyLeaks.filter((l) => l.severity === "high").length} high`
-          }
+          detail={moneyLeakDetail}
         />
       </div>
 

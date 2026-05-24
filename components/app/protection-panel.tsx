@@ -119,50 +119,35 @@ export function ProtectionPanel({ data, state }: Props) {
         </div>
       </div>
 
-      {/* STATS GRID — 4 boxes */}
+      {/* ONE PROMINENT STAT — the metric that justifies the price.
+          Per critic: 4 boxes competing for attention diluted the
+          signal. 'Charges checked' was backend noise; 'Watching N
+          possible charges' confused users next to the sub count.
+          Both deleted. Surprises:0 moves to a footer line under the
+          feed (still present, no longer the visual climax). */}
       <div className="px-5 md:px-6 pb-5 md:pb-6">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 md:gap-3">
-          <StatBox
-            label="Caught this month"
-            value={fmtRound(data.stats.caught_this_month_cents)}
-            sub={
-              data.stats.caught_this_month_events > 0
-                ? `across ${data.stats.caught_this_month_events} event${data.stats.caught_this_month_events === 1 ? "" : "s"}`
-                : "you took action on"
-            }
-            valueColor="text-brand"
-          />
-          <StatBox
-            label="Charges checked"
-            value={data.stats.charges_checked_total.toLocaleString("en-US")}
-            sub={
-              data.since_signup.user_since_iso
-                ? `since ${new Date(data.since_signup.user_since_iso).toLocaleDateString("en-US", { month: "short", year: "numeric" })}`
-                : "since you joined"
-            }
-          />
-          <StatBox
-            label="Watching"
-            value={data.stats.watching_count.toString()}
-            sub={`possible charge${data.stats.watching_count === 1 ? "" : "s"}`}
-            valueColor={data.stats.watching_count > 0 ? "text-amber-600" : "text-ink"}
-          />
-          <StatBox
-            label="Surprises"
-            value={data.stats.surprises_count.toString()}
-            sub="slipped past us"
-            valueColor={data.stats.surprises_count === 0 ? "text-ink" : "text-danger"}
-          />
-        </div>
-        {data.stats.flagged_this_month_cents > 0 && (
-          <div className="mt-3 text-[11.5px] md:text-[12px] text-ink-muted">
-            + {fmtRound(data.stats.flagged_this_month_cents)} flagged for
-            your review.{" "}
-            <span className="text-ink-muted/70">
-              (Not counted in &quot;caught&quot; until you act.)
-            </span>
+        <div className="rounded-xl bg-canvas/40 border border-hairline/60 px-4 py-4 md:px-5 md:py-5">
+          <div className="text-[11px] md:text-[12px] font-medium uppercase tracking-[0.12em] text-ink-muted leading-tight">
+            Caught this month
           </div>
-        )}
+          <div className="mt-1.5 font-display font-bold text-[34px] md:text-[40px] leading-none tabular-nums text-brand">
+            {fmtRound(data.stats.caught_this_month_cents)}
+          </div>
+          <div className="mt-1.5 text-[12.5px] md:text-[13px] text-ink-body">
+            {data.stats.caught_this_month_events > 0
+              ? `across ${data.stats.caught_this_month_events} event${data.stats.caught_this_month_events === 1 ? "" : "s"} you took action on`
+              : "you took action on"}
+          </div>
+          {data.stats.flagged_this_month_cents > 0 && (
+            <div className="mt-2 text-[12px] text-ink-muted">
+              + {fmtRound(data.stats.flagged_this_month_cents)} flagged for
+              your review.{" "}
+              <span className="text-ink-muted/70">
+                (Not counted until you act.)
+              </span>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* FEED — what we did for you */}
@@ -171,11 +156,25 @@ export function ProtectionPanel({ data, state }: Props) {
           What we did for you
         </div>
         {hasEvents ? (
-          <ul className="space-y-3">
-            {data.recent_actions.map((a) => (
-              <ActionRow key={a.id} action={a} />
-            ))}
-          </ul>
+          <>
+            <ul className="space-y-3">
+              {data.recent_actions.map((a) => (
+                <ActionRow key={a.id} action={a} />
+              ))}
+            </ul>
+            {/* Quiet-flex footer — the 'we caught nothing because nothing
+                slipped past' line. Was a top-level stat box; demoted
+                here per critic. Only renders when surprises === 0
+                (when non-zero it'd appear as an alert in the feed). */}
+            {data.stats.surprises_count === 0 &&
+              data.since_signup.days_protected > 0 && (
+                <div className="mt-4 text-[11.5px] md:text-[12px] text-ink-muted">
+                  0 surprises slipped past us in{" "}
+                  {data.since_signup.days_protected} day
+                  {data.since_signup.days_protected === 1 ? "" : "s"}.
+                </div>
+              )}
+          </>
         ) : (
           // Empty / quiet-month state per the design caution: never
           // look dead. Lead with cumulative + 0-surprises framing.

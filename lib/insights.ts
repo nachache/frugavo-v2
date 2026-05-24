@@ -564,7 +564,30 @@ export function computeShockInsights(args: {
   categories: CategoryTotal[];
   top: TopSubscription[];
 }): ShockInsight[] {
-  const { subs, charges, asOf, aiSpend, categories, top } = args;
+  const { subs: subsRaw, charges: chargesRaw, asOf, aiSpend, categories, top } = args;
+  // CRITICAL: filter inputs to confirmed_subscription tier ONLY
+  // before computing per-charge / per-day insights. Without this
+  // filter, 'biggest billing day' includes mortgages and 'highest
+  // single charge' surfaces loan payments — both panicked users
+  // and made Frugavo look broken per the dashboard critic.
+  //
+  // Note: the `categories`, `top`, and `aiSpend` inputs are already
+  // filtered upstream via surface-rules selectors. We only need to
+  // re-filter `subs` + `charges` since those are passed raw.
+  const subIdsOnly = new Set(
+    subsRaw
+      .filter((s) => {
+        const t = (s as { recurring_type?: string }).recurring_type;
+        return (
+          s.status === "active" &&
+          s.classification === "confirmed" &&
+          t === "confirmed_subscription"
+        );
+      })
+      .map((s) => s.id)
+  );
+  const subs = subsRaw.filter((s) => subIdsOnly.has(s.id));
+  const charges = chargesRaw.filter((c) => subIdsOnly.has(c.subscription_id));
   const out: ShockInsight[] = [];
 
   // 1. AI vs streaming.

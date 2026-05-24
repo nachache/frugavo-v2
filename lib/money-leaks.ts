@@ -184,11 +184,19 @@ export function detectPriceCreep(
     if (first.amount_cents <= 0) continue;
     const delta = pct(last.amount_cents - first.amount_cents, first.amount_cents);
     if (delta < 0.1) continue;
+    // Humanize the detail: skip the cycle math; lead with the
+    // monthly delta. "$4 more a month" reads better than
+    // "$40.85 → $45.16 over 13 cycles" per the dashboard critic.
+    const deltaCents = last.amount_cents - first.amount_cents;
+    const humanDelta =
+      Math.abs(deltaCents) >= 100
+        ? `about ${fmtCents(Math.abs(deltaCents))} more a month`
+        : `${Math.round(delta * 100)}% higher than before`;
     out.push({
       id: `price_creep_${s.id}`,
       kind: "price_creep",
-      headline: `${s.merchant_name} increased ${Math.round(delta * 100)}%.`,
-      detail: `${fmtCents(first.amount_cents)} → ${fmtCents(last.amount_cents)} over ${sorted.length} cycles.`,
+      headline: `${s.merchant_name} went up ${Math.round(delta * 100)}%.`,
+      detail: `Now ${humanDelta}.`,
       severity: delta >= 0.25 ? "high" : "medium",
       source: {
         subscription_ids: [s.id],

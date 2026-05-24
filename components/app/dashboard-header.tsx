@@ -76,22 +76,27 @@ export function DashboardHeader({ lastScannedAt, reveal }: Props) {
         Every recurring charge on your connected accounts.
       </p>
 
-      {/* Utility row: timestamp + re-scan + share */}
+      {/* Utility row: scan controls demoted to small icon (per critic:
+          users assume the dashboard is fresh; exposing the plumbing
+          erodes trust). 'Last scanned X ago' lives in the title attr
+          on hover. Re-scan is a small icon-only button. Share +
+          Protection links stay as-is. */}
       <div className="mt-3 md:mt-4 flex flex-wrap items-center gap-2 md:gap-3 text-[12px] md:text-[12.5px] text-ink-muted">
-        <span>{timeAgo(lastScannedAt)}</span>
         <button
           type="button"
           onClick={onRescan}
           disabled={rescanning}
-          className="inline-flex items-center gap-1.5 rounded-full bg-ink text-canvas px-3 py-1.5 text-[12px] font-medium hover:bg-ink/85 transition disabled:opacity-60 disabled:cursor-not-allowed"
+          title={`${timeAgo(lastScannedAt)} — click to refresh`}
+          aria-label={`Re-scan. ${timeAgo(lastScannedAt)}`}
+          className="inline-flex items-center justify-center w-7 h-7 rounded-full text-ink-muted hover:text-ink hover:bg-ink/[0.05] transition disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <svg
-            width="12"
-            height="12"
+            width="13"
+            height="13"
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
-            strokeWidth="2.5"
+            strokeWidth="2.2"
             strokeLinecap="round"
             strokeLinejoin="round"
             className={rescanning ? "animate-spin" : ""}
@@ -102,7 +107,6 @@ export function DashboardHeader({ lastScannedAt, reveal }: Props) {
             <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10" />
             <path d="M20.49 15a9 9 0 0 1-14.85 3.36L1 14" />
           </svg>
-          {rescanning ? "Scanning…" : "Re-scan"}
         </button>
         <ScanRevealOverlay
           visible={showReveal}
@@ -111,7 +115,6 @@ export function DashboardHeader({ lastScannedAt, reveal }: Props) {
           topRows={reveal.top_rows}
           onDone={onRevealDone}
         />
-        <span className="text-ink-muted/40">·</span>
         <Link
           href="/app/share"
           className="inline-flex items-center gap-1.5 text-ink-muted hover:text-ink transition"
