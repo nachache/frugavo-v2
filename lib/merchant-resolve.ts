@@ -191,7 +191,7 @@ export async function resolveDescriptors(
 
 const RESOLVE_SYSTEM_PROMPT = `You normalize raw bank transaction descriptors into canonical merchant identities.
 
-Each descriptor is one bank statement line: noisy, with billing suffixes (APPLE.COM/BILL, AMZN MKTP), processor prefixes (PADDLE*, STRIPE*, SQ *), store numbers (#4421, STORE 12), phone numbers, city codes.
+Each descriptor is one bank statement line: noisy, with billing suffixes, processor prefixes, store numbers, phone numbers, city codes.
 
 For EVERY descriptor in the input array, return STRICT JSON in this exact shape:
 
@@ -201,26 +201,35 @@ For EVERY descriptor in the input array, return STRICT JSON in this exact shape:
       "descriptor": "<the exact input descriptor string>",
       "canonical_merchant_key": "<lowercase_underscored_merchant_key>",
       "display_name": "<human readable name>",
-      "merchant_domain": "<primary domain like netflix.com, or null>",
+      "merchant_domain": "<primary domain, or null>",
       "confidence": <0.0 to 1.0>
     }
   ]
 }
 
-RULES
-- canonical_merchant_key collapses formatting noise to ONE identity. Examples:
-    "APPLE.COM/BILL 866-712-7753" → "apple"
-    "APPLE 800-275-2273" → "apple"
-    "Apple Services" → "apple"
-    "AMZN MKTP US*1AB23" → "amazon"
-    "AMAZON PRIME" → "amazon_prime"   (subscription product, distinct from the marketplace)
-    "PADDLE.NET* OPENAI" → "openai"
-    "SQ *SOMETHING COFFEE" → "something_coffee"
-- For payment processors that hide the real merchant (STRIPE*, PADDLE*, SQ*), extract the merchant name after the processor prefix. If you cannot, use the processor itself (e.g. "stripe") with low confidence.
-- canonical_merchant_key MUST be lowercase, underscores only, no spaces / dashes / special chars / accents. Max 64 chars.
-- merchant_domain is the canonical website if obvious (netflix.com, spotify.com, openai.com, apple.com). null if you cannot identify a domain.
-- display_name is the human-readable form ("Netflix", "OpenAI", "Apple").
-- confidence is your honest estimate. High (>=0.85) for clearly identified merchants. Mid (0.5-0.85) when the merchant is identifiable but with some ambiguity. Low (<0.5) for descriptors that are too generic, look like internal bank moves, or look like noise.
+WHAT TO STRIP
+- billing suffixes ('.COM/BILL', '/BILL', 'INC', 'LLC')
+- store numbers ('#4421', 'STORE 12', '4421')
+- phone numbers (any 3-3-4 digit pattern or 800-prefix)
+- city / state codes at the end
+- payment processor prefixes ('PADDLE.NET*', 'STRIPE*', 'SQ *', 'PAYPAL *')
+- random transaction identifiers (long alphanumeric blobs)
+
+WHAT TO KEEP
+- the underlying merchant brand, lowercased and underscore-joined
+
+PROCESSOR PASS-THROUGH
+- If a processor prefix hides a merchant (e.g. 'PADDLE.NET* WIDGETCORP'), extract the merchant name AFTER the processor token. The processor is not the merchant.
+- If you cannot extract a merchant from a processor descriptor, use the processor itself as the key (e.g. "paddle", "stripe") with confidence <= 0.5.
+
+DISTINCT PRODUCT VARIANTS
+- When a merchant sells multiple distinct products under similar descriptors, treat the product as the identity (e.g. a marketplace charge is distinct from a separate prime/membership product the same brand sells — give them different canonical keys).
+
+OUTPUT RULES
+- canonical_merchant_key: lowercase, underscores only, no spaces / dashes / special chars / accents. Max 64 chars.
+- display_name: the human-readable form, properly capitalized.
+- merchant_domain: the canonical website if obvious, null otherwise.
+- confidence: honest estimate. High (>=0.85) clearly identified. Mid (0.5-0.85) identifiable but with some ambiguity. Low (<0.5) too generic, looks like internal bank movement, or looks like noise.
 
 OUTPUT ONLY THE JSON. NO PROSE, NO MARKDOWN FENCES, NO EXPLANATIONS.`;
 

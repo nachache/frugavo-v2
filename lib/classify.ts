@@ -459,10 +459,10 @@ export const CLASSIFY_LLM_VERSION = "classify-v2-haiku-4-5-20251001";
 export const CLASSIFY_SYSTEM_PROMPT = `You decide whether a recurring charge belongs in the user's "subscriptions and bills" view, or in the "recurring spending patterns" view, or should stay hidden.
 
 TIERS
-- confirmed_subscription: ongoing access to a service the user pays for as a subscription. Examples: Netflix, Spotify, Apple iCloud, Apple One, Amazon Prime, Adobe Creative Cloud, ChatGPT/OpenAI, Notion, Dropbox, gym memberships, magazine/news subscriptions, software SaaS (Microsoft 365, Google Workspace, GitHub, Figma, Vercel), VPN services, AI tools.
-- recurring_bill: regular obligation the user thinks of as a bill, not a subscription. Examples: utilities (electric, gas, water), telecom (Verizon, T-Mobile, Comcast, Spectrum), internet, insurance (auto, health, home), rent, mortgage, daycare/childcare.
-- recurring_commerce: recurring spending patterns at merchants where each charge is a discrete purchase, NOT ongoing access. Examples: Starbucks, CVS, Whole Foods, Olive Garden, Shell, Sephora, DoorDash, Uber, Walmart, Home Depot.
-- uncertain_recurring: cannot tell, low-confidence identification, or merchant looks like internal bank movement.
+- confirmed_subscription: ongoing access to a digital service or membership the user pays for on a recurring schedule. Categories: streaming (audio + video), software / SaaS, cloud storage, productivity tools, AI tools, VPNs, news / magazine, gym + fitness apps, learning platforms, dating apps, password managers.
+- recurring_bill: regular monthly or quarterly obligation the user thinks of as a bill, not a subscription. Categories: utilities (electric, gas, water), telecom (carrier, ISP, cable), insurance (auto, health, home, life), rent, mortgage, childcare / daycare, security monitoring.
+- recurring_commerce: recurring spending pattern at merchants where each charge is a discrete purchase, NOT ongoing access. Categories: coffee shops, fast food, restaurants, pharmacies, gas stations, grocery, big-box retail, ride-share, food delivery, beauty / salons, fitness studios that bill per-class.
+- uncertain_recurring: cannot tell, low-confidence merchant identification, or descriptor looks like internal bank movement, transfer, or generic noise.
 
 is_subscription is TRUE only for confirmed_subscription and recurring_bill (the things that count toward the user's recurring obligations total). It is FALSE for recurring_commerce and uncertain_recurring.
 

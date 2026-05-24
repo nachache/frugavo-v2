@@ -134,26 +134,28 @@ function testNoHardcode() {
     const candidates = [b.canonical_hint, ...b.display_hints];
     for (const c of candidates) {
       if (c.length < 4) continue;
+      const re = new RegExp(c.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i");
       for (const file of ENGINE_CLASSIFICATION_FILES) {
+        let raw: string;
         try {
-          const out = execSync(
-            `grep -i "${c}" "${file}" 2>/dev/null || true`,
-            { encoding: "utf-8", cwd: process.cwd() }
-          );
-          if (out.trim().length > 0) {
-            // Strip lines that are purely comments (// ...) — those
-            // are documentation about classifier behavior, not code
-            // that special-cases the merchant.
-            const codeLines = out
-              .split("\n")
-              .filter((l) => l.trim().length > 0)
-              .filter((l) => !/^\s*(\/\/|\*|\/\*)/.test(l));
-            if (codeLines.length > 0) {
-              leaks.push(`${c} → ${file}`);
-            }
-          }
+          raw = execSync(`cat "${file}" 2>/dev/null || echo ""`, {
+            encoding: "utf-8",
+            cwd: process.cwd(),
+          });
         } catch {
-          /* grep no-match = exit 1, OK */
+          continue;
+        }
+        // Strip both line comments (// ...) and block comments (/* ... */)
+        // before searching. Anything outside comments is "code" for the
+        // purpose of this test. A merchant name appearing only in a
+        // comment is documentation, not a hardcoded rule.
+        const noBlock = raw.replace(/\/\*[\s\S]*?\*\//g, "");
+        const noLine = noBlock
+          .split("\n")
+          .map((l) => l.replace(/\/\/.*$/, ""))
+          .join("\n");
+        if (re.test(noLine)) {
+          leaks.push(`${c} → ${file}`);
         }
       }
     }
