@@ -21,4 +21,21 @@
 // looking at an old snapshot understands why the result differs from
 // today's engine.
 
-export const SCANNER_VERSION = "3.9.0-trial-missing-duplicate-notifs";
+export const SCANNER_VERSION = "4.0.0-classifier-brain";
+
+// Sub-versions composed into the engine signature so the snapshot
+// proves which LLM contracts produced its verdicts. Bump the
+// individual constants in lib/merchant-resolve.ts and lib/classify.ts
+// independently when their prompts change.
+import { MERCHANT_RESOLVE_VERSION } from "./merchant-resolve";
+import { CLASSIFY_LLM_VERSION } from "./classify";
+
+export const ENGINE_SIGNATURE = {
+  scanner: SCANNER_VERSION,
+  resolver: MERCHANT_RESOLVE_VERSION,
+  classifier: CLASSIFY_LLM_VERSION,
+} as const;
+
+export function engineSignatureString(): string {
+  return `${SCANNER_VERSION}|${MERCHANT_RESOLVE_VERSION}|${CLASSIFY_LLM_VERSION}`;
+}

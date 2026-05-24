@@ -12,6 +12,7 @@
     "test:watch": "vitest",
     "test:smoke": "vitest run --config vitest.smoke.config.ts",
     "verify:scan": "tsx scripts/verify-scan.ts",
+    "verify:scan:live": "tsx scripts/verify-scan-live.ts",
     "stripe:configure-portal": "tsx scripts/configure-portal.ts"
   },
   "dependencies": {

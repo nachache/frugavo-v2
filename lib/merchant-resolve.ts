@@ -1,0 +1,313 @@
+// Canonical merchant identity resolution.
+//
+// THE RECALL FIX.
+// ───────────────
+// The detector groups transactions by merchant_key before computing
+// cadence + applying the band minimum. If one merchant lands on the
+// ledger under multiple descriptor variants (APPLE.COM/BILL, APPLE
+// 800-275, Apple Services), each variant becomes its own merchant_key
+// and each has fewer charges than the band minimum. The stream
+// never detects. That's the primary recall driver.
+//
+// This module fixes it by inserting a resolution step between the
+// Plaid sync and the recurrence detector: a batch Claude call that
+// collapses descriptor variants into one canonical_merchant_key.
+//
+// DETERMINISM CONTRACT
+// ────────────────────
+// Resolution is a pure function of the raw descriptor. Same descriptor
+// → same canonical key. We cache aggressively so the second scan of
+// the same ledger makes zero LLM calls:
+//
+//   Cache key: `resolve:descriptor:v1:<sha1(normalized_descriptor)>`
+//   Cache value: { canonical_merchant_key, display_name, merchant_domain,
+//                  confidence, version }
+//   Persistence: written to plaid_transactions.canonical_merchant_key
+//                so the canonical ledger is self-describing for replay.
+//
+// On Claude error/timeout: fall back to the existing normalizeDescriptor
+// key for that descriptor only, never block the scan. The unresolved
+// descriptor retries on the next scan when the system recovers.
+//
+// TRUST ASYMMETRY PRESERVED
+// ─────────────────────────
+// Identity resolution is upstream of classification. Even if Claude
+// resolves Apple iCloud as "apple" with confidence 0.95, the downstream
+// classifier still has to decide is_subscription=true with confidence
+// >= the trust threshold before it's promoted to `confirmed`.
+
+import { createHash } from "node:crypto";
+import Anthropic from "@anthropic-ai/sdk";
+import { redis } from "./cache";
+
+// Pin the resolver version into the snapshot so replay can prove
+// it's reading the same merchant identities the original scan used.
+// Bump the version any time the system prompt OR the model id changes.
+export const MERCHANT_RESOLVE_VERSION = "resolve-v1-haiku-4-5-20251001";
+
+const RESOLVE_MODEL = "claude-haiku-4-5-20251001";
+const RESOLVE_TIMEOUT_MS = 12_000;
+const RESOLVE_MAX_TOKENS = 4096;
+// Batch size cap. Big batches reduce per-call overhead but a single
+// timeout kills more work — 50 is a balance that keeps wall-clock
+// under the timeout even with slow responses.
+const RESOLVE_BATCH_SIZE = 50;
+
+export type ResolvedIdentity = {
+  canonical_merchant_key: string;
+  display_name: string;
+  merchant_domain: string | null;
+  confidence: number;
+  version: string;
+};
+
+const client = process.env.ANTHROPIC_API_KEY
+  ? new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+  : null;
+
+// Stable lowercase, [a-z0-9_] only. Used to project canonical keys
+// returned by Claude into a safe shape we can use as a database key.
+function safeKey(raw: string): string {
+  return raw
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .slice(0, 64);
+}
+
+// Deterministic cache key from the normalized descriptor. Sha1 keeps
+// the Redis key small + opaque. We intentionally lowercase + strip
+// extra whitespace before hashing so "APPLE.COM/BILL " and "apple.com/bill"
+// share a cache entry — that's the whole point of identity resolution.
+function descriptorCacheKey(descriptor: string): string {
+  const norm = descriptor.trim().toLowerCase().replace(/\s+/g, " ");
+  const hash = createHash("sha1").update(norm).digest("hex");
+  return `resolve:descriptor:v1:${hash}`;
+}
+
+// ---------------------------------------------------------------------
+// Public entry point.
+// ---------------------------------------------------------------------
+
+/**
+ * Resolve a batch of descriptors to canonical identities.
+ *
+ * Returns a Map keyed by the ORIGINAL descriptor (case + spacing
+ * preserved) so the caller can look up identity for any descriptor it
+ * passed in. Descriptors that resolved successfully (from cache or
+ * fresh LLM call) get a ResolvedIdentity; descriptors that failed
+ * resolution are absent from the map. The caller falls back to
+ * normalizeDescriptor for absent entries.
+ */
+export async function resolveDescriptors(
+  descriptors: string[]
+): Promise<Map<string, ResolvedIdentity>> {
+  const out = new Map<string, ResolvedIdentity>();
+  if (descriptors.length === 0) return out;
+
+  // Dedupe by normalized descriptor first — multiple raw descriptors
+  // that normalize identically should share one LLM call AND share
+  // one cache entry.
+  const uniq = new Map<string, string>(); // normalized → first-seen-raw
+  for (const d of descriptors) {
+    if (!d) continue;
+    const norm = d.trim().toLowerCase().replace(/\s+/g, " ");
+    if (!uniq.has(norm)) uniq.set(norm, d);
+  }
+
+  // 1) Cache pass — hit Redis for every distinct normalized descriptor.
+  const uncached: string[] = []; // raw descriptors to resolve fresh
+  if (redis) {
+    const keys = Array.from(uniq.keys()).map((n) => `resolve:descriptor:v1:${createHash("sha1").update(n).digest("hex")}`);
+    try {
+      const cached = (await redis.mget<(ResolvedIdentity | null)[]>(...keys)) ?? [];
+      let i = 0;
+      for (const norm of uniq.keys()) {
+        const raw = uniq.get(norm)!;
+        const hit = cached[i++];
+        if (hit && hit.canonical_merchant_key) {
+          out.set(raw, hit);
+          // Echo to every raw descriptor that normalizes to this one.
+          for (const d of descriptors) {
+            if (d && d.trim().toLowerCase().replace(/\s+/g, " ") === norm) {
+              out.set(d, hit);
+            }
+          }
+        } else {
+          uncached.push(raw);
+        }
+      }
+    } catch {
+      // Cache failure shouldn't break resolution; treat as full miss.
+      uncached.push(...uniq.values());
+    }
+  } else {
+    uncached.push(...uniq.values());
+  }
+
+  if (uncached.length === 0 || !client) {
+    // Either fully cached, or no LLM available. Either way we return
+    // what we have; the caller falls back to normalizeDescriptor for
+    // anything missing.
+    return out;
+  }
+
+  // 2) LLM pass — batch uncached descriptors. We chunk by RESOLVE_BATCH_SIZE
+  // and run sequentially (Claude rate limits + a single timeout per
+  // batch is enough). Failures on one batch don't poison the rest.
+  for (let i = 0; i < uncached.length; i += RESOLVE_BATCH_SIZE) {
+    const batch = uncached.slice(i, i + RESOLVE_BATCH_SIZE);
+    const verdicts = await resolveBatch(batch);
+    for (const [raw, verdict] of verdicts) {
+      out.set(raw, verdict);
+      // Echo to all raw descriptors that share the normalized form.
+      const norm = raw.trim().toLowerCase().replace(/\s+/g, " ");
+      for (const d of descriptors) {
+        if (d && d.trim().toLowerCase().replace(/\s+/g, " ") === norm) {
+          out.set(d, verdict);
+        }
+      }
+      // Cache write — TTL of 365d to keep Redis from filling up but
+      // long enough that a single user re-scanning monthly always hits.
+      if (redis) {
+        try {
+          await redis.set(descriptorCacheKey(raw), verdict, {
+            ex: 60 * 60 * 24 * 365,
+          });
+        } catch {
+          // Non-fatal: cache write failure means the next scan will
+          // re-resolve. Idempotent.
+        }
+      }
+    }
+  }
+
+  return out;
+}
+
+// ---------------------------------------------------------------------
+// Internal: one LLM batch call.
+// ---------------------------------------------------------------------
+
+const RESOLVE_SYSTEM_PROMPT = `You normalize raw bank transaction descriptors into canonical merchant identities.
+
+Each descriptor is one bank statement line: noisy, with billing suffixes (APPLE.COM/BILL, AMZN MKTP), processor prefixes (PADDLE*, STRIPE*, SQ *), store numbers (#4421, STORE 12), phone numbers, city codes.
+
+For EVERY descriptor in the input array, return STRICT JSON in this exact shape:
+
+{
+  "results": [
+    {
+      "descriptor": "<the exact input descriptor string>",
+      "canonical_merchant_key": "<lowercase_underscored_merchant_key>",
+      "display_name": "<human readable name>",
+      "merchant_domain": "<primary domain like netflix.com, or null>",
+      "confidence": <0.0 to 1.0>
+    }
+  ]
+}
+
+RULES
+- canonical_merchant_key collapses formatting noise to ONE identity. Examples:
+    "APPLE.COM/BILL 866-712-7753" → "apple"
+    "APPLE 800-275-2273" → "apple"
+    "Apple Services" → "apple"
+    "AMZN MKTP US*1AB23" → "amazon"
+    "AMAZON PRIME" → "amazon_prime"   (subscription product, distinct from the marketplace)
+    "PADDLE.NET* OPENAI" → "openai"
+    "SQ *SOMETHING COFFEE" → "something_coffee"
+- For payment processors that hide the real merchant (STRIPE*, PADDLE*, SQ*), extract the merchant name after the processor prefix. If you cannot, use the processor itself (e.g. "stripe") with low confidence.
+- canonical_merchant_key MUST be lowercase, underscores only, no spaces / dashes / special chars / accents. Max 64 chars.
+- merchant_domain is the canonical website if obvious (netflix.com, spotify.com, openai.com, apple.com). null if you cannot identify a domain.
+- display_name is the human-readable form ("Netflix", "OpenAI", "Apple").
+- confidence is your honest estimate. High (>=0.85) for clearly identified merchants. Mid (0.5-0.85) when the merchant is identifiable but with some ambiguity. Low (<0.5) for descriptors that are too generic, look like internal bank moves, or look like noise.
+
+OUTPUT ONLY THE JSON. NO PROSE, NO MARKDOWN FENCES, NO EXPLANATIONS.`;
+
+async function resolveBatch(
+  descriptors: string[]
+): Promise<Map<string, ResolvedIdentity>> {
+  const out = new Map<string, ResolvedIdentity>();
+  if (!client || descriptors.length === 0) return out;
+
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort("resolve_timeout"), RESOLVE_TIMEOUT_MS);
+  try {
+    const user = JSON.stringify({ descriptors });
+    const res = await client.messages.create(
+      {
+        model: RESOLVE_MODEL,
+        max_tokens: RESOLVE_MAX_TOKENS,
+        temperature: 0,
+        system: RESOLVE_SYSTEM_PROMPT,
+        messages: [{ role: "user", content: user }],
+      },
+      { signal: ctrl.signal }
+    );
+    const text = res.content
+      .filter((b): b is Anthropic.TextBlock => b.type === "text")
+      .map((b) => b.text)
+      .join("")
+      .trim()
+      .replace(/^```(?:json)?\s*/i, "")
+      .replace(/\s*```$/i, "");
+    const parsed = JSON.parse(text) as {
+      results: Array<{
+        descriptor: string;
+        canonical_merchant_key: string;
+        display_name?: string;
+        merchant_domain?: string | null;
+        confidence?: number;
+      }>;
+    };
+    if (!parsed || !Array.isArray(parsed.results)) return out;
+    for (const r of parsed.results) {
+      if (
+        typeof r.descriptor !== "string" ||
+        typeof r.canonical_merchant_key !== "string" ||
+        r.canonical_merchant_key.length === 0
+      ) {
+        continue;
+      }
+      const key = safeKey(r.canonical_merchant_key);
+      if (!key) continue;
+      out.set(r.descriptor, {
+        canonical_merchant_key: key,
+        display_name:
+          typeof r.display_name === "string" && r.display_name.length > 0
+            ? r.display_name
+            : key,
+        merchant_domain:
+          typeof r.merchant_domain === "string" && r.merchant_domain.length > 0
+            ? r.merchant_domain.toLowerCase()
+            : null,
+        confidence:
+          typeof r.confidence === "number" && Number.isFinite(r.confidence)
+            ? Math.max(0, Math.min(1, r.confidence))
+            : 0.5,
+        version: MERCHANT_RESOLVE_VERSION,
+      });
+    }
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.warn("[resolve] batch failed", e instanceof Error ? e.message : e);
+  } finally {
+    clearTimeout(timer);
+  }
+  return out;
+}
+
+// ---------------------------------------------------------------------
+// Test hook — lets the verifier seed the Redis cache without going
+// through Claude (used by the determinism + replay acceptance tests).
+// ---------------------------------------------------------------------
+
+export async function _seedCacheForTest(
+  descriptor: string,
+  identity: ResolvedIdentity
+): Promise<void> {
+  if (!redis) return;
+  await redis.set(descriptorCacheKey(descriptor), identity, {
+    ex: 60 * 60 * 24 * 365,
+  });
+}
