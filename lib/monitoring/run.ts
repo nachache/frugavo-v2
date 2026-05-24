@@ -215,36 +215,61 @@ export async function runMonitoringForUser(args: {
 
   // 5. Resolve subscription_id for each candidate via plaid_stream_id.
   // Snapshot rows carry plaid_stream_id which is subscription_key;
-  // we map to subscriptions.id once at the top.
+  // we map to subscriptions.id once at the top. We also pull
+  // recurring_type so we can SKIP non-subscription alerts at write
+  // time — protection alerts are for subscriptions only, not bills
+  // or commerce. (Filtering at read time too as a belt-and-suspenders.)
   const { data: subsForMap } = await supabaseAdmin
     .from("subscriptions")
-    .select("id, subscription_key, merchant_key")
+    .select("id, subscription_key, merchant_key, recurring_type")
     .eq("user_id", userId);
   const subIdByKey = new Map(
     ((subsForMap ?? []) as Array<{
       id: string;
       subscription_key: string | null;
       merchant_key: string | null;
+      recurring_type: string | null;
     }>).map((r) => [r.subscription_key ?? "", r])
   );
+  const tierBySubId = new Map(
+    ((subsForMap ?? []) as Array<{
+      id: string;
+      recurring_type: string | null;
+    }>).map((r) => [r.id, r.recurring_type ?? "uncertain_recurring"])
+  );
 
-  const rowsToUpsert = candidates.map((c) => {
-    const streamId = (c.details as { plaid_stream_id?: string }).plaid_stream_id;
-    const sub = streamId ? subIdByKey.get(streamId) : null;
-    return {
-      user_id: userId,
-      subscription_id: c.subscription_id ?? sub?.id ?? null,
-      merchant_key: c.merchant_key ?? sub?.merchant_key ?? null,
-      merchant_name: c.merchant_name ?? null,
-      alert_type: c.alert_type,
-      severity: c.severity,
-      details: c.details,
-      dedup_key: c.dedup_key,
-      status: "active",
-      scan_run_id: scanRunId,
-      scanner_version: SCANNER_VERSION,
-    };
-  });
+  const rowsToUpsert = candidates
+    .map((c) => {
+      const streamId = (c.details as { plaid_stream_id?: string }).plaid_stream_id;
+      const sub = streamId ? subIdByKey.get(streamId) : null;
+      const subId = c.subscription_id ?? sub?.id ?? null;
+      return {
+        user_id: userId,
+        subscription_id: subId,
+        merchant_key: c.merchant_key ?? sub?.merchant_key ?? null,
+        merchant_name: c.merchant_name ?? null,
+        alert_type: c.alert_type,
+        severity: c.severity,
+        details: c.details,
+        dedup_key: c.dedup_key,
+        status: "active",
+        scan_run_id: scanRunId,
+        scanner_version: SCANNER_VERSION,
+        _tier: subId ? tierBySubId.get(subId) ?? null : null,
+      };
+    })
+    .filter((row) => {
+      // Drop alerts whose subscription is a bill, commerce, or
+      // uncertain row. If we couldn't resolve the subscription
+      // (no _tier), let it through — better to surface an
+      // unattributed alert than silently lose it.
+      if (!row._tier) return true;
+      return row._tier === "confirmed_subscription";
+    })
+    .map(({ _tier, ...rest }) => {
+      void _tier;
+      return rest;
+    });
 
   // 6. Upsert. (user_id, dedup_key) is unique — ignoreDuplicates lets
   // the same detector run a second time without exception.

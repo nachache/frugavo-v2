@@ -343,11 +343,19 @@ export default async function AppHome({
               topSubscription={topSubWithDomain}
               moneyLeaks={data.money_leaks}
               shockInsights={data.shock_insights}
-              allSubscriptions={data.subscriptions.map((s) => ({
-                merchant_name: s.merchant_name,
-                category: s.category,
-                monthly_cents: s.amount_cents,
-              }))}
+              allSubscriptions={data.subscriptions
+                .filter(
+                  (s) =>
+                    (s.recurring_type as string | undefined) ===
+                      "confirmed_subscription" &&
+                    s.status === "active" &&
+                    s.classification === "confirmed"
+                )
+                .map((s) => ({
+                  merchant_name: s.merchant_name,
+                  category: s.category,
+                  monthly_cents: s.amount_cents,
+                }))}
             />
           ) : (
             <OverviewCard
@@ -374,11 +382,19 @@ export default async function AppHome({
               }
               moneyLeaks={[]}
               shockInsights={[]}
-              allSubscriptions={data.subscriptions.map((s) => ({
-                merchant_name: s.merchant_name,
-                category: s.category,
-                monthly_cents: s.amount_cents,
-              }))}
+              allSubscriptions={data.subscriptions
+                .filter(
+                  (s) =>
+                    (s.recurring_type as string | undefined) ===
+                      "recurring_bill" &&
+                    s.status === "active" &&
+                    s.classification === "confirmed"
+                )
+                .map((s) => ({
+                  merchant_name: s.merchant_name,
+                  category: s.category,
+                  monthly_cents: s.amount_cents,
+                }))}
             />
           )}
 

@@ -40,7 +40,25 @@ export default async function AlertsPage() {
     .order("created_at", { ascending: false })
     .limit(500);
 
-  const alerts = (data ?? []) as AlertRow[];
+  // Filter to subscription-tier alerts only. Bills / commerce don't
+  // belong here — a missed renewal on a mortgage or a price hike on a
+  // utility isn't an "alert" in the protection sense. We look up the
+  // tier per subscription_id and drop alerts that point at non-sub rows.
+  const { data: subTierRows } = await supabaseAdmin
+    .from("subscriptions")
+    .select("id, recurring_type")
+    .eq("user_id", user.id);
+  const nonSubIds = new Set(
+    (subTierRows ?? [])
+      .filter(
+        (r) =>
+          (r.recurring_type as string | null) !== "confirmed_subscription"
+      )
+      .map((r) => r.id as string)
+  );
+  const alerts = ((data ?? []) as AlertRow[]).filter(
+    (a) => !a.subscription_id || !nonSubIds.has(a.subscription_id)
+  );
 
   return (
     <section className="container-page py-8 md:py-12 max-w-[1000px]">
