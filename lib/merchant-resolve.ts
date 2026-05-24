@@ -46,16 +46,18 @@ import { redis } from "./cache";
 export const MERCHANT_RESOLVE_VERSION = "resolve-v1-haiku-4-5-20251001";
 
 const RESOLVE_MODEL = "claude-haiku-4-5-20251001";
-// Timeout per batch. Haiku takes ~15-30s for a 25-descriptor batch
-// with a long structured-JSON response. 60s gives headroom for
-// network jitter and slow responses without making the whole scan
-// hang on a stuck call.
+// Per-batch timeout. 60s headroom for Haiku's structured-JSON
+// response over 12 descriptors. Generous so transient slowness
+// doesn't kill the batch; the retry handles real timeouts.
 const RESOLVE_TIMEOUT_MS = 60_000;
+// 12 items per batch is the durable size — small enough that one
+// timeout doesn't lose much work, large enough to amortize
+// per-call overhead. max_tokens stays at 4096 which is plenty.
+const RESOLVE_BATCH_SIZE = 12;
 const RESOLVE_MAX_TOKENS = 4096;
-// Smaller batches: more requests but each finishes faster, so one
-// slow batch doesn't kill the whole resolution step. 25 fits
-// comfortably inside max_tokens=4096 with structured output.
-const RESOLVE_BATCH_SIZE = 25;
+// One retry on abort/timeout. Two consecutive failures = the batch
+// falls back to normalizeDescriptor for those descriptors.
+const RESOLVE_RETRY_BACKOFF_MS = 500;
 
 export type ResolvedIdentity = {
   canonical_merchant_key: string;
@@ -165,7 +167,15 @@ export async function resolveDescriptors(
     const batchNum = Math.floor(i / RESOLVE_BATCH_SIZE) + 1;
     // eslint-disable-next-line no-console
     console.log(`[resolve] batch ${batchNum}/${totalBatches} (${batch.length} descriptors)`);
-    const verdicts = await resolveBatch(batch);
+    let verdicts: Map<string, ResolvedIdentity>;
+    try {
+      verdicts = await resolveBatch(batch);
+    } catch {
+      // Batch failed after retry. Skip this batch entirely; the caller
+      // will fall back to normalizeDescriptor for these descriptors.
+      // We do NOT throw — the scan must continue.
+      continue;
+    }
     // eslint-disable-next-line no-console
     console.log(`[resolve]   → ${verdicts.size} resolved`);
     for (const [raw, verdict] of verdicts) {
@@ -243,7 +253,8 @@ OUTPUT RULES
 
 OUTPUT ONLY THE JSON. NO PROSE, NO MARKDOWN FENCES, NO EXPLANATIONS.`;
 
-async function resolveBatch(
+// One LLM call. Throws on failure so the outer wrapper can retry.
+async function callResolveBatchOnce(
   descriptors: string[]
 ): Promise<Map<string, ResolvedIdentity>> {
   const out = new Map<string, ResolvedIdentity>();
@@ -279,7 +290,9 @@ async function resolveBatch(
         confidence?: number;
       }>;
     };
-    if (!parsed || !Array.isArray(parsed.results)) return out;
+    if (!parsed || !Array.isArray(parsed.results)) {
+      throw new Error("invalid_resolver_response");
+    }
     for (const r of parsed.results) {
       if (
         typeof r.descriptor !== "string" ||
@@ -307,13 +320,43 @@ async function resolveBatch(
         version: MERCHANT_RESOLVE_VERSION,
       });
     }
-  } catch (e) {
-    // eslint-disable-next-line no-console
-    console.warn("[resolve] batch failed", e instanceof Error ? e.message : e);
+    return out;
   } finally {
     clearTimeout(timer);
   }
-  return out;
+}
+
+// Public wrapper. Tries once, retries once on failure with a short
+// backoff. If both attempts fail, throws — the caller falls back per
+// descriptor in resolveDescriptors. Guarantees the resolver never
+// silently swallows errors.
+async function resolveBatch(
+  descriptors: string[]
+): Promise<Map<string, ResolvedIdentity>> {
+  if (descriptors.length === 0) return new Map();
+  try {
+    return await callResolveBatchOnce(descriptors);
+  } catch (e1) {
+    // eslint-disable-next-line no-console
+    console.warn(
+      `[resolve] batch attempt 1/2 failed (${e1 instanceof Error ? e1.message : e1}), retrying after ${RESOLVE_RETRY_BACKOFF_MS}ms`
+    );
+    await new Promise((r) => setTimeout(r, RESOLVE_RETRY_BACKOFF_MS));
+    try {
+      return await callResolveBatchOnce(descriptors);
+    } catch (e2) {
+      // eslint-disable-next-line no-console
+      console.warn(
+        `[resolve] batch attempt 2/2 failed (${e2 instanceof Error ? e2.message : e2}); descriptors fall back to normalizeDescriptor:`
+      );
+      for (const d of descriptors) {
+        // eslint-disable-next-line no-console
+        console.warn(`[resolve]   fallback → "${d}"`);
+      }
+      // Re-throw so caller can apply the deterministic fallback path.
+      throw e2;
+    }
+  }
 }
 
 // ---------------------------------------------------------------------

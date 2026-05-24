@@ -27,7 +27,7 @@ import {
 } from "./classify";
 import { normalizeDescriptor } from "./merchant-normalize";
 import type { SnapshotRow } from "./types/snapshot";
-import { SCANNER_VERSION } from "./scanner-version";
+import { SCANNER_VERSION, ENGINE_SIGNATURE } from "./scanner-version";
 import { subscriptionKey } from "./subscription-key";
 import { syncAllItemsForUser } from "./plaid-sync";
 import {
@@ -1018,10 +1018,59 @@ async function resolveAndPersistCanonicalKeys(args: {
     return { distinct: 0, resolved: 0, cache_hit_pct: 100 };
   }
 
-  // The resolver returns a Map<descriptor, ResolvedIdentity>. Anything
-  // missing means resolution failed (cache miss + LLM error/timeout);
-  // those rows keep their legacy merchant_key, no harm done.
-  const identities = await resolveDescriptors(distinctDescriptors);
+  // ---- CATALOG-FIRST RESOLUTION ----
+  // Run the deterministic catalog (lib/data/merchant-catalog.json)
+  // BEFORE asking Claude. Known merchants with strong alias / domain
+  // matches resolve instantly with zero LLM cost. Claude only handles
+  // descriptors the dictionary doesn't recognize.
+  //
+  // This is the "merchant registry v2" recall layer: data-driven,
+  // deterministic, replayable, cheap.
+  const identities = new Map<string, {
+    canonical_merchant_key: string;
+    display_name: string;
+    merchant_domain: string | null;
+    confidence: number;
+    version: string;
+  }>();
+  const catalogResolved: string[] = [];
+  const needsLlm: string[] = [];
+  for (const desc of distinctDescriptors) {
+    const norm = normalizeDescriptor(desc);
+    if (norm.catalog_key && norm.catalog_key.length > 0) {
+      identities.set(desc, {
+        canonical_merchant_key: norm.catalog_key,
+        display_name: norm.merchant_name || norm.catalog_key,
+        merchant_domain: norm.domain,
+        confidence: 0.95, // catalog hit = high confidence
+        version: "merchant_registry_v2",
+      });
+      catalogResolved.push(desc);
+    } else {
+      needsLlm.push(desc);
+    }
+  }
+  // eslint-disable-next-line no-console
+  console.log(
+    `[resolve] catalog matched ${catalogResolved.length}/${distinctDescriptors.length}, ${needsLlm.length} need LLM`
+  );
+
+  // LLM fallback for descriptors the catalog didn't recognize.
+  // Resolver returns a partial map — only descriptors it successfully
+  // resolved. Anything missing means a batch failed; we degrade
+  // gracefully by leaving those descriptors unresolved (they keep
+  // their legacy merchant_key). The scan continues.
+  if (needsLlm.length > 0) {
+    const llmIdentities = await resolveDescriptors(needsLlm);
+    for (const [k, v] of llmIdentities) identities.set(k, v);
+    const stillUnresolved = needsLlm.filter((d) => !identities.has(d));
+    if (stillUnresolved.length > 0) {
+      // eslint-disable-next-line no-console
+      console.warn(
+        `[resolve] ${stillUnresolved.length} descriptor(s) unresolved after LLM; using legacy merchant_key`
+      );
+    }
+  }
 
   // Bulk UPDATE plaid_transactions for every distinct descriptor that
   // resolved. We batch by canonical_merchant_key value to minimize
@@ -1033,6 +1082,9 @@ async function resolveAndPersistCanonicalKeys(args: {
   let writeOk = 0;
   for (const [descriptor, identity] of identities) {
     if (!identity || !identity.canonical_merchant_key) continue;
+    // Stamp the version that produced this verdict so replay can
+    // tell catalog-resolved rows apart from LLM-resolved ones.
+    const stamp = identity.version ?? MERCHANT_RESOLVE_VERSION;
     const { error } = await supabaseAdmin
       .from("plaid_transactions")
       .update({
@@ -1040,7 +1092,7 @@ async function resolveAndPersistCanonicalKeys(args: {
         canonical_display_name: identity.display_name,
         canonical_domain: identity.merchant_domain,
         canonical_resolved_at: new Date().toISOString(),
-        canonical_resolver_version: MERCHANT_RESOLVE_VERSION,
+        canonical_resolver_version: stamp,
       })
       .eq("user_id", userId)
       .eq("description", descriptor)
@@ -1364,7 +1416,15 @@ async function finalizeScan(
       user_id: userId,
       scan_run_id: scanId,
       as_of_date: snapshot.asOfIso,
-      payload: { rows: snapshot.snapshotRows },
+      // Engine signature (resolver + classifier versions) goes in the
+      // payload so cached verdicts are traceable to the prompt/model
+      // that produced them, without requiring a schema migration for
+      // new columns. Replay can read payload._engine to verify the
+      // snapshot was produced under matching component versions.
+      payload: {
+        rows: snapshot.snapshotRows,
+        _engine: ENGINE_SIGNATURE,
+      },
       detected_count: confirmedRows.length,
       monthly_upkeep_cents: confirmedUpkeep,
       scanner_version: SCANNER_VERSION,

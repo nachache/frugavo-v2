@@ -1,6 +1,7 @@
 {
   "_meta": {
     "version": "2026-05-21",
+    "registry_version": "merchant_registry_v2",
     "description": "External catalog of known subscription merchants and billing intermediaries. Updated as a product asset, not derived from any single user's data. Each merchant carries: canonical display name, category, optional aliases for matching, and known domains.",
     "schema": {
       "merchants": "Array of subscription products (Netflix, Spotify, etc.)",
@@ -107,7 +108,8 @@
     {"key": "twitch", "display": "Twitch", "category": "streaming", "aliases": ["twitch", "twitch interactive"], "domains": ["twitch.tv"]},
 
     {"key": "adobe", "display": "Adobe Creative Cloud", "category": "software", "aliases": ["adobe", "adobe creative", "adobe.com", "adobe systems"], "domains": ["adobe.com"]},
-    {"key": "microsoft_365", "display": "Microsoft 365", "category": "software", "aliases": ["microsoft 365", "microsoft*365", "msft 365", "office 365"], "domains": ["microsoft.com"]},
+    {"key": "microsoft_365", "display": "Microsoft 365", "category": "software", "aliases": ["microsoft 365", "microsoft*365", "msft 365", "office 365", "microsoft corp", "msft*microsoft", "microsoft*microsoft"], "domains": ["microsoft.com"]},
+    {"key": "microsoft", "display": "Microsoft", "category": "software", "aliases": ["microsoft", "msft", "microsoft inc"], "domains": ["microsoft.com"]},
     {"key": "github", "display": "GitHub", "category": "software", "aliases": ["github", "github.com"], "domains": ["github.com"]},
     {"key": "gitlab", "display": "GitLab", "category": "software", "aliases": ["gitlab"], "domains": ["gitlab.com"]},
     {"key": "notion", "display": "Notion", "category": "software", "aliases": ["notion", "notion labs"], "domains": ["notion.so"]},
@@ -117,14 +119,16 @@
     {"key": "linear", "display": "Linear", "category": "software", "aliases": ["linear", "linear.app"], "domains": ["linear.app"]},
     {"key": "1password", "display": "1Password", "category": "software", "aliases": ["1password", "1password.com"], "domains": ["1password.com"]},
     {"key": "lastpass", "display": "LastPass", "category": "software", "aliases": ["lastpass"], "domains": ["lastpass.com"]},
-    {"key": "expressvpn", "display": "ExpressVPN", "category": "software", "aliases": ["expressvpn", "express vpn"], "domains": ["expressvpn.com"]},
-    {"key": "talentlms", "display": "TalentLMS", "category": "software", "aliases": ["talentlms", "talent lms", "epignosis"], "domains": ["talentlms.com"]},
-    {"key": "apple_services", "display": "Apple", "category": "software", "aliases": ["apple inc", "apple services"], "domains": ["apple.com"]},
+    {"key": "expressvpn", "display": "ExpressVPN", "category": "software", "aliases": ["expressvpn", "express vpn", "expressvpn.com"], "domains": ["expressvpn.com"]},
+    {"key": "talentlms", "display": "TalentLMS", "category": "software", "aliases": ["talentlms", "talent lms", "epignosis", "talentlms.com"], "domains": ["talentlms.com"]},
+    {"key": "jotform", "display": "Jotform", "category": "software", "aliases": ["jotform", "jot form", "jotform.com"], "domains": ["jotform.com"]},
+    {"key": "google_workspace", "display": "Google Workspace", "category": "software", "aliases": ["google workspace", "google*workspace", "google * workspace", "g suite", "gsuite", "google apps"], "domains": ["workspace.google.com"]},
+    {"key": "apple_services", "display": "Apple", "category": "software", "aliases": ["apple inc", "apple services", "apple.com/bill", "apple com bill", "apple.com bill"], "domains": ["apple.com"]},
     {"key": "dropbox", "display": "Dropbox", "category": "cloud_storage", "aliases": ["dropbox"], "domains": ["dropbox.com"]},
     {"key": "google_one", "display": "Google One", "category": "cloud_storage", "aliases": ["google one", "google storage"], "domains": ["one.google.com"]},
     {"key": "icloud", "display": "iCloud+", "category": "cloud_storage", "aliases": ["icloud", "icloud+", "icloud storage"], "domains": ["icloud.com"]},
     {"key": "backblaze", "display": "Backblaze", "category": "cloud_storage", "aliases": ["backblaze"], "domains": ["backblaze.com"]},
-    {"key": "openai", "display": "OpenAI / ChatGPT", "category": "software", "ai": true, "aliases": ["openai", "chatgpt", "chat gpt"], "domains": ["openai.com"]},
+    {"key": "openai", "display": "OpenAI / ChatGPT", "category": "software", "ai": true, "aliases": ["openai", "chatgpt", "chat gpt", "openai.com", "open ai"], "domains": ["openai.com"]},
     {"key": "anthropic", "display": "Anthropic / Claude", "category": "software", "ai": true, "aliases": ["anthropic", "claude.ai"], "domains": ["anthropic.com", "claude.ai"]},
     {"key": "cursor", "display": "Cursor", "category": "software", "ai": true, "aliases": ["cursor", "cursor.so", "cursor.com"], "domains": ["cursor.com"]},
     {"key": "perplexity", "display": "Perplexity", "category": "software", "ai": true, "aliases": ["perplexity", "perplexity.ai", "www.perplexity.ai", "www.perplexity"], "domains": ["perplexity.ai"]},
