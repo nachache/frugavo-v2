@@ -22,7 +22,7 @@
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Check, X, Sparkles, Eye, Scissors, EyeOff, List } from "lucide-react";
+import { Check, X, Sparkles, Eye, Scissors, EyeOff, List, MoreHorizontal } from "lucide-react";
 
 type TabIcon = "sparkles" | "eye" | "scissors" | "eye-off" | "list";
 
@@ -515,9 +515,11 @@ function Row({
 
         {tab === "worth" || tab === "all" ? (
           <div className="hidden md:flex items-center gap-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
-            {/* Cancel only appears for subscriptions. You don't cancel
-                a mortgage or utility — the action would be misleading
-                on the Bills tab. */}
+            {/* Per dashboard critic: 4 action buttons × N rows = 36
+                decisions on screen. Surface ONE primary action
+                (Cancel for subs) + Review on hover. Keep / Mark as
+                bill / Move to subscriptions all live behind a ⋯
+                overflow menu so the row breathes. */}
             {!isBills && (
               <button
                 type="button"
@@ -528,31 +530,11 @@ function Row({
                 Cancel
               </button>
             )}
-            {!isBills && (
-              <button
-                type="button"
-                onClick={onKeep}
-                className="inline-flex h-8 items-center justify-center gap-1 rounded-full border border-hairline bg-surface px-3 text-[12px] font-medium text-ink hover:bg-ink/[0.04] transition"
-              >
-                <Check size={11} />
-                Keep
-              </button>
-            )}
-            {/* Tier reclassify — on Bills tab, "Move to subscriptions".
-                On Subs tab, "Mark as bill". Same /api/feedback endpoint,
-                different force_tier value. */}
-            <button
-              type="button"
-              onClick={onReclassify}
-              className="inline-flex h-8 items-center justify-center gap-1 rounded-full border border-hairline bg-surface px-3 text-[12px] font-medium text-ink-body hover:text-ink hover:bg-ink/[0.04] transition"
-              title={
-                isBills
-                  ? "This is actually a subscription"
-                  : "This is actually a bill"
-              }
-            >
-              {isBills ? "Move to subscriptions" : "Mark as a bill"}
-            </button>
+            <RowOverflow
+              isBills={isBills}
+              onKeep={onKeep}
+              onReclassify={onReclassify}
+            />
           </div>
         ) : null}
 
@@ -566,6 +548,78 @@ function Row({
           </svg>
         </Link>
       </div>
+    </div>
+  );
+}
+
+// Overflow menu — Keep + Mark as bill / Move to subscriptions live
+// here so the row only shows ONE primary action (Cancel) at a time.
+// Tap the ⋯ to open; click outside or pick an item to close.
+function RowOverflow({
+  isBills,
+  onKeep,
+  onReclassify,
+}: {
+  isBills: boolean;
+  onKeep: () => void;
+  onReclassify: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  // Close on outside click.
+  useEffect(() => {
+    if (!open) return;
+    const onDoc = () => setOpen(false);
+    // Defer to next tick so the click that opened us doesn't
+    // immediately close.
+    const t = setTimeout(() => document.addEventListener("click", onDoc), 0);
+    return () => {
+      clearTimeout(t);
+      document.removeEventListener("click", onDoc);
+    };
+  }, [open]);
+  return (
+    <div className="relative" onClick={(e) => e.stopPropagation()}>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-label="More actions"
+        className="inline-flex items-center justify-center w-8 h-8 rounded-full border border-hairline bg-surface text-ink-muted hover:text-ink hover:bg-ink/[0.04] transition"
+      >
+        <MoreHorizontal size={14} strokeWidth={2.2} />
+      </button>
+      {open && (
+        <div className="absolute right-0 top-full mt-1.5 z-20 min-w-[180px] rounded-xl border border-hairline bg-surface shadow-lift p-1 animate-fadeUp">
+          {!isBills && (
+            <button
+              type="button"
+              onClick={() => {
+                setOpen(false);
+                onKeep();
+              }}
+              className="w-full flex items-center gap-2 px-3 py-2 text-[13px] text-ink hover:bg-ink/[0.04] rounded-lg transition text-left"
+            >
+              <Check size={13} strokeWidth={2.2} />
+              Keep
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => {
+              setOpen(false);
+              onReclassify();
+            }}
+            className="w-full flex items-center gap-2 px-3 py-2 text-[13px] text-ink hover:bg-ink/[0.04] rounded-lg transition text-left"
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <polyline points="17 1 21 5 17 9" />
+              <path d="M3 11V9a4 4 0 0 1 4-4h14" />
+              <polyline points="7 23 3 19 7 15" />
+              <path d="M21 13v2a4 4 0 0 1-4 4H3" />
+            </svg>
+            {isBills ? "Move to subscriptions" : "Mark as a bill"}
+          </button>
+        </div>
+      )}
     </div>
   );
 }

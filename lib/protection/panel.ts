@@ -348,9 +348,52 @@ export async function buildProtectionPanelData(
     });
   }
 
-  // Sort by recency, cap at 5.
+  // Sort by recency.
   recent.sort((a, b) => (a.when < b.when ? 1 : -1));
-  const recentTrimmed = recent.slice(0, 5);
+
+  // GROUP DUPLICATES — when 3+ alerts of the same verb landed within
+  // a 24h window, collapse them into a single summary row to avoid
+  // the "5 New subscription detected" spam pattern the dashboard
+  // critic flagged. Keeps the most recent timestamp + an aggregated
+  // detail line: "5 new charges detected today — review".
+  const collapsed: RecentAction[] = [];
+  const DAY_MS = 86_400_000;
+  let i = 0;
+  while (i < recent.length) {
+    const head = recent[i];
+    // Look ahead for same-verb items within 24h of the head.
+    let j = i + 1;
+    while (
+      j < recent.length &&
+      recent[j].verb === head.verb &&
+      new Date(head.when).getTime() - new Date(recent[j].when).getTime() <
+        DAY_MS
+    ) {
+      j++;
+    }
+    const groupSize = j - i;
+    if (groupSize >= 3) {
+      const verbLabel: Record<string, string> = {
+        stopped: "trials caught",
+        flagged: "things flagged",
+        caught: "new charges detected",
+        watching: "things being watched",
+        pruned: "subscriptions cancelled",
+      };
+      collapsed.push({
+        id: `group_${head.verb}_${head.when}`,
+        verb: head.verb,
+        title: `${groupSize} ${verbLabel[head.verb] ?? "items"} today`,
+        detail: `Tap "See everything caught" to review individually.`,
+        when: head.when,
+      });
+    } else {
+      // Group too small to collapse — emit each individually.
+      for (let k = i; k < j; k++) collapsed.push(recent[k]);
+    }
+    i = j;
+  }
+  const recentTrimmed = collapsed.slice(0, 5);
 
   // ── Watching list: upcoming + recently-flagged active alerts ───
   // These are the items the watchdog is actively monitoring RIGHT

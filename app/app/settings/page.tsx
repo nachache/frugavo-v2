@@ -33,7 +33,17 @@ export default async function SettingsPage() {
   const email = user.emailAddresses[0]?.emailAddress ?? "";
 
   return (
-    <section className="container-page py-16 md:py-20 max-w-[720px]">
+    <section className="container-page py-8 md:py-12 max-w-[720px]">
+      {/* Back to dashboard — sub-page navigation. */}
+      <Link
+        href="/app"
+        className="inline-flex items-center gap-1.5 text-[13px] text-ink-muted hover:text-ink transition mb-6"
+      >
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <polyline points="15 18 9 12 15 6" />
+        </svg>
+        Back to dashboard
+      </Link>
       <span className="text-[13px] font-medium text-brand">Settings</span>
       <h1 className="mt-2 font-display text-[36px] md:text-[44px] font-bold tracking-[-0.03em] leading-[1.05] text-ink">
         Your account
@@ -87,6 +97,35 @@ export default async function SettingsPage() {
 
       <Section title="Preferences">
         <SoundToggle />
+        <div className="mt-4 pt-4 border-t border-hairline/60">
+          <Link
+            href="/app/settings/notifications"
+            className="flex items-center justify-between gap-4 py-1 hover:text-ink transition"
+          >
+            <div className="min-w-0">
+              <div className="text-[14px] font-medium text-ink">
+                Notifications
+              </div>
+              <div className="mt-0.5 text-[12.5px] text-ink-muted leading-snug">
+                Choose what Frugavo emails you, and how often.
+              </div>
+            </div>
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="text-ink-muted shrink-0"
+              aria-hidden="true"
+            >
+              <polyline points="9 18 15 12 9 6" />
+            </svg>
+          </Link>
+        </div>
       </Section>
 
       <Section title="Billing">

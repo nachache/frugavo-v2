@@ -384,10 +384,15 @@ export async function buildDashboardData(
     rankedByPrice.slice(0, 3).map((b) => b.sub.id)
   );
 
-  // "Might be forgotten" — no charge in 30+ days but still active.
-  const thirtyDaysAgo = new Date(asOf);
-  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-  const cutoff = thirtyDaysAgo.toISOString().slice(0, 10);
+  // "Might be forgotten" — bumped from 30 → 60 days. The 30-day
+  // threshold tagged virtually every active sub (anything that bills
+  // monthly will look "stale" 31 days into its next cycle). At 60
+  // days the tag means something: it's a sub that's genuinely
+  // dormant or whose billing has paused. Per dashboard critic: when
+  // the tag is on every row it means nothing.
+  const sixtyDaysAgo = new Date(asOf);
+  sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60);
+  const cutoff = sixtyDaysAgo.toISOString().slice(0, 10);
 
   const allActions: ActionItem[] = baseActions.map(({ sub: s, monthly: m }) => {
     const tags: string[] = [];
