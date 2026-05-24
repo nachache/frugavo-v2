@@ -314,6 +314,31 @@ export type CategoryTotal = {
   subscription_count: number;
 };
 
+// Bill-only category totals. Used by the Bills tab donut. Same shape
+// as computeSubscriptionCategories but filtered to recurring_bill.
+export function computeBillCategories(
+  subs: LedgerSubscription[]
+): CategoryTotal[] {
+  const map = new Map<string, CategoryTotal>();
+  const onlyBills = recurringBills(subs.map(asTiered));
+  for (const s of onlyBills) {
+    const monthly = monthlyEqCents(s.amount_cents, s.frequency);
+    const existing = map.get(s.category) ?? {
+      category: s.category,
+      monthly_cents: 0,
+      yearly_cents: 0,
+      subscription_count: 0,
+    };
+    existing.monthly_cents += monthly;
+    existing.yearly_cents += monthly * 12;
+    existing.subscription_count += 1;
+    map.set(s.category, existing);
+  }
+  return Array.from(map.values()).sort(
+    (a, b) => b.monthly_cents - a.monthly_cents
+  );
+}
+
 // Subscription-only category totals. Used by the personality calc and
 // the reveal screens where bills shouldn't influence the archetype.
 export function computeSubscriptionCategories(

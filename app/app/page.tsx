@@ -17,6 +17,7 @@ import { ProtectionStatusPill } from "@/components/app/protection-status-pill";
 import { ProtectionCoverageCard } from "@/components/app/protection-coverage-card";
 import { ProtectionLockedCard } from "@/components/app/protection-locked-card";
 import { SpendingPatternsAccordion } from "@/components/app/spending-patterns-accordion";
+import { DashboardTabs } from "@/components/app/dashboard-tabs";
 import { getOrCreatePublicSlug } from "@/lib/users/public-slug";
 import { maybeNotifySignup } from "@/lib/users/signup-notify";
 import { getEntitlement } from "@/lib/billing/entitlements";
@@ -35,9 +36,21 @@ import { buildDashboardData } from "@/lib/selectors/dashboard";
 // All numerical surfaces read from buildDashboardData(). The selector
 // owns the canonical Monthly Upkeep value — there is exactly one.
 
-export default async function AppHome() {
+type AppSearchParams = { tab?: string };
+
+export default async function AppHome({
+  searchParams,
+}: {
+  searchParams?: AppSearchParams;
+}) {
   const user = await currentUser();
   if (!user) redirect("/sign-in");
+
+  // Tab state lives in the URL so it's bookmarkable + shareable.
+  // Defaults to subscriptions; ?tab=bills swaps the hero / donut /
+  // action list to the bills tier.
+  const activeTab: "subscriptions" | "bills" =
+    searchParams?.tab === "bills" ? "bills" : "subscriptions";
 
   if (!supabaseAdmin) {
     return (
@@ -207,17 +220,44 @@ export default async function AppHome() {
             monitoring/changes/learn cards. For free users it holds
             the locked preview card.
           */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 md:gap-6 items-start">
-            <div className="lg:col-span-5">
-              <IdentityHero
-                monthlySubCents={data.monthly.total_cents}
-                personality={data.personality}
-                publicSlug={publicSlug}
-                firstName={user.firstName ?? null}
-              />
+          {/* Tab strip — Subscriptions / Bills. URL-driven. Sits
+              above the hero grid so the user always sees which lens
+              they're in. */}
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <DashboardTabs
+              active={activeTab}
+              subCount={data.monthly.sub_only_count}
+              billCount={data.monthly.other_recurring_count}
+            />
+            <div className="text-[11.5px] md:text-[12px] text-ink-muted">
+              {activeTab === "subscriptions"
+                ? "Things you subscribe to. Cancel-able."
+                : "Recurring obligations. Watched, not cancel-able."}
             </div>
+          </div>
 
-            <div className="lg:col-span-7 space-y-5 md:space-y-6">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 md:gap-6 items-start">
+            {/* IdentityHero only renders on the Subscriptions tab —
+                personality archetypes derive from subscriptions and
+                shouldn't appear when the user is looking at bills. */}
+            {activeTab === "subscriptions" && (
+              <div className="lg:col-span-5">
+                <IdentityHero
+                  monthlySubCents={data.monthly.sub_only_cents}
+                  personality={data.personality}
+                  publicSlug={publicSlug}
+                  firstName={user.firstName ?? null}
+                />
+              </div>
+            )}
+
+            <div
+              className={
+                activeTab === "subscriptions"
+                  ? "lg:col-span-7 space-y-5 md:space-y-6"
+                  : "lg:col-span-12 space-y-5 md:space-y-6"
+              }
+            >
               {!showActivateCard ? (
                 <>
                   <div className="flex items-center gap-2">
@@ -259,44 +299,88 @@ export default async function AppHome() {
             </div>
           </div>
 
-          <OverviewCard
-            monthly={data.monthly}
-            yearly={data.yearly}
-            chart12mo={data.chart_12mo}
-            categories={data.categories}
-            aiSpend={data.ai_spend}
-            topSubscription={topSubWithDomain}
-            moneyLeaks={data.money_leaks}
-            shockInsights={data.shock_insights}
-          />
+          {activeTab === "subscriptions" ? (
+            <OverviewCard
+              mode="subscriptions"
+              monthly={{
+                total_cents: data.monthly.sub_only_cents,
+                total_count: data.monthly.sub_only_count,
+                sub_only_cents: data.monthly.sub_only_cents,
+                sub_only_count: data.monthly.sub_only_count,
+                other_recurring_cents: 0,
+                other_recurring_count: 0,
+              }}
+              yearly={{
+                total_cents: data.yearly.sub_only_cents,
+                ledger_actual_cents: data.yearly.ledger_actual_cents,
+              }}
+              chart12mo={data.chart_12mo}
+              categories={data.subscription_categories}
+              aiSpend={data.ai_spend}
+              topSubscription={topSubWithDomain}
+              moneyLeaks={data.money_leaks}
+              shockInsights={data.shock_insights}
+            />
+          ) : (
+            <OverviewCard
+              mode="bills"
+              monthly={{
+                total_cents: data.monthly.other_recurring_cents,
+                total_count: data.monthly.other_recurring_count,
+                sub_only_cents: 0,
+                sub_only_count: 0,
+                other_recurring_cents: data.monthly.other_recurring_cents,
+                other_recurring_count: data.monthly.other_recurring_count,
+              }}
+              yearly={{
+                total_cents: data.monthly.other_recurring_cents * 12,
+                ledger_actual_cents: 0,
+              }}
+              chart12mo={data.chart_12mo}
+              categories={data.bill_categories}
+              aiSpend={data.ai_spend}
+              topSubscription={
+                data.top_bills[0]
+                  ? { ...data.top_bills[0], domain: null }
+                  : null
+              }
+              moneyLeaks={[]}
+              shockInsights={[]}
+            />
+          )}
 
-          {/* Locked-feature preview is now rendered inside the
-              Protection rail above for free users — kept in one
-              place to avoid two duplicate cards on the page. */}
-
-          <ActionCenter
-            worth_a_look={data.actions.worth_a_look}
-            watching={data.actions.watching}
-            pruned={data.actions.pruned}
-            hidden={data.actions.hidden}
-            potential_yearly_savings_cents={
-              data.actions.potential_yearly_savings_cents
-            }
-          />
+          {activeTab === "subscriptions" ? (
+            <ActionCenter
+              worth_a_look={data.actions.worth_a_look}
+              watching={data.actions.watching}
+              pruned={data.actions.pruned}
+              hidden={data.actions.hidden}
+              potential_yearly_savings_cents={
+                data.actions.potential_yearly_savings_cents
+              }
+            />
+          ) : (
+            <ActionCenter
+              worth_a_look={data.bill_actions.worth_a_look}
+              watching={data.bill_actions.watching}
+              pruned={data.bill_actions.pruned}
+              hidden={data.bill_actions.hidden}
+              potential_yearly_savings_cents={0}
+            />
+          )}
 
           {/* Recurring spending patterns — collapsed accordion.
-              Lives BELOW the main subscription list, visually
-              softer (canvas bg, muted text, smaller type) so it
-              doesn't compete with subscriptions. Per Constraint #2:
-              "secondary intelligence, optional exploration, low-
-              emphasis behavioral insight." Auto-hides when empty. */}
-          <SpendingPatternsAccordion
-            items={data.recurring_commerce.map((c) => ({
-              id: c.id,
-              merchant_name: c.merchant_name,
-              monthly_cents: c.monthly_cents,
-            }))}
-          />
+              Only shown on the Subscriptions tab. Commerce isn't
+              relevant when the user is reviewing bills. */}
+          {activeTab === "subscriptions" && (
+            <SpendingPatternsAccordion
+              items={data.recurring_commerce.map((c) => ({
+                id: c.id,
+                merchant_name: c.merchant_name,
+                monthly_cents: c.monthly_cents,
+              }))}
+            />
+          )}
         </>
       )}
     </section>

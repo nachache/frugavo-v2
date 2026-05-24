@@ -15,7 +15,9 @@ import {
   computeAiSpend,
   computeCategoryTotals,
   computeSubscriptionCategories,
+  computeBillCategories,
   computeTopSubscriptions,
+  computeTopBills,
   computeRecurringCommerce,
   computeShockInsights,
   computeMonthlySpendSeries,
@@ -65,10 +67,16 @@ export type DashboardData = {
   // ─── Chart + breakdown ────────────────────────────────────────────
   chart_12mo: MonthBucket[];
   categories: CategoryTotal[];
+  // Subs-only and bills-only category breakdowns. Drive the donut
+  // when the dashboard tab is set to subscriptions or bills
+  // respectively. Combined `categories` is kept for the legacy view.
+  subscription_categories: CategoryTotal[];
+  bill_categories: CategoryTotal[];
 
   // ─── Pinned insight tiles + lists ────────────────────────────────
   ai_spend: AiSpend;
   top_subscriptions: TopSubscription[];
+  top_bills: TopSubscription[];
   shock_insights: ShockInsight[];     // → Patterns column
   money_leaks: MoneyLeak[];           // → Alerts column
 
@@ -89,6 +97,16 @@ export type DashboardData = {
     pruned: ActionItem[];
     hidden: ActionItem[];
     potential_yearly_savings_cents: number;
+  };
+
+  // ─── Bills action center (mirror of `actions` filtered to bills) ─
+  // Used by the Bills tab on the dashboard. Same shape; data is
+  // recurring_bill tier only.
+  bill_actions: {
+    worth_a_look: ActionItem[];
+    watching: ActionItem[];
+    pruned: ActionItem[];
+    hidden: ActionItem[];
   };
 
   // ─── Recurring commerce accordion ────────────────────────────────
@@ -181,6 +199,7 @@ export async function buildDashboardData(
   const ai = computeAiSpend(subs, charges, asOf);
   const categories = computeCategoryTotals(subs);
   const top = computeTopSubscriptions(subs, 5);
+  const topBills = computeTopBills(subs, 10);
   const shock = computeShockInsights({
     subs,
     charges,
@@ -194,6 +213,8 @@ export async function buildDashboardData(
   // shouldn't drag the archetype toward "The Utility Payer" and
   // commerce was already filtered out by surface-rules.
   const subscriptionCats = computeSubscriptionCategories(subs);
+  // Bill-only category breakdown for the Bills tab donut.
+  const billCats = computeBillCategories(subs);
   const personality = computePersonality({
     categories: subscriptionCats,
     aiMonthlyCents: ai.monthly_cents,
@@ -370,19 +391,48 @@ export async function buildDashboardData(
     a.override_type === "not_subscription" ||
     a.override_type === "not_recurring";
 
-  const watching: ActionItem[] = allActions
+  // Split into subscription rows and bill rows so the Bills tab on
+  // the dashboard has its own action center. We keep the SAME bucket
+  // rules (Watching / Pruned / Hidden / Worth a look) — only the
+  // input set differs by tier.
+  const subActions: ActionItem[] = [];
+  const billActions: ActionItem[] = [];
+  for (const a of allActions) {
+    // Look up the source subscription's recurring_type to route the
+    // action item. Subs tier-mixed allActions split by tier here.
+    const src = subs.find((s) => s.id === a.subscription_id);
+    const tier = (src?.recurring_type as string | undefined) ?? "";
+    if (tier === "recurring_bill") billActions.push(a);
+    else subActions.push(a);
+  }
+
+  const watching: ActionItem[] = subActions
     .filter(inWatching)
     .sort((a, b) => b.monthly_cents - a.monthly_cents);
 
-  const pruned: ActionItem[] = allActions
+  const pruned: ActionItem[] = subActions
     .filter(inPruned)
     .sort((a, b) => b.monthly_cents - a.monthly_cents);
 
-  const hidden: ActionItem[] = allActions
+  const hidden: ActionItem[] = subActions
     .filter(inHidden)
     .sort((a, b) => b.monthly_cents - a.monthly_cents);
 
-  const worth_a_look: ActionItem[] = allActions
+  const worth_a_look: ActionItem[] = subActions
+    .filter((a) => !inWatching(a) && !inPruned(a) && !inHidden(a))
+    .sort((a, b) => b.monthly_cents - a.monthly_cents);
+
+  // Same bucket logic, bills tier only.
+  const billWatching: ActionItem[] = billActions
+    .filter(inWatching)
+    .sort((a, b) => b.monthly_cents - a.monthly_cents);
+  const billPruned: ActionItem[] = billActions
+    .filter(inPruned)
+    .sort((a, b) => b.monthly_cents - a.monthly_cents);
+  const billHidden: ActionItem[] = billActions
+    .filter(inHidden)
+    .sort((a, b) => b.monthly_cents - a.monthly_cents);
+  const billWorthALook: ActionItem[] = billActions
     .filter((a) => !inWatching(a) && !inPruned(a) && !inHidden(a))
     .sort((a, b) => b.monthly_cents - a.monthly_cents);
 
@@ -408,8 +458,11 @@ export async function buildDashboardData(
     },
     chart_12mo: chart12mo,
     categories,
+    subscription_categories: subscriptionCats,
+    bill_categories: billCats,
     ai_spend: ai,
     top_subscriptions: top,
+    top_bills: topBills,
     shock_insights: shock,
     money_leaks: moneyLeaks,
     personality,
@@ -422,6 +475,12 @@ export async function buildDashboardData(
         (acc, a) => acc + a.yearly_cents,
         0
       ),
+    },
+    bill_actions: {
+      worth_a_look: billWorthALook,
+      watching: billWatching,
+      pruned: billPruned,
+      hidden: billHidden,
     },
     recurring_commerce: recurringCommerce,
     subscriptions: subs,

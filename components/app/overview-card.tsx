@@ -46,6 +46,11 @@ type Props = {
   topSubscription: (TopSubscription & { domain?: string | null }) | null;
   moneyLeaks: MoneyLeak[];
   shockInsights: ShockInsight[];
+  // Mode controls which tier this card is rendering for. The caller
+  // passes the right `monthly` / `categories` / `topSubscription` for
+  // the mode; this card only adjusts labels and what optional panels
+  // it shows (e.g. AI stack panel hides on Bills mode).
+  mode?: "subscriptions" | "bills" | "combined";
 };
 
 const DONUT_COLORS = [
@@ -77,7 +82,16 @@ export function OverviewCard({
   topSubscription,
   moneyLeaks,
   shockInsights,
+  mode = "combined",
 }: Props) {
+  const eyebrowLabel =
+    mode === "subscriptions"
+      ? "Monthly subscriptions"
+      : mode === "bills"
+        ? "Monthly bills"
+        : "Monthly recurring";
+  const itemNoun =
+    mode === "bills" ? "bills" : mode === "subscriptions" ? "subscriptions" : "items";
   return (
     <div className="rounded-2xl border border-hairline bg-surface p-4 md:p-7 animate-fadeUp">
       {/* Top row: stats | donut | insights */}
@@ -90,7 +104,7 @@ export function OverviewCard({
             user can do in their head; that stays. */}
         <div className="min-w-0">
           <div className="text-[11px] md:text-[12px] font-medium uppercase tracking-[0.12em] text-ink-muted">
-            Monthly recurring
+            {eyebrowLabel}
           </div>
           <div className="mt-2 font-display font-bold tracking-[-0.03em] leading-[1] text-[40px] sm:text-[52px] md:text-[60px] tabular-nums break-words text-brand">
             <CountUp targetCents={monthly.total_cents} />
@@ -99,18 +113,10 @@ export function OverviewCard({
             </span>
           </div>
           <div className="mt-3 text-[14px] md:text-[15px] text-ink-body">
-            {fmtRound(yearly.total_cents)}/yr ·{" "}
-            {monthly.sub_only_count}{" "}
-            {monthly.sub_only_count === 1 ? "subscription" : "subscriptions"}
-            {monthly.other_recurring_count > 0 && (
-              <>
-                {" + "}
-                {monthly.other_recurring_count}{" "}
-                {monthly.other_recurring_count === 1 ? "bill" : "bills"}
-              </>
-            )}
+            {fmtRound(yearly.total_cents)}/yr · {monthly.total_count}{" "}
+            {monthly.total_count === 1 ? itemNoun.replace(/s$/, "") : itemNoun}
           </div>
-          {monthly.other_recurring_count > 0 && (
+          {mode === "combined" && monthly.other_recurring_count > 0 && (
             <div className="mt-3 inline-flex flex-wrap items-center gap-1.5 rounded-full border border-hairline bg-canvas/40 px-3 py-1.5 text-[12px] text-ink-body">
               <span className="font-medium text-ink">{fmtRound(monthly.sub_only_cents)}</span>
               <span className="text-ink-muted">{monthly.sub_only_count === 1 ? "sub" : "subs"}</span>
