@@ -10,7 +10,6 @@ import { OverviewCard } from "@/components/app/overview-card";
 import { ActionCenter } from "@/components/app/action-center";
 import { WhatChangedCard } from "@/components/app/what-changed-card";
 import { UncertainPromptCards } from "@/components/app/uncertain-prompt-cards";
-import { MonitoringAlertsCard } from "@/components/app/monitoring-alerts-card";
 import { ActivateProtectionCard } from "@/components/app/activate-protection-card";
 import { BillingStatusBanner } from "@/components/app/billing-status-banner";
 import { ProtectionStatusPill } from "@/components/app/protection-status-pill";
@@ -304,7 +303,10 @@ export default async function AppHome({
                     data={protectionPanelData}
                     state="active"
                   />
-                  <MonitoringAlertsCard />
+                  {/* MonitoringAlertsCard removed — its data is now
+                      fused into the ProtectionPanel's 'What we're
+                      watching' subsection. The full alerts inbox
+                      still lives at /app/alerts via the panel CTA. */}
                   <WhatChangedCard />
                   <UncertainPromptCards />
                 </>
