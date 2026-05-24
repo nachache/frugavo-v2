@@ -20,7 +20,7 @@
 // The accordion auto-hides when there are 0 commerce items, so it
 // never adds visual noise to a clean dashboard.
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 
 type CommerceItem = {
@@ -43,16 +43,35 @@ function fmt(c: number): string {
 export function SpendingPatternsAccordion({ items }: Props) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
+  // Local mirror of items so we can optimistically remove a promoted
+  // row IMMEDIATELY on click instead of waiting for the server
+  // round-trip. The user's mental model: "I told the app this IS a
+  // subscription, so it should disappear from the patterns list and
+  // appear in my subscriptions list NOW." Anything less feels broken.
+  const [localItems, setLocalItems] = useState(items);
   const [promoting, setPromoting] = useState<Set<string>>(new Set());
   const [, startTransition] = useTransition();
+
+  // Reconcile local state when the server pushes a fresh prop set
+  // (after router.refresh returns). Only sync when no promotion is
+  // in-flight — otherwise we'd briefly re-add the row before the
+  // server confirms its removal. Once promoting is empty, the server
+  // list is authoritative.
+  useEffect(() => {
+    if (promoting.size === 0) {
+      setLocalItems(items);
+    }
+  }, [items, promoting.size]);
 
   // Auto-hide when there's nothing to show. The accordion should NEVER
   // appear empty — that would imply the engine found nothing when in
   // fact the user might have plenty of commerce charges that just
   // didn't recur regularly enough.
-  if (items.length === 0) return null;
+  if (localItems.length === 0) return null;
 
   function promote(id: string) {
+    // 1) Optimistic UI: yank the row from local state RIGHT NOW.
+    setLocalItems((prev) => prev.filter((it) => it.id !== id));
     setPromoting((prev) => new Set(prev).add(id));
     startTransition(async () => {
       try {
@@ -64,8 +83,10 @@ export function SpendingPatternsAccordion({ items }: Props) {
             override_type: "confirmed",
           }),
         });
-        // Refresh the dashboard so this item moves to the main
-        // subscription list and the totals recompute.
+        // 2) Then trigger the server re-render so the subscriptions
+        // list / burn-rate / donut all update to include the newly
+        // promoted item. The router.refresh will return new items
+        // props which our reconciliation block above syncs to.
         router.refresh();
       } finally {
         setPromoting((prev) => {
@@ -95,7 +116,7 @@ export function SpendingPatternsAccordion({ items }: Props) {
         </div>
         <div className="flex items-center gap-2 shrink-0">
           <span className="text-[11px] text-ink-muted tabular-nums">
-            {items.length} {items.length === 1 ? "merchant" : "merchants"}
+            {localItems.length} {localItems.length === 1 ? "merchant" : "merchants"}
           </span>
           <svg
             width="14"
@@ -119,7 +140,7 @@ export function SpendingPatternsAccordion({ items }: Props) {
 
       {open && (
         <ul className="border-t border-hairline/60 divide-y divide-hairline/40">
-          {items.map((it) => {
+          {localItems.map((it) => {
             const isPromoting = promoting.has(it.id);
             return (
               <li

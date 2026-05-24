@@ -69,16 +69,24 @@ const PFC_PRIMARY_PRIORS: Record<string, TierShift> = {
   // The single biggest source of false-positive "subscriptions"
   // (Starbucks every morning, lunch place every Tuesday).
   FOOD_AND_DRINK: {
-    recurring_commerce: +2.0,
-    confirmed_subscription: -2.5,
-    recurring_bill: -2.0,
+    // Softened slightly. Restaurants/coffee are still strongly
+    // commerce but a known sub like a meal-kit service or HelloFresh
+    // shouldn't be impossible to classify correctly.
+    recurring_commerce: +1.5,
+    confirmed_subscription: -1.5,
+    recurring_bill: -1.5,
   },
   // Pharmacies, grocery stores, big-box retail. CVS, Walgreens,
   // Whole Foods, Walmart, Target, Sephora, Home Depot, Best Buy.
   GENERAL_MERCHANDISE: {
-    recurring_commerce: +2.0,
-    confirmed_subscription: -2.5,
-    recurring_bill: -1.5,
+    // Softened from +2.0/-2.5 to +1.0/-0.8. GENERAL_MERCHANDISE
+    // catches Amazon (which sells Amazon Prime as a subscription)
+    // and Apple (which sells iCloud as a subscription). PFC at this
+    // level should NUDGE, not overpower the engine's dictionary +
+    // pattern signal.
+    recurring_commerce: +1.0,
+    confirmed_subscription: -0.8,
+    recurring_bill: -1.0,
   },
   // Beauty, salons, gyms, fitness studios. Mixed bag — pure salon
   // visits are commerce, gym memberships are subscriptions. Slightly

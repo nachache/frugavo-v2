@@ -647,9 +647,14 @@ export function computeShockInsights(args: {
   }
 
   // 5. Category dominance.
-  if (categories.length > 0 && args.burn.monthly_cents > 0) {
+  if (categories.length > 0 && args.burn.total_monthly_cents > 0) {
     const top = categories[0];
-    const share = top.monthly_cents / args.burn.monthly_cents;
+    // FIX: was dividing by burn.monthly_cents (subs only) while
+    // categories include subs + bills. That produced category shares
+    // > 100% (e.g. "158% of your subscription budget goes to telecom").
+    // Use total_monthly_cents (subs + bills) so the denominator
+    // matches the numerator's universe.
+    const share = top.monthly_cents / args.burn.total_monthly_cents;
     if (share >= 0.4 && top.category !== "other") {
       const pct = Math.round(share * 100);
       const label =
@@ -662,11 +667,13 @@ export function computeShockInsights(args: {
           utilities: "utilities",
           cloud_storage: "cloud storage",
         }[top.category] ?? top.category;
+      // "Subscription budget" is misleading now that the burn includes
+      // bills. Use "recurring spend" — accurate for both.
       out.push({
         id: `category_dominance_${top.category}`,
         kind: "category_dominance",
-        headline: `${pct}% of your subscription budget goes to ${label}.`,
-        detail: `${fmtCents(top.monthly_cents)}/mo across ${top.subscription_count} ${top.subscription_count === 1 ? "subscription" : "subscriptions"}.`,
+        headline: `${pct}% of your recurring spend goes to ${label}.`,
+        detail: `${fmtCents(top.monthly_cents)}/mo across ${top.subscription_count} ${top.subscription_count === 1 ? "merchant" : "merchants"}.`,
         source: {
           subscription_ids: subs
             .filter((s) => s.category === top.category)

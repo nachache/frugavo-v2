@@ -243,10 +243,12 @@ function renderIdentityCard(args: {
   <!-- divider -->
   <line x1="80" y1="510" x2="${W - 80}" y2="510" stroke="#262626" stroke-width="2"/>
 
-  <!-- "you spend" label + big burn number -->
+  <!-- "subscriptions" label + big burn number. Explicit about what's
+       being counted so it doesn't visually conflict with the dashboard
+       which counts subs + bills. -->
   <text x="80" y="580" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif"
         font-size="30" font-weight="500" fill="#a3a3a3" letter-spacing="4">
-    YOU SPEND
+    SUBSCRIPTIONS
   </text>
   <text x="80" y="${580 + burnFontSize + 20}" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif"
         font-size="${burnFontSize}" font-weight="800" fill="#fafafa" letter-spacing="-4" font-variant-numeric="tabular-nums">
@@ -254,7 +256,7 @@ function renderIdentityCard(args: {
   </text>
   <text x="80" y="${580 + burnFontSize + 90}" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif"
         font-size="34" font-weight="500" fill="#d4d4d4">
-    $${Math.round(yearly_burn_cents / 100).toLocaleString("en-US")} a year · ${sub_count} recurring charge${sub_count === 1 ? "" : "s"}
+    $${Math.round(yearly_burn_cents / 100).toLocaleString("en-US")} a year · ${sub_count} subscription${sub_count === 1 ? "" : "s"}
   </text>
 
   ${

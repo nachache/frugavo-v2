@@ -99,8 +99,16 @@ export function OverviewCard({
             </span>
           </div>
           <div className="mt-3 text-[14px] md:text-[15px] text-ink-body">
-            {fmtRound(yearly.total_cents)}/yr · {monthly.total_count} currently
-            running
+            {fmtRound(yearly.total_cents)}/yr ·{" "}
+            {monthly.sub_only_count}{" "}
+            {monthly.sub_only_count === 1 ? "subscription" : "subscriptions"}
+            {monthly.other_recurring_count > 0 && (
+              <>
+                {" + "}
+                {monthly.other_recurring_count}{" "}
+                {monthly.other_recurring_count === 1 ? "bill" : "bills"}
+              </>
+            )}
           </div>
           {monthly.other_recurring_count > 0 && (
             <div className="mt-3 inline-flex flex-wrap items-center gap-1.5 rounded-full border border-hairline bg-canvas/40 px-3 py-1.5 text-[12px] text-ink-body">
@@ -108,7 +116,7 @@ export function OverviewCard({
               <span className="text-ink-muted">{monthly.sub_only_count === 1 ? "sub" : "subs"}</span>
               <span className="text-ink-muted/40">+</span>
               <span className="font-medium text-ink">{fmtRound(monthly.other_recurring_cents)}</span>
-              <span className="text-ink-muted">bills</span>
+              <span className="text-ink-muted">{monthly.other_recurring_count === 1 ? "bill" : "bills"}</span>
             </div>
           )}
         </div>

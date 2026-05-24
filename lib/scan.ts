@@ -515,6 +515,10 @@ async function processDetectedStream(args: {
       pfc_primary: pfcPrimary,
       pfc_detailed: pfcDetailed,
       combined_log_odds: scored.combined_log_odds,
+      // Dictionary membership lets known subs (Apple, Amazon Prime,
+      // Adobe, etc.) resist demotion to commerce when Plaid's PFC
+      // is ambiguous (GENERAL_MERCHANDISE etc.).
+      in_dictionary: features.in_dictionary,
       user_override: override?.override_type ?? null,
     });
     tierType = tier.recurring_type;

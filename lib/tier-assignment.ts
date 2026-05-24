@@ -35,6 +35,13 @@ export type TierInput = {
   // Higher = more confident the merchant is a recurring obligation.
   // If you don't have it, pass 0 (neutral).
   combined_log_odds: number;
+  // True iff merchant_key is in the seeded subscription dictionary.
+  // Dictionary membership is a strong positive signal that overrides
+  // ambiguous PFC tags — e.g. Apple is tagged GENERAL_MERCHANDISE
+  // by Plaid (because Apple sells phones) but iCloud subs are real
+  // subscriptions. The boost flag lets us trust the catalog without
+  // hardcoding individual merchant names in the tier-assignment.
+  in_dictionary?: boolean;
   // Hard user override, if any. Wins outright.
   user_override?:
     | "confirmed"
@@ -116,13 +123,26 @@ export function assignTier(input: TierInput): TierResult {
   // ---- confirmed: pick a tier ----
   const prior = categoryPrior(input.pfc_primary, input.pfc_detailed);
 
+  // Dictionary boost. If the merchant is in the seeded subscription
+  // dictionary (Netflix, Spotify, Apple, Amazon Prime, Adobe, Notion,
+  // OpenAI, ChatGPT, etc.) we add +2.5 to the subscription tier and
+  // demote the commerce tier by -1.0. This is enough to overcome a
+  // mis-tagged GENERAL_MERCHANDISE PFC without being absolute — a
+  // user override still wins. The dictionary itself is data-driven
+  // (lib/data/merchant-catalog.json) so this isn't a hardcoded
+  // whitelist in the classifier.
+  const dictBoost = input.in_dictionary === true ? 2.5 : 0;
+  const dictCommercePenalty = input.in_dictionary === true ? -1.0 : 0;
+
   // The combined log-odds tells us how strongly the stream behaves
   // like a recurring obligation. We add the per-tier category shift
   // to redistribute that confidence across the 3 surfacing tiers.
   const tierLogOdds: Record<RecurringTier, number> = {
-    confirmed_subscription: input.combined_log_odds + prior.confirmed_subscription,
+    confirmed_subscription:
+      input.combined_log_odds + prior.confirmed_subscription + dictBoost,
     recurring_bill: input.combined_log_odds + prior.recurring_bill,
-    recurring_commerce: input.combined_log_odds + prior.recurring_commerce,
+    recurring_commerce:
+      input.combined_log_odds + prior.recurring_commerce + dictCommercePenalty,
   };
 
   // Pick the highest-scoring tier.
@@ -158,10 +178,15 @@ export function assignTier(input: TierInput): TierResult {
   // demote to recurring_commerce. The classifier shouldn't be able to
   // call Whole Foods a subscription just because the user shops there
   // every Wednesday at $89.
+  //
+  // EXCEPTION: if the merchant is in the catalog dictionary, trust
+  // that signal. Apple is GENERAL_MERCHANDISE per Plaid but iCloud
+  // is a real subscription; the catalog knows the difference.
   if (
     bestTier === "confirmed_subscription" &&
     prior.recurring_commerce >= 2.0 &&
-    prior.confirmed_subscription <= 0
+    prior.confirmed_subscription <= 0 &&
+    input.in_dictionary !== true
   ) {
     return {
       recurring_type: "recurring_commerce",
