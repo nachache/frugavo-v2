@@ -16,6 +16,8 @@ import { ProtectionStatusPill } from "@/components/app/protection-status-pill";
 import { ProtectionCoverageCard } from "@/components/app/protection-coverage-card";
 import { ProtectionPanel } from "@/components/app/protection-panel";
 import { buildProtectionPanelData } from "@/lib/protection/panel";
+import { buildWatchdogDigest } from "@/lib/watchdog/digest";
+import { WatchdogOverlay } from "@/components/app/watchdog-overlay";
 import { ProtectionLockedCard } from "@/components/app/protection-locked-card";
 import { SpendingPatternsAccordion } from "@/components/app/spending-patterns-accordion";
 import { DashboardTabs } from "@/components/app/dashboard-tabs";
@@ -154,6 +156,14 @@ export default async function AppHome({
   const protectionPanelData = await buildProtectionPanelData(user.id, {
     tier: activeTab,
   });
+
+  // Daily watchdog — overlay that shows "while you were away" on
+  // return visits when notable events have occurred since the last
+  // view. Null when nothing happened; the component never renders.
+  // Skipped entirely on first-scan paths (we only reach here after
+  // the welcome reveal, but the lookback is bounded so a brand-new
+  // user won't see a giant backfilled splash).
+  const watchdogDigest = await buildWatchdogDigest(user.id);
   const showActivateCard =
     entitlement.entitlement_state === "none" ||
     entitlement.entitlement_state === "expired" ||
@@ -200,6 +210,13 @@ export default async function AppHome({
   return (
     <section className="container-page py-6 md:py-12 max-w-[1200px] space-y-5 md:space-y-8">
       <TimezoneCapture />
+      {/* Daily watchdog reveal — portals itself into <body>, so the
+          DOM position here doesn't matter visually. It only renders
+          when buildWatchdogDigest returns a non-null payload (i.e.
+          something notable happened since the user's last view). On
+          dismiss, POST /api/watchdog/seen bumps watchdog_seen_at so
+          the overlay doesn't reappear until new events accrue. */}
+      {watchdogDigest && <WatchdogOverlay digest={watchdogDigest} />}
       <DashboardHeader
         lastScannedAt={latestScanFinishedAt}
         reveal={{
