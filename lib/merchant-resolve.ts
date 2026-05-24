@@ -46,12 +46,16 @@ import { redis } from "./cache";
 export const MERCHANT_RESOLVE_VERSION = "resolve-v1-haiku-4-5-20251001";
 
 const RESOLVE_MODEL = "claude-haiku-4-5-20251001";
-const RESOLVE_TIMEOUT_MS = 12_000;
+// Timeout per batch. Haiku takes ~15-30s for a 25-descriptor batch
+// with a long structured-JSON response. 60s gives headroom for
+// network jitter and slow responses without making the whole scan
+// hang on a stuck call.
+const RESOLVE_TIMEOUT_MS = 60_000;
 const RESOLVE_MAX_TOKENS = 4096;
-// Batch size cap. Big batches reduce per-call overhead but a single
-// timeout kills more work — 50 is a balance that keeps wall-clock
-// under the timeout even with slow responses.
-const RESOLVE_BATCH_SIZE = 50;
+// Smaller batches: more requests but each finishes faster, so one
+// slow batch doesn't kill the whole resolution step. 25 fits
+// comfortably inside max_tokens=4096 with structured output.
+const RESOLVE_BATCH_SIZE = 25;
 
 export type ResolvedIdentity = {
   canonical_merchant_key: string;
@@ -155,9 +159,15 @@ export async function resolveDescriptors(
   // 2) LLM pass — batch uncached descriptors. We chunk by RESOLVE_BATCH_SIZE
   // and run sequentially (Claude rate limits + a single timeout per
   // batch is enough). Failures on one batch don't poison the rest.
+  const totalBatches = Math.ceil(uncached.length / RESOLVE_BATCH_SIZE);
   for (let i = 0; i < uncached.length; i += RESOLVE_BATCH_SIZE) {
     const batch = uncached.slice(i, i + RESOLVE_BATCH_SIZE);
+    const batchNum = Math.floor(i / RESOLVE_BATCH_SIZE) + 1;
+    // eslint-disable-next-line no-console
+    console.log(`[resolve] batch ${batchNum}/${totalBatches} (${batch.length} descriptors)`);
     const verdicts = await resolveBatch(batch);
+    // eslint-disable-next-line no-console
+    console.log(`[resolve]   → ${verdicts.size} resolved`);
     for (const [raw, verdict] of verdicts) {
       out.set(raw, verdict);
       // Echo to all raw descriptors that share the normalized form.

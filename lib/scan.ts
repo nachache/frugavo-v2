@@ -1386,10 +1386,17 @@ async function finalizeScan(
     revalidatePath("/app");
     revalidatePath("/app/scanning");
   } catch (e) {
-    observeError(e, {
-      route: "scan.finalize.revalidate",
-      tags: { scanId, userId },
-    });
+    // Silently ignore when called outside a Next request context
+    // (verify:scan:live, replay, cron). The "static generation
+    // store missing" invariant is expected in those paths and
+    // doesn't indicate a real failure.
+    const msg = e instanceof Error ? e.message : String(e);
+    if (!msg.includes("static generation store")) {
+      observeError(e, {
+        route: "scan.finalize.revalidate",
+        tags: { scanId, userId },
+      });
+    }
   }
 
   if (supabaseAdmin) {
