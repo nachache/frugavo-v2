@@ -24,7 +24,12 @@
 // greps lib/ + app/ for each name and fails if any benchmark merchant
 // appears as a string literal in non-test engine code.
 
-import "dotenv/config";
+// Load .env.local first (Next convention), then fall back to .env.
+// dotenv/config only reads .env by default — tsx-run scripts need
+// the explicit path to find the same vars Next.js loads at runtime.
+import * as dotenv from "dotenv";
+dotenv.config({ path: ".env.local" });
+dotenv.config(); // fallback
 import { createClient } from "@supabase/supabase-js";
 import { execSync } from "node:child_process";
 import {
