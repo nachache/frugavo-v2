@@ -39,14 +39,18 @@ export function IdentityHero({
   const greeting = firstName ? `Hey ${firstName} —` : "Here's your card —";
 
   return (
-    <div className="rounded-2xl border border-hairline bg-surface p-4 md:p-6 animate-fadeUp overflow-hidden h-full flex flex-col">
-      {/* Identity SVG preview — capped width so a tall card doesn't
-          dominate the column on desktop. */}
+    // Reduced outer padding (was p-4 md:p-6 → p-3 md:p-4) and removed
+    // the card's max-width cap. The SVG card now fills its column so
+    // the SVG fonts inside aren't shrunk into illegibility on desktop.
+    <div className="rounded-2xl border border-hairline bg-surface p-3 md:p-4 animate-fadeUp overflow-hidden h-full flex flex-col">
+      {/* Identity SVG preview — full width of the column for desktop
+          readability. The card still maintains its aspect ratio so it
+          looks the same at any width. */}
       <a
         href="/api/share-card/identity"
         target="_blank"
         rel="noopener noreferrer"
-        className="block rounded-2xl overflow-hidden border border-hairline bg-ink transition hover:opacity-95 mx-auto w-full max-w-[280px] md:max-w-[320px]"
+        className="block rounded-2xl overflow-hidden border border-hairline bg-ink transition hover:opacity-95 w-full"
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
@@ -57,23 +61,24 @@ export function IdentityHero({
         />
       </a>
 
-      {/* Personality label + sub */}
-      <div className="mt-5 md:mt-6 text-center md:text-left">
-        <div className="text-[12.5px] md:text-[13px] font-medium text-ink-muted">
+      {/* Personality label + sub. Slightly bigger headlines on
+          desktop so the card and the prose feel balanced. */}
+      <div className="mt-5 md:mt-7 text-center md:text-left px-1 md:px-2">
+        <div className="text-[13px] md:text-[14px] font-medium text-ink-muted">
           {greeting}
         </div>
-        <div className="mt-1 font-display text-[26px] sm:text-[30px] md:text-[32px] font-bold tracking-[-0.02em] text-ink leading-[1.08]">
+        <div className="mt-1.5 font-display text-[28px] sm:text-[32px] md:text-[38px] font-bold tracking-[-0.02em] text-ink leading-[1.08]">
           you&apos;re the
           <br />
           <span className="text-brand">{personality.label}</span>.
         </div>
-        <div className="mt-2.5 text-[14.5px] md:text-[15px] text-ink-body leading-relaxed">
+        <div className="mt-3 text-[15px] md:text-[16.5px] text-ink-body leading-relaxed">
           {personality.sub}
         </div>
       </div>
 
       {/* Share buttons at the bottom */}
-      <div className="mt-5 md:mt-6 pt-4 md:pt-5 border-t border-hairline">
+      <div className="mt-5 md:mt-6 pt-4 md:pt-5 border-t border-hairline px-1 md:px-2">
         <div className="text-[11.5px] md:text-[12px] font-medium uppercase tracking-[0.12em] text-ink-muted mb-2.5">
           Share your card
         </div>

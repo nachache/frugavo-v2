@@ -15,6 +15,7 @@
 // to hover with thickening + center label update.
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useInView } from "framer-motion";
 import Link from "next/link";
 import type {
   CategoryTotal,
@@ -51,6 +52,14 @@ type Props = {
   // the mode; this card only adjusts labels and what optional panels
   // it shows (e.g. AI stack panel hides on Bills mode).
   mode?: "subscriptions" | "bills" | "combined";
+  // Optional roster — when provided, clicking a donut slice reveals
+  // the subs in that category. Each item: { merchant_name, category,
+  // monthly_cents }. The OverviewCard filters by category client-side.
+  allSubscriptions?: {
+    merchant_name: string;
+    category: string;
+    monthly_cents: number;
+  }[];
 };
 
 const DONUT_COLORS = [
@@ -83,7 +92,11 @@ export function OverviewCard({
   moneyLeaks,
   shockInsights,
   mode = "combined",
+  allSubscriptions = [],
 }: Props) {
+  // Donut click → category drill-down. When set, a list of subs
+  // matching that category appears below the donut/legend.
+  const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const eyebrowLabel =
     mode === "subscriptions"
       ? "Monthly subscriptions"
@@ -92,8 +105,17 @@ export function OverviewCard({
         : "Monthly recurring";
   const itemNoun =
     mode === "bills" ? "bills" : mode === "subscriptions" ? "subscriptions" : "items";
+  // Scroll-triggered animation gate. Animations (counter spin, donut
+  // fan-in) start only when the card is at least 100px into view, so
+  // the user actually witnesses them instead of missing the moment
+  // because the card animated before they scrolled to it.
+  const cardRef = useRef<HTMLDivElement>(null);
+  const inView = useInView(cardRef, { once: true, margin: "-100px" });
   return (
-    <div className="rounded-2xl border border-hairline bg-surface p-4 md:p-7 animate-fadeUp">
+    <div
+      ref={cardRef}
+      className="rounded-2xl border border-hairline bg-surface p-4 md:p-7 animate-fadeUp"
+    >
       {/* Top row: stats | donut | insights */}
       <div className="grid grid-cols-1 lg:grid-cols-[1.1fr_280px_1.2fr] gap-5 md:gap-6 lg:gap-8 items-start">
         {/* COL 1 — stats.
@@ -107,7 +129,7 @@ export function OverviewCard({
             {eyebrowLabel}
           </div>
           <div className="mt-2 font-display font-bold tracking-[-0.03em] leading-[1] text-[40px] sm:text-[52px] md:text-[60px] tabular-nums break-words text-brand">
-            <CountUp targetCents={monthly.total_cents} />
+            <CountUp targetCents={monthly.total_cents} start={inView} />
             <span className="text-[20px] sm:text-[24px] md:text-[26px] font-medium text-ink-muted">
               /mo
             </span>
@@ -128,12 +150,31 @@ export function OverviewCard({
         </div>
 
         {/* COL 2 — donut */}
-        <div className="min-w-0 flex justify-center">
-          <Donut categories={categories} />
+        <div className="min-w-0 flex flex-col items-center gap-3">
+          <Donut
+            categories={categories}
+            start={inView}
+            activeCategory={activeCategory}
+            onSliceClick={(c) =>
+              setActiveCategory((prev) => (prev === c ? null : c))
+            }
+          />
+          {/* Drill-down list — shows the subs in the clicked
+              category. Click the same slice again to close. */}
+          {activeCategory && (
+            <DrillDown
+              category={activeCategory}
+              subs={allSubscriptions}
+              onClose={() => setActiveCategory(null)}
+            />
+          )}
         </div>
 
-        {/* COL 3 — insights merged in */}
-        <div className="min-w-0">
+        {/* COL 3 — insights merged in. Wrapped in a softer
+            sub-card visual to break the density. Each section
+            (stats / donut / insights) now reads as its own chunk
+            instead of one wall of numbers. */}
+        <div className="min-w-0 rounded-xl bg-canvas/40 border border-hairline/60 p-4 md:p-5">
           <div className="text-[11px] md:text-[12px] font-medium uppercase tracking-[0.12em] text-ink-muted mb-3">
             What we noticed
           </div>
@@ -146,8 +187,11 @@ export function OverviewCard({
         </div>
       </div>
 
-      {/* Bottom row: full-width sparkline */}
-      <div className="mt-6 md:mt-8">
+      {/* Soft divider + 12-month sparkline gets its own visual
+          chunk. Extra top margin + a hairline rule makes it feel
+          like a separate "and here's the trend" section rather
+          than another row of the same wall. */}
+      <div className="mt-8 md:mt-10 pt-6 md:pt-8 border-t border-hairline/70">
         <div className="text-[10px] md:text-[11px] font-medium uppercase tracking-[0.12em] text-ink-muted mb-2">
           Last 12 months
         </div>
@@ -159,10 +203,20 @@ export function OverviewCard({
 
 // ─── Count-up ──────────────────────────────────────────────────────
 
-function CountUp({ targetCents }: { targetCents: number }) {
+function CountUp({
+  targetCents,
+  start = true,
+}: {
+  targetCents: number;
+  // Gate the animation on visibility. Defaults to true for backward
+  // compat with any caller that doesn't pass it. When false, the
+  // number renders as 0 until start flips true.
+  start?: boolean;
+}) {
   const [shown, setShown] = useState(0);
   const startRef = useRef<number | null>(null);
   useEffect(() => {
+    if (!start) return;
     const reduce =
       typeof window !== "undefined" &&
       window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
@@ -172,17 +226,17 @@ function CountUp({ targetCents }: { targetCents: number }) {
     }
     let raf = 0;
     const duration = 1100;
-    const start = performance.now();
-    startRef.current = start;
+    const startTime = performance.now();
+    startRef.current = startTime;
     const tick = (now: number) => {
-      const t = Math.min(1, (now - start) / duration);
+      const t = Math.min(1, (now - startTime) / duration);
       const eased = 1 - Math.pow(1 - t, 3);
       setShown(Math.round(targetCents * eased));
       if (t < 1) raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [targetCents]);
+  }, [targetCents, start]);
   return <>{fmtBig(shown)}</>;
 }
 
@@ -356,7 +410,74 @@ function Sparkline({ data }: { data: MonthBucket[] }) {
 
 type DonutSlice = CategoryTotal & { pct: number; color: string };
 
-function Donut({ categories }: { categories: CategoryTotal[] }) {
+// ─── Donut drill-down list ─────────────────────────────────────────
+// Renders below the donut+legend when a slice is clicked. Lists
+// every sub in that category with monthly amount, sorted desc.
+function DrillDown({
+  category,
+  subs,
+  onClose,
+}: {
+  category: string;
+  subs: { merchant_name: string; category: string; monthly_cents: number }[];
+  onClose: () => void;
+}) {
+  const matching = subs
+    .filter((s) => s.category === category)
+    .sort((a, b) => b.monthly_cents - a.monthly_cents);
+  if (matching.length === 0) return null;
+  return (
+    <div className="w-full max-w-[240px] mt-2 rounded-xl border border-hairline bg-canvas/40 p-3 animate-fadeUp">
+      <div className="flex items-baseline justify-between mb-2">
+        <div className="text-[11px] font-medium uppercase tracking-[0.12em] text-ink-muted">
+          {prettyCategory(category)}
+        </div>
+        <button
+          type="button"
+          onClick={onClose}
+          className="text-[11px] text-ink-muted hover:text-ink transition"
+          aria-label="Close category drill-down"
+        >
+          ×
+        </button>
+      </div>
+      <ul className="space-y-1.5">
+        {matching.slice(0, 10).map((s) => (
+          <li
+            key={s.merchant_name}
+            className="flex items-center justify-between gap-2 text-[12.5px]"
+          >
+            <span className="text-ink truncate min-w-0">{s.merchant_name}</span>
+            <span className="text-ink-muted tabular-nums shrink-0">
+              {fmtRound(s.monthly_cents)}/mo
+            </span>
+          </li>
+        ))}
+      </ul>
+      {matching.length > 10 && (
+        <div className="mt-2 text-[11px] text-ink-muted">
+          + {matching.length - 10} more
+        </div>
+      )}
+    </div>
+  );
+}
+
+function Donut({
+  categories,
+  start = true,
+  activeCategory,
+  onSliceClick,
+}: {
+  categories: CategoryTotal[];
+  // When false, slices render at final opacity with no fan-in
+  // animation. Lets the parent gate animation on scroll visibility.
+  start?: boolean;
+  // Drill-down state. activeCategory highlights the matching slice
+  // (thicker stroke). onSliceClick fires on tap; null = close.
+  activeCategory?: string | null;
+  onSliceClick?: (category: string) => void;
+}) {
   const filtered = categories.filter((c) => c.monthly_cents > 0);
   const total = filtered.reduce((a, c) => a + c.monthly_cents, 0);
 
@@ -418,6 +539,7 @@ function Donut({ categories }: { categories: CategoryTotal[] }) {
         <circle cx={cx} cy={cy} r={r} fill="none" stroke="#f5f5f5" strokeWidth={stroke} />
         {seg.map((s, i) => {
           const isHover = hoverIdx === i;
+          const isActive = activeCategory === s.category;
           const delay = 0.15 + i * 0.09;
           return (
             <circle
@@ -427,18 +549,25 @@ function Donut({ categories }: { categories: CategoryTotal[] }) {
               r={r}
               fill="none"
               stroke={s.color}
-              strokeWidth={isHover ? strokeHover : stroke}
+              strokeWidth={isActive || isHover ? strokeHover : stroke}
               strokeDasharray={`${s.dash} ${circumference - s.dash}`}
               strokeDashoffset={-s.offset}
               transform={`rotate(-90 ${cx} ${cy})`}
               strokeLinecap="butt"
               onPointerEnter={() => setHoverIdx(i)}
               onPointerDown={() => setHoverIdx(i)}
+              onClick={() => {
+                if (onSliceClick && s.category !== "other_rollup") {
+                  onSliceClick(s.category);
+                }
+              }}
               style={{
-                cursor: "pointer",
+                cursor: onSliceClick ? "pointer" : "default",
                 transition: "stroke-width 180ms cubic-bezier(0.16, 1, 0.3, 1)",
-                opacity: 0,
-                animation: `donutSliceFanV2 0.7s cubic-bezier(0.16, 1, 0.3, 1) ${delay}s forwards`,
+                opacity: start ? 0 : 1,
+                animation: start
+                  ? `donutSliceFanV2 0.7s cubic-bezier(0.16, 1, 0.3, 1) ${delay}s forwards`
+                  : undefined,
               }}
             />
           );
@@ -459,18 +588,27 @@ function Donut({ categories }: { categories: CategoryTotal[] }) {
       <div className="w-full max-w-[240px] space-y-1">
         {legend.map((s, i) => {
           const isHover = hoverIdx === i;
+          const isActive = activeCategory === s.category;
           return (
             <div
               key={s.category}
               onPointerEnter={() => setHoverIdx(i)}
               onPointerLeave={() => setHoverIdx(null)}
+              onClick={() => {
+                if (onSliceClick && s.category !== "other_rollup") {
+                  onSliceClick(s.category);
+                }
+              }}
               className={[
                 "flex items-center gap-2 text-[12px] md:text-[13px] cursor-pointer rounded px-1 -mx-1 transition-colors",
-                isHover ? "bg-ink/[0.04]" : "",
+                isActive ? "bg-ink/[0.06]" : isHover ? "bg-ink/[0.04]" : "",
               ].join(" ")}
             >
               <span className="inline-block h-2 w-2 rounded-full shrink-0" style={{ background: s.color }} />
-              <span className="text-ink truncate flex-1 min-w-0">
+              <span className={[
+                "truncate flex-1 min-w-0",
+                isActive ? "text-ink font-medium" : "text-ink",
+              ].join(" ")}>
                 {prettyCategory(s.category)}
               </span>
               <span className="text-ink-muted tabular-nums">{s.pct}%</span>

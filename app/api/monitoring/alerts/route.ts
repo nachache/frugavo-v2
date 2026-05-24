@@ -49,18 +49,36 @@ export async function GET(req: NextRequest) {
     );
   }
 
-  // Active count for the bell badge — cheap separate query rather
-  // than coalescing into the list.
-  const { count: activeCount } = await supabaseAdmin
-    .from("monitoring_alerts")
-    .select("id", { count: "exact", head: true })
-    .eq("user_id", user.id)
-    .eq("status", "active");
+  // Filter out alerts tied to non-subscription subs (bills, commerce).
+  // The protection product is about catching SUBSCRIPTION surprises —
+  // a price hike on your mortgage or a missed renewal on a utility
+  // isn't actionable in the same way. We fetch the user's
+  // subscription→tier map once and exclude alerts whose subscription_id
+  // is in the non-sub set.
+  const { data: subTierRows } = await supabaseAdmin
+    .from("subscriptions")
+    .select("id, recurring_type")
+    .eq("user_id", user.id);
+  const nonSubIds = new Set(
+    (subTierRows ?? [])
+      .filter(
+        (r) =>
+          (r.recurring_type as string | null) !== "confirmed_subscription"
+      )
+      .map((r) => r.id as string)
+  );
+  const filtered = (data ?? []).filter(
+    (a) => !a.subscription_id || !nonSubIds.has(a.subscription_id)
+  );
+
+  // Active count for the bell badge — recomputed against the filtered
+  // set so the bell doesn't claim N alerts when only K are sub-tier.
+  const activeCount = filtered.filter((a) => a.status === "active").length;
 
   return NextResponse.json(
     {
-      alerts: data ?? [],
-      active_count: activeCount ?? 0,
+      alerts: filtered,
+      active_count: activeCount,
     },
     { headers: { "Cache-Control": "private, no-store, must-revalidate" } }
   );
