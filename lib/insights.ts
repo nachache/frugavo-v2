@@ -12,6 +12,15 @@
 // we can always answer from the raw rows.
 
 import catalog from "@/lib/data/merchant-catalog.json";
+import {
+  isHeroSubscription,
+  isRecurringBill,
+  isRecurringCommerce,
+  heroSubscriptions,
+  recurringBills,
+  recurringObligations,
+  type TieredSubscription,
+} from "@/lib/selectors/surface-rules";
 
 // ---------------------------------------------------------------------------
 // Inputs
@@ -36,7 +45,29 @@ export type LedgerSubscription = {
   status: string;
   classification: string | null;
   last_charged_at: string | null;
+  // New taxonomy fields. Optional so callers that haven't been
+  // migrated yet keep compiling, but the selectors below depend on
+  // them — anything not yet tagged falls into uncertain_recurring
+  // via the DB default.
+  recurring_type?:
+    | "confirmed_subscription"
+    | "recurring_bill"
+    | "recurring_commerce"
+    | "uncertain_recurring";
+  confidence_score?: number;
 };
+
+// Adapter — surface-rules selectors need recurring_type and
+// confidence_score guaranteed-present. This fills in safe defaults
+// (uncertain, 0) for any row that pre-dates the 025 migration so
+// pre-migration rows behave like the most conservative tier.
+function asTiered(s: LedgerSubscription): TieredSubscription & LedgerSubscription {
+  return {
+    ...s,
+    recurring_type: s.recurring_type ?? "uncertain_recurring",
+    confidence_score: s.confidence_score ?? 0,
+  };
+}
 
 // Catalog-derived AI key set. Built once at module load from
 // merchant-catalog.json entries with "ai": true. Same source of truth
@@ -182,11 +213,17 @@ export function computeBurnRate(
   charges: LedgerCharge[],
   asOf: Date
 ): BurnRate {
-  const active = subs.filter(
-    (s) => s.status === "active" && s.classification === "confirmed"
-  );
-  const sub = active.filter((s) => isSubscriptionCategory(s.category));
-  const other = active.filter((s) => !isSubscriptionCategory(s.category));
+  // FILTER FIRST, AGGREGATE SECOND. surface-rules is the single
+  // source of truth for which tier counts where; we never aggregate
+  // and then filter for display.
+  const tiered = subs.map(asTiered);
+  const sub = heroSubscriptions(tiered);
+  const bill = recurringBills(tiered);
+  // The "other recurring" rail keeps its original semantics —
+  // anything counted toward the dashboard total that isn't a hero
+  // subscription. With the new taxonomy that's just bills; commerce
+  // and uncertain never contribute here.
+  const other = bill;
 
   const subMonthly = sub.reduce(
     (acc, s) => acc + monthlyEqCents(s.amount_cents, s.frequency),
@@ -277,12 +314,40 @@ export type CategoryTotal = {
   subscription_count: number;
 };
 
+// Subscription-only category totals. Used by the personality calc and
+// the reveal screens where bills shouldn't influence the archetype.
+export function computeSubscriptionCategories(
+  subs: LedgerSubscription[]
+): CategoryTotal[] {
+  const map = new Map<string, CategoryTotal>();
+  const onlySubs = heroSubscriptions(subs.map(asTiered));
+  for (const s of onlySubs) {
+    const monthly = monthlyEqCents(s.amount_cents, s.frequency);
+    const existing = map.get(s.category) ?? {
+      category: s.category,
+      monthly_cents: 0,
+      yearly_cents: 0,
+      subscription_count: 0,
+    };
+    existing.monthly_cents += monthly;
+    existing.yearly_cents += monthly * 12;
+    existing.subscription_count += 1;
+    map.set(s.category, existing);
+  }
+  return Array.from(map.values()).sort(
+    (a, b) => b.monthly_cents - a.monthly_cents
+  );
+}
+
 export function computeCategoryTotals(
   subs: LedgerSubscription[]
 ): CategoryTotal[] {
   const map = new Map<string, CategoryTotal>();
-  for (const s of subs) {
-    if (s.status !== "active" || s.classification !== "confirmed") continue;
+  // Includes hero subs + bills (the things that count toward the
+  // monthly recurring total). Commerce and uncertain are excluded so
+  // the category breakdown never includes restaurants or pharmacies.
+  const obligations = recurringObligations(subs.map(asTiered));
+  for (const s of obligations) {
     const monthly = monthlyEqCents(s.amount_cents, s.frequency);
     const existing = map.get(s.category) ?? {
       category: s.category,
@@ -318,12 +383,12 @@ export function computeAiSpend(
   charges: LedgerCharge[],
   asOf: Date
 ): AiSpend {
-  const aiSubs = subs.filter(
-    (s) =>
-      isAiSubscription(s) &&
-      s.status === "active" &&
-      s.classification === "confirmed"
-  );
+  // AI spend reads from the hero-subscription pool only. We never
+  // call something "AI spend" unless it has cleared confirmed_subscription
+  // — otherwise the reveal could shout "you spend $X on AI!" using
+  // a noisy uncertain stream and the user would lose trust.
+  const heroSubs = heroSubscriptions(subs.map(asTiered));
+  const aiSubs = heroSubs.filter((s) => isAiSubscription(s));
   const monthly = aiSubs.reduce(
     (acc, s) => acc + monthlyEqCents(s.amount_cents, s.frequency),
     0
@@ -375,8 +440,51 @@ export function computeTopSubscriptions(
   subs: LedgerSubscription[],
   limit = 5
 ): TopSubscription[] {
+  // HERO SUBSCRIPTIONS ONLY. Bills, commerce, and uncertain are
+  // excluded so the top-list never includes utilities (visually
+  // subordinate per Constraint #1) or CVS/Starbucks (commerce, never
+  // surfaced).
+  return heroSubscriptions(subs.map(asTiered))
+    .map((s) => ({
+      id: s.id,
+      merchant_name: s.merchant_name,
+      category: s.category,
+      monthly_cents: monthlyEqCents(s.amount_cents, s.frequency),
+      yearly_cents: monthlyEqCents(s.amount_cents, s.frequency) * 12,
+      frequency: s.frequency,
+    }))
+    .sort((a, b) => b.monthly_cents - a.monthly_cents)
+    .slice(0, limit);
+}
+
+// New helper — the bills rail. Sorted desc by monthly cents.
+export function computeTopBills(
+  subs: LedgerSubscription[],
+  limit = 5
+): TopSubscription[] {
+  return recurringBills(subs.map(asTiered))
+    .map((s) => ({
+      id: s.id,
+      merchant_name: s.merchant_name,
+      category: s.category,
+      monthly_cents: monthlyEqCents(s.amount_cents, s.frequency),
+      yearly_cents: monthlyEqCents(s.amount_cents, s.frequency) * 12,
+      frequency: s.frequency,
+    }))
+    .sort((a, b) => b.monthly_cents - a.monthly_cents)
+    .slice(0, limit);
+}
+
+// New helper — the commerce accordion. Sorted desc by monthly cents.
+// Lives behind a collapsed "Recurring spending patterns" section and
+// must never bleed into anything else.
+export function computeRecurringCommerce(
+  subs: LedgerSubscription[],
+  limit = 20
+): TopSubscription[] {
   return subs
-    .filter((s) => s.status === "active" && s.classification === "confirmed")
+    .map(asTiered)
+    .filter(isRecurringCommerce)
     .map((s) => ({
       id: s.id,
       merchant_name: s.merchant_name,

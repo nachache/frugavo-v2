@@ -86,15 +86,14 @@ export function MonthlyUpkeepCard({
     });
   }
 
-  const fiveYearProjection = totalMonthlyCents * 60;
-
   return (
     <div className="rounded-2xl border border-hairline bg-surface p-5 md:p-7 animate-fadeUp">
-      {/* HEADER */}
+      {/* HEADER. 5-year projection removed — speculative
+          extrapolations erode trust faster than they motivate. */}
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div className="min-w-0">
           <div className="text-[11px] md:text-[12px] font-medium uppercase tracking-[0.12em] text-ink-muted">
-            Monthly upkeep
+            Monthly recurring
           </div>
           <div className="mt-1 font-display font-bold tracking-[-0.03em] leading-[1] text-ink text-[40px] sm:text-[52px] md:text-[60px] tabular-nums break-words">
             {fmtBig(totalMonthlyCents)}
@@ -105,9 +104,6 @@ export function MonthlyUpkeepCard({
           <div className="mt-2 text-[13px] md:text-[14px] text-ink-body">
             {fmtRound(totalYearlyCents)}/yr · {totalActiveCount} currently
             running
-          </div>
-          <div className="mt-0.5 text-[12px] md:text-[13px] text-ink-muted">
-            ≈ {fmtRound(fiveYearProjection)} over 5 years
           </div>
         </div>
         <div className="flex flex-col items-start sm:items-end gap-1.5">

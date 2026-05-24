@@ -286,6 +286,17 @@ export async function POST(req: NextRequest) {
   });
 
   // ---- 5. Invalidate caches ----
+  //
+  // The user_overrides cache is the only user-keyed Redis cache the
+  // engine uses today — burn, personality, money-leaks, share-card,
+  // and the dashboard are all server-rendered with `dynamic = "force-
+  // dynamic"` and re-query Postgres on every request. Invalidating
+  // user_overrides is enough to ensure the next render sees the new
+  // tier assignment + the new probability.
+  //
+  // For BROWSER-side image cache (the share card <img>), we return a
+  // cache_version timestamp the client can append as ?v={cache_version}
+  // to bust the browser cache on the next render.
   await invalidateUserOverridesCache(user.id);
 
   return NextResponse.json({
@@ -296,6 +307,9 @@ export async function POST(req: NextRequest) {
     new_probability: scored.probability,
     new_classification: newClassification,
     new_status: newStatus,
+    // Monotonic version the client can use to bust browser-side
+    // image caches on the share card or any other URL it controls.
+    cache_version: Date.now(),
     prior_after: {
       alpha: scored.prior_alpha,
       beta: scored.prior_beta,

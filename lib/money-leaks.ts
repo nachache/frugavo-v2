@@ -15,6 +15,25 @@ import {
   type LedgerCharge,
   type LedgerSubscription,
 } from "./insights";
+import {
+  isHeroSubscription,
+  type TieredSubscription,
+} from "./selectors/surface-rules";
+
+// Money leaks should only fire on subscriptions, never on bills or
+// commerce. "Your gas station is dormant" or "your utility had a
+// price increase" would feel broken — those are expected behaviors,
+// not leaks. Bills get a separate alerts surface (billing-due).
+function asTiered(s: LedgerSubscription): TieredSubscription & LedgerSubscription {
+  return {
+    ...s,
+    recurring_type: s.recurring_type ?? "uncertain_recurring",
+    confidence_score: s.confidence_score ?? 0,
+  };
+}
+function filterToHeroSubs(subs: LedgerSubscription[]): LedgerSubscription[] {
+  return subs.map(asTiered).filter(isHeroSubscription);
+}
 
 export type MoneyLeak = {
   id: string;
@@ -246,11 +265,17 @@ export function computeMoneyLeaks(args: {
   charges: LedgerCharge[];
   asOf: Date;
 }): MoneyLeak[] {
+  // FILTER BEFORE AGGREGATE. The downstream detectors all assume
+  // their input is the subscription pool (so "dormant" / "price
+  // creep" / "overlapping AI" make sense). Bills, commerce, and
+  // uncertain are filtered out here once, and every detector reads
+  // from the same clean slice.
+  const heroSubs = filterToHeroSubs(args.subs);
   const out: MoneyLeak[] = [];
-  const overlap = detectOverlappingAi(args.subs);
+  const overlap = detectOverlappingAi(heroSubs);
   if (overlap) out.push(overlap);
-  out.push(...detectDormant(args.subs, args.charges, args.asOf));
-  out.push(...detectPriceCreep(args.subs, args.charges));
+  out.push(...detectDormant(heroSubs, args.charges, args.asOf));
+  out.push(...detectPriceCreep(heroSubs, args.charges));
   const rising = detectRisingTotalSpend(args.charges, args.asOf);
   if (rising) out.push(rising);
 

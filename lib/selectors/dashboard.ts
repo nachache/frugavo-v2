@@ -14,7 +14,9 @@ import {
   computeBurnRate,
   computeAiSpend,
   computeCategoryTotals,
+  computeSubscriptionCategories,
   computeTopSubscriptions,
+  computeRecurringCommerce,
   computeShockInsights,
   computeMonthlySpendSeries,
   type BurnRate,
@@ -89,6 +91,14 @@ export type DashboardData = {
     potential_yearly_savings_cents: number;
   };
 
+  // ─── Recurring commerce accordion ────────────────────────────────
+  // Spend patterns the engine noticed but classified as commerce —
+  // NOT shown in totals, NOT shown in the main list. Lives in the
+  // collapsed "Recurring spending patterns" accordion below the
+  // main subscription list. Each item can be promoted to a real
+  // subscription via the feedback button if the user disagrees.
+  recurring_commerce: TopSubscription[];
+
   // ─── Raw passthrough for the SubscriptionsList component ─────────
   subscriptions: LedgerSubscription[];
   burn_internal: BurnRate;
@@ -129,7 +139,7 @@ export async function buildDashboardData(
   const { data: subsData } = await supabaseAdmin
     .from("subscriptions")
     .select(
-      "id, merchant_name, merchant_key, category, amount_cents, currency, frequency, status, classification, last_charged_at, next_expected_charge_at, user_decision"
+      "id, merchant_name, merchant_key, category, amount_cents, currency, frequency, status, classification, last_charged_at, next_expected_charge_at, user_decision, recurring_type, confidence_score"
     )
     .eq("user_id", userId);
   const subs = (subsData ?? []) as Array<
@@ -180,14 +190,20 @@ export async function buildDashboardData(
     categories,
     top,
   });
+  // Personality derives ONLY from confirmed subscriptions — bills
+  // shouldn't drag the archetype toward "The Utility Payer" and
+  // commerce was already filtered out by surface-rules.
+  const subscriptionCats = computeSubscriptionCategories(subs);
   const personality = computePersonality({
-    categories,
+    categories: subscriptionCats,
     aiMonthlyCents: ai.monthly_cents,
     totalMonthlyCents: burn.monthly_cents,
     totalSubCount: burn.active_subscription_count,
   });
   const moneyLeaks = computeMoneyLeaks({ subs, charges, asOf });
   const chart12mo = computeMonthlySpendSeries(charges, asOf);
+  // Spending-patterns accordion input. Commerce tier only.
+  const recurringCommerce = computeRecurringCommerce(subs, 25);
 
   const decisionByMerchant = new Map<string, string | null>();
   for (const s of subs) {
@@ -385,6 +401,7 @@ export async function buildDashboardData(
         0
       ),
     },
+    recurring_commerce: recurringCommerce,
     subscriptions: subs,
     burn_internal: burn,
   };

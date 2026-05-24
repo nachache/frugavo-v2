@@ -33,6 +33,35 @@ export function computePersonality(args: {
   totalSubCount: number;
 }): Personality {
   const { categories, aiMonthlyCents, totalMonthlyCents, totalSubCount } = args;
+
+  // ───────────────────────────────────────────────────────────
+  // Sparse-data guard. Per Constraint #6: "personality should
+  // activate only from validated subscriptions, meaningful
+  // recurring patterns, high-confidence signals. Otherwise it
+  // feels fabricated."
+  //
+  // If the user has barely any confirmed subscriptions, we don't
+  // pretend to know their personality. We return a calm, honest
+  // "we're still learning you" label that doesn't invent an
+  // identity from noise.
+  // ───────────────────────────────────────────────────────────
+  if (totalSubCount === 0 || totalMonthlyCents === 0) {
+    return {
+      id: "still_watching",
+      label: "Quietly Watching",
+      headline: "Quietly Watching",
+      sub: "No confirmed subscriptions yet — Frugavo will keep an eye on your charges.",
+    };
+  }
+  if (totalSubCount < 3) {
+    return {
+      id: "lean_and_intentional",
+      label: "Lean & Intentional",
+      headline: "Lean & Intentional",
+      sub: `Only ${totalSubCount} confirmed ${totalSubCount === 1 ? "subscription" : "subscriptions"} on your account. Hard to surprise you.`,
+    };
+  }
+
   const aiShare = pct(aiMonthlyCents, totalMonthlyCents);
 
   const findCat = (name: string) =>

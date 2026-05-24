@@ -178,23 +178,26 @@ function renderIdentityCard(args: {
   const burnFontSize =
     burnLen >= 11 ? 140 : burnLen >= 9 ? 160 : burnLen >= 7 ? 180 : 200;
 
-  // Build the top-3 rows as SVG <text>s. Larger font sizes than
-  // before — the card scales down to ~280px wide on mobile, so
-  // 28px SVG text renders at ~7px on a phone. Bumping to 42px
-  // keeps it legible without exploding desktop sharing previews.
-  const subRows = top_subs
-    .slice(0, 3)
-    .map((s, i) => {
-      const y = 1000 + i * 78;
-      const left = escapeXml(s.name);
-      const right = `$${(s.monthly_cents / 100).toFixed(0)}/mo`;
-      return `
+  // Build the top-3 rows as SVG <text>s. If top_subs is empty (the
+  // sparse-data fallback from the route handler), we suppress this
+  // whole block — a card with 0 named items reads more honestly
+  // than one padded with bills or commerce.
+  const showTopList = top_subs.length >= 3;
+  const subRows = showTopList
+    ? top_subs
+        .slice(0, 3)
+        .map((s, i) => {
+          const y = 1000 + i * 78;
+          const left = escapeXml(s.name);
+          const right = `$${(s.monthly_cents / 100).toFixed(0)}/mo`;
+          return `
     <text x="80" y="${y}" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif"
           font-size="42" font-weight="500" fill="#e5e5e5" letter-spacing="-0.3">${left}</text>
     <text x="${W - 80}" y="${y}" text-anchor="end" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif"
           font-size="42" font-weight="600" fill="#fafafa" letter-spacing="-0.3" font-variant-numeric="tabular-nums">${right}</text>`;
-    })
-    .join("");
+        })
+        .join("")
+    : "";
 
   return `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}">
@@ -254,16 +257,27 @@ function renderIdentityCard(args: {
     $${Math.round(yearly_burn_cents / 100).toLocaleString("en-US")} a year · ${sub_count} recurring charge${sub_count === 1 ? "" : "s"}
   </text>
 
+  ${
+    showTopList
+      ? `
   <!-- divider -->
   <line x1="80" y1="930" x2="${W - 80}" y2="930" stroke="#262626" stroke-width="2"/>
 
-  <!-- top recurring label — covers both subscriptions and other
-       recurring spend so it matches the headline above -->
+  <!-- Top subscriptions list (hero subs only — bills and commerce
+       are excluded by the surface-rules selector upstream). The
+       label says "subscriptions" not "recurring charges" because
+       that's now true. -->
   <text x="80" y="960" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif"
         font-size="28" font-weight="500" fill="#737373" letter-spacing="4">
-    TOP RECURRING CHARGES
+    TOP SUBSCRIPTIONS
   </text>
-  ${subRows}
+  ${subRows}`
+      : `
+  <!-- Sparse-data fallback. User has fewer than 3 confirmed
+       subscriptions; a top-list with one entry feels fake-padded,
+       so we suppress the section entirely and let the personality
+       headline carry the card. -->`
+  }
 
   <!-- AI badge bottom -->
   ${
@@ -396,26 +410,33 @@ export async function GET(
   // The identity card is taller (1500h vs 1200h) and renders its own
   // full layout, so handle it before the simple card paths.
   //
-  // Use the TOTAL recurring view (subs + other recurring) so the
-  // headline number reconciles with the items listed in the "Top
-  // recurring charges" panel below. Earlier we were mixing two
-  // filters — burn.monthly_cents (subs-only) for the headline but
-  // computeTopSubscriptions for the panel (which doesn't filter by
-  // category). That produced "$79/mo · 1 subscription" alongside
-  // three $500/mo "top subscriptions" — internally inconsistent.
+  // SUBSCRIPTIONS-ONLY VIEW. The share card is the user's
+  // "subscription identity" — bills don't belong on it. We pass
+  // burn.monthly_cents (hero subs only) and burn.active_subscription_count
+  // (hero subs only) so the headline and the top-list always come
+  // from the same pool. Commerce was already filtered out by surface
+  // rules before burn was computed.
+  //
+  // Sparse-data fallback: if the user has fewer than 3 confirmed
+  // subscriptions, we pass an empty top_subs array. renderIdentityCard
+  // suppresses the list section so the card doesn't look fake-padded.
   if (type === "identity") {
+    const passTopSubs =
+      topSubs.length >= 3
+        ? topSubs.map((s) => ({
+            name: s.merchant_name,
+            monthly_cents: s.monthly_cents,
+          }))
+        : [];
     const svg = renderIdentityCard({
       personality_label: personality.label,
       personality_sub: personality.sub,
-      monthly_burn_cents: burn.total_monthly_cents,
-      yearly_burn_cents: burn.total_yearly_cents,
-      sub_count: burn.total_active_count,
+      monthly_burn_cents: burn.monthly_cents,
+      yearly_burn_cents: burn.yearly_cents,
+      sub_count: burn.active_subscription_count,
       ai_monthly_cents: ai.monthly_cents,
       ai_count: ai.subscription_count,
-      top_subs: topSubs.map((s) => ({
-        name: s.merchant_name,
-        monthly_cents: s.monthly_cents,
-      })),
+      top_subs: passTopSubs,
       top_category:
         categories.find((c) => c.category !== "other")?.category ?? null,
     });
@@ -479,10 +500,12 @@ export async function GET(
     status: 200,
     headers: {
       "Content-Type": "image/svg+xml; charset=utf-8",
-      // Allow client + Netlify edge to cache for an hour. Numbers
-      // change with each scan; an hour is a fair compromise between
-      // freshness and share-link reuse.
-      "Cache-Control": "private, max-age=3600",
+      // no-store — the card content depends on the user's current
+      // subscriptions list, which can change in real time when they
+      // submit feedback. Caching for an hour created the "card still
+      // shows CVS after I rejected it" bug. The card is fast to
+      // render so we trade cache hit-rate for instant correctness.
+      "Cache-Control": "no-store",
     },
   });
 }

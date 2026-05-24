@@ -56,6 +56,11 @@ type Props = {
     name: string;
     monthly_cents: number;
   }[];
+  // Server-controlled starting stage. The welcome page reads
+  // ?stage=reveal from the URL and passes it here so the component
+  // shows the post-feedback reveal directly when the user lands
+  // back after submitting overrides.
+  initialStage?: "feedback" | "reveal";
 };
 
 function fmtBig(c: number): string {
@@ -72,12 +77,23 @@ function fmt(c: number): string {
 
 export function OnboardingReveal(props: Props) {
   const router = useRouter();
-  void router; // reserved for future direct navigation
   // 4-stage flow: feedback (mark non-subs) → reveal (cinematic) →
   // upsell (Activate Protection) → preview/activated (transition).
+  //
+  // The initial stage is server-controlled via ?stage in the URL.
+  // After feedback submission we navigate to ?stage=reveal which
+  // triggers a fresh server render with the post-feedback insights
+  // (personality, burn, top subs) baked in. The reveal NEVER shows
+  // numbers that include items the user just rejected.
+  const initial: "feedback" | "reveal" =
+    props.initialStage === "reveal"
+      ? "reveal"
+      : props.topDetected.length > 0
+        ? "feedback"
+        : "reveal";
   const [stage, setStage] = useState<
     "feedback" | "reveal" | "upsell" | "preview"
-  >(props.topDetected.length > 0 ? "feedback" : "reveal");
+  >(initial);
   const [activating, setActivating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // Subscription ids the user marked as "not a subscription" in the
@@ -104,15 +120,22 @@ export function OnboardingReveal(props: Props) {
   }
 
   async function submitFeedbackAndAdvance() {
+    // No exclusions → skip the network round-trip and just advance
+    // via a soft nav so the URL stays in sync (in case the user
+    // refreshes mid-reveal). The server returns the same numbers,
+    // but consistency matters.
     if (excludedIds.size === 0) {
+      router.replace("/app/welcome?stage=reveal");
       setStage("reveal");
       return;
     }
     setSubmittingFeedback(true);
     try {
-      // Fire-and-forget per-item. /api/feedback writes overrides +
-      // re-scores. We don't await to keep the UI snappy; the user
-      // is moving to the reveal regardless.
+      // AWAIT all overrides. The reveal we're about to show MUST
+      // reflect the post-feedback state — if the user rejected CVS,
+      // CVS must be gone from totals before the reveal renders.
+      // Awaiting is the difference between "Frugavo immediately
+      // understood me" and "the app showed me wrong numbers."
       await Promise.all(
         Array.from(excludedIds).map((id) =>
           fetch("/api/feedback", {
@@ -127,6 +150,12 @@ export function OnboardingReveal(props: Props) {
       );
     } finally {
       setSubmittingFeedback(false);
+      // Hard nav to the reveal stage — forces the welcome page to
+      // recompute every aggregate (personality, burn, top, AI,
+      // leaks) with the new overrides applied. router.replace +
+      // router.refresh together guarantee server components re-run.
+      router.replace("/app/welcome?stage=reveal");
+      router.refresh();
       setStage("reveal");
     }
   }

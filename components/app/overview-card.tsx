@@ -78,16 +78,19 @@ export function OverviewCard({
   moneyLeaks,
   shockInsights,
 }: Props) {
-  const fiveYear = monthly.total_cents * 60;
-
   return (
     <div className="rounded-2xl border border-hairline bg-surface p-4 md:p-7 animate-fadeUp">
       {/* Top row: stats | donut | insights */}
       <div className="grid grid-cols-1 lg:grid-cols-[1.1fr_280px_1.2fr] gap-5 md:gap-6 lg:gap-8 items-start">
-        {/* COL 1 — stats */}
+        {/* COL 1 — stats.
+            Per Constraint #7 / "perceived correctness over inflation":
+            removed the speculative "≈ $X over 5 years" extrapolation —
+            multiplying today's monthly by 60 made the number feel
+            invented. Annual is grounded in the same monthly × 12 the
+            user can do in their head; that stays. */}
         <div className="min-w-0">
           <div className="text-[11px] md:text-[12px] font-medium uppercase tracking-[0.12em] text-ink-muted">
-            Monthly upkeep
+            Monthly recurring
           </div>
           <div className="mt-2 font-display font-bold tracking-[-0.03em] leading-[1] text-[40px] sm:text-[52px] md:text-[60px] tabular-nums break-words text-brand">
             <CountUp targetCents={monthly.total_cents} />
@@ -99,16 +102,13 @@ export function OverviewCard({
             {fmtRound(yearly.total_cents)}/yr · {monthly.total_count} currently
             running
           </div>
-          <div className="mt-1 text-[13px] md:text-[14px] text-ink-muted">
-            ≈ {fmtRound(fiveYear)} over 5 years
-          </div>
           {monthly.other_recurring_count > 0 && (
             <div className="mt-3 inline-flex flex-wrap items-center gap-1.5 rounded-full border border-hairline bg-canvas/40 px-3 py-1.5 text-[12px] text-ink-body">
               <span className="font-medium text-ink">{fmtRound(monthly.sub_only_cents)}</span>
-              <span className="text-ink-muted">subs</span>
+              <span className="text-ink-muted">{monthly.sub_only_count === 1 ? "sub" : "subs"}</span>
               <span className="text-ink-muted/40">+</span>
               <span className="font-medium text-ink">{fmtRound(monthly.other_recurring_cents)}</span>
-              <span className="text-ink-muted">other</span>
+              <span className="text-ink-muted">bills</span>
             </div>
           )}
         </div>

@@ -37,6 +37,7 @@ import {
   getMerchantDictionary,
 } from "./merchants-store";
 import { getOverridesForUser } from "./user-overrides";
+import { assignTier } from "./tier-assignment";
 import { pickModelForUser } from "./model-store";
 import { runMonitoringForUser } from "./monitoring/run";
 import {
@@ -452,6 +453,15 @@ async function processDetectedStream(args: {
   // Failure here is non-fatal — the existing pipeline keeps working
   // if the scoring layer ever errors.
   const shadowSignals: string[] = [];
+  // Hoisted out so the upsert below can read the tier assignment.
+  // Sensible defaults if scoring fails: we trust the classifier's
+  // verdict and let the merchant-category prior alone pick the tier.
+  let tierType:
+    | "confirmed_subscription"
+    | "recurring_bill"
+    | "recurring_commerce"
+    | "uncertain_recurring" = "uncertain_recurring";
+  let tierConfidence = 50;
   try {
     const featureStats = featuresFromCharges(
       stream.transactions.map((t) => ({
@@ -493,6 +503,27 @@ async function processDetectedStream(args: {
     if (scored.override_type) {
       shadowSignals.push(`override:${scored.override_type}`);
     }
+
+    // ---- Tier assignment ----
+    // Combines: classifier verdict + Beta/pattern log-odds +
+    // merchant-category prior (PFC). Writes recurring_type and
+    // confidence_score on the row so every downstream surface
+    // (dashboard, reveal, personality, share card, money-leaks,
+    // protection insights) reads from a single tagged column.
+    const tier = assignTier({
+      classification: verdict.classification,
+      pfc_primary: pfcPrimary,
+      pfc_detailed: pfcDetailed,
+      combined_log_odds: scored.combined_log_odds,
+      user_override: override?.override_type ?? null,
+    });
+    tierType = tier.recurring_type;
+    tierConfidence = tier.confidence_score;
+    shadowSignals.push(
+      `tier:${tier.recurring_type}`,
+      `conf:${tier.confidence_score}`,
+      `tier_reason:${tier.reason}`
+    );
   } catch (e) {
     // eslint-disable-next-line no-console
     console.warn("[scan] shadow scoring failed", e);
@@ -546,6 +577,8 @@ async function processDetectedStream(args: {
           ...shadowSignals,
         ],
         classification_score: verdict.score,
+        recurring_type: tierType,
+        confidence_score: tierConfidence,
         scanner_version: SCANNER_VERSION,
         updated_at: asOfIso,
       },

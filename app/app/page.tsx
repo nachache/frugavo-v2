@@ -16,6 +16,7 @@ import { BillingStatusBanner } from "@/components/app/billing-status-banner";
 import { ProtectionStatusPill } from "@/components/app/protection-status-pill";
 import { ProtectionCoverageCard } from "@/components/app/protection-coverage-card";
 import { ProtectionLockedCard } from "@/components/app/protection-locked-card";
+import { SpendingPatternsAccordion } from "@/components/app/spending-patterns-accordion";
 import { getOrCreatePublicSlug } from "@/lib/users/public-slug";
 import { maybeNotifySignup } from "@/lib/users/signup-notify";
 import { getEntitlement } from "@/lib/billing/entitlements";
@@ -281,6 +282,20 @@ export default async function AppHome() {
             potential_yearly_savings_cents={
               data.actions.potential_yearly_savings_cents
             }
+          />
+
+          {/* Recurring spending patterns — collapsed accordion.
+              Lives BELOW the main subscription list, visually
+              softer (canvas bg, muted text, smaller type) so it
+              doesn't compete with subscriptions. Per Constraint #2:
+              "secondary intelligence, optional exploration, low-
+              emphasis behavioral insight." Auto-hides when empty. */}
+          <SpendingPatternsAccordion
+            items={data.recurring_commerce.map((c) => ({
+              id: c.id,
+              merchant_name: c.merchant_name,
+              monthly_cents: c.monthly_cents,
+            }))}
           />
         </>
       )}

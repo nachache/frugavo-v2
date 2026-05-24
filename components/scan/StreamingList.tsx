@@ -223,7 +223,12 @@ export function StreamingList({ scanId }: Props) {
 
   // ready with rows (or zero-row complete — we still show the empty
   // skeleton briefly before the redirect fires).
-  const fiveYearCents = totalCents * 12 * 5;
+  //
+  // Per the trust-rebuild brief: removed the "over 5 years" loss-
+  // aversion chip. Speculative extrapolations contaminate trust
+  // ("$26,169 over 5 years!" reads as inflated even when the math
+  // is technically correct). Yearly is the natural anchor users can
+  // verify mentally; we stop there.
   return (
     <div>
       <div className="rounded-3xl bg-brand-light p-6">
@@ -242,18 +247,6 @@ export function StreamingList({ scanId }: Props) {
           {rows.length} recurring{" "}
           {rows.length === 1 ? "charge" : "charges"} detected
         </div>
-        {/* 5-year emotional payoff — the loss-aversion punch. Pure math
-            off totalCents, never hardcoded. Only shown once at least
-            one row has arrived so the number is meaningful. */}
-        {rows.length > 0 && (
-          <div className="mt-4 inline-flex items-baseline gap-1 rounded-full bg-white/60 px-3 py-1.5 text-[12.5px] text-emerald-950 tnum">
-            That&apos;s{" "}
-            <span className="font-display font-bold text-brand">
-              {formatCurrency(fiveYearCents / 100, false)}
-            </span>{" "}
-            over 5 years
-          </div>
-        )}
       </div>
 
       <ul className="mt-8 grid gap-3">

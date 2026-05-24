@@ -6,6 +6,7 @@ import {
   computeBurnRate,
   computeAiSpend,
   computeCategoryTotals,
+  computeSubscriptionCategories,
   computeTopSubscriptions,
   computeShockInsights,
   computeMonthlySpendSeries,
@@ -21,10 +22,21 @@ import { computeMoneyLeaks } from "@/lib/money-leaks";
 // their insights server-side and hands them to a client component
 // that walks the user through one stat at a time.
 //
-// Re-visits: anyone can hit /app/welcome to replay their reveal.
-// The dashboard never auto-redirects here after the first time —
-// /app sets the redirect on first scan via the `?welcome=1`
-// fingerprint check.
+// IMPORTANT — RECOMPUTE AFTER FEEDBACK:
+//   The reveal renders in two server-side passes:
+//     1. ?stage=feedback (default) — fetches detected subs, shows
+//        the feedback gate where the user marks any item that
+//        isn't actually a subscription.
+//     2. ?stage=reveal — fetched AFTER the feedback overrides have
+//        been written to user_overrides. Every number on this page
+//        (personality, burn, top subs, AI spend, leaks) is computed
+//        from the post-override pool. The reveal NEVER shows numbers
+//        contaminated by items the user just told us aren't subs.
+//
+//   The client-side OnboardingReveal navigates between stages via
+//   router.push("/app/welcome?stage=reveal"), which forces a fresh
+//   server render and re-reads from Postgres with the new tier
+//   assignments + overrides applied.
 
 export const dynamic = "force-dynamic";
 
@@ -45,18 +57,30 @@ const CATEGORY_LABEL: Record<string, string> = {
   bank_fees: "Bank fees",
 };
 
-export default async function WelcomePage() {
+type WelcomeSearchParams = {
+  stage?: string;
+};
+
+export default async function WelcomePage({
+  searchParams,
+}: {
+  searchParams: WelcomeSearchParams;
+}) {
   const user = await currentUser();
   if (!user) redirect("/sign-in");
   if (!supabaseAdmin) redirect("/app");
 
   const asOf = new Date();
+  const requestedStage =
+    searchParams?.stage === "reveal" ? "reveal" : "feedback";
 
-  // Pull subscriptions + charges.
+  // Pull subscriptions + charges. Includes the new recurring_type +
+  // confidence_score columns so every selector downstream reads from
+  // a tagged pool.
   const { data: subsData } = await supabaseAdmin
     .from("subscriptions")
     .select(
-      "id, merchant_name, merchant_key, category, amount_cents, currency, frequency, status, classification, last_charged_at"
+      "id, merchant_name, merchant_key, category, amount_cents, currency, frequency, status, classification, last_charged_at, recurring_type, confidence_score"
     )
     .eq("user_id", user.id);
   const subs = (subsData ?? []) as LedgerSubscription[];
@@ -80,10 +104,16 @@ export default async function WelcomePage() {
     offset += PAGE;
   }
 
+  // All aggregates filter by tier internally (surface-rules.ts).
+  // Hero subs only — bills don't show in the reveal headlines,
+  // commerce never does.
   const burn = computeBurnRate(subs, charges, asOf);
   const aiSpend = computeAiSpend(subs, charges, asOf);
+  // Personality reads from SUBSCRIPTION-ONLY categories so bills
+  // can't drag the archetype toward "The Utility Payer."
+  const subscriptionCats = computeSubscriptionCategories(subs);
   const categories = computeCategoryTotals(subs);
-  const top = computeTopSubscriptions(subs, 5);
+  const top = computeTopSubscriptions(subs, 8);
   const shock = computeShockInsights({
     subs,
     charges,
@@ -91,10 +121,10 @@ export default async function WelcomePage() {
     burn,
     aiSpend,
     categories,
-    top,
+    top: top.slice(0, 5),
   });
   const personality = computePersonality({
-    categories,
+    categories: subscriptionCats,
     aiMonthlyCents: aiSpend.monthly_cents,
     totalMonthlyCents: burn.monthly_cents,
     totalSubCount: burn.active_subscription_count,
@@ -106,7 +136,7 @@ export default async function WelcomePage() {
   // doesn't need it directly. (Intentional — keeps lazy imports honest.)
   void chart12mo;
 
-  const topCategoryRaw = categories.find(
+  const topCategoryRaw = subscriptionCats.find(
     (c) => c.category !== "other" && c.subscription_count > 0
   );
 
@@ -135,6 +165,7 @@ export default async function WelcomePage() {
 
   return (
     <OnboardingReveal
+      initialStage={requestedStage}
       subscriptionCount={burn.active_subscription_count}
       monthlyBurnCents={burn.monthly_cents}
       yearlyBurnCents={burn.yearly_cents}
