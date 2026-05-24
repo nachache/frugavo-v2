@@ -91,6 +91,87 @@ async function fetchConfirmedSubs() {
   );
 }
 
+// Pull EVERY subscription (any status, any classification) so we can
+// trace what happened to merchants that didn't end up in the confirmed
+// list. Used by the recall trace.
+async function fetchAllSubs() {
+  const { data } = await supa
+    .from("subscriptions")
+    .select(
+      "merchant_name, merchant_key, recurring_type, confidence_score, classification, status, classification_signals, classification_score"
+    )
+    .eq("user_id", USER_ID);
+  return data ?? [];
+}
+
+// Pull distinct descriptors for a benchmark merchant from the raw
+// transaction table. Tells us whether the merchant is even in the
+// user's data, and whether the resolver assigned a canonical key.
+async function fetchRawDescriptors(bench: (typeof BENCHMARK_MERCHANTS)[number]) {
+  // Build an OR clause covering canonical_hint + all display hints.
+  // PostgREST .or() with ilike — wrap each term in *...* for substring.
+  const terms = [bench.canonical_hint, ...bench.display_hints].filter(
+    (s) => s.length >= 3
+  );
+  const orClause = terms
+    .map((t) => `description.ilike.*${t}*,canonical_merchant_key.ilike.*${t}*`)
+    .join(",");
+  const { data } = await supa
+    .from("plaid_transactions")
+    .select(
+      "description, merchant_key, canonical_merchant_key, canonical_display_name, amount_cents, posted_date"
+    )
+    .eq("user_id", USER_ID)
+    .or(orClause)
+    .limit(20);
+  return data ?? [];
+}
+
+async function traceBenchmark(bench: (typeof BENCHMARK_MERCHANTS)[number]) {
+  const subs = await fetchAllSubs();
+  const matchingSubs = subs.filter((s) =>
+    matchesBenchmark(s as { merchant_name: string; merchant_key: string }, bench)
+  );
+  const rawTxns = await fetchRawDescriptors(bench);
+
+  console.log(`\n  ─── trace: ${bench.canonical_hint} ───`);
+  if (rawTxns.length === 0) {
+    console.log(`    raw_transactions: NONE FOUND — merchant absent from ledger`);
+  } else {
+    console.log(`    raw_transactions: ${rawTxns.length} found`);
+    const distinctDescriptors = Array.from(
+      new Set(rawTxns.map((t) => t.description))
+    ).slice(0, 5);
+    for (const d of distinctDescriptors) {
+      const sample = rawTxns.find((t) => t.description === d)!;
+      console.log(
+        `      "${d}" → merchant_key="${sample.merchant_key}" canonical="${sample.canonical_merchant_key ?? "(none)"}"`
+      );
+    }
+  }
+  if (matchingSubs.length === 0) {
+    console.log(
+      `    subscriptions_row: NONE — never reached the subscriptions table (rejected at Gate A or detector minimums)`
+    );
+  } else {
+    for (const s of matchingSubs) {
+      console.log(
+        `    sub: merchant="${s.merchant_name}" key="${s.merchant_key}" status="${s.status}" classification="${s.classification}" tier="${s.recurring_type}" conf=${s.confidence_score}`
+      );
+      const sigs = (s.classification_signals as string[] | null) ?? [];
+      if (sigs.length > 0) {
+        // Pick the most informative signals for diagnosis
+        const interesting = sigs.filter((x) =>
+          /^(llm_|tier|conf|tier_reason|score|scored_|prior|lo_|soft_review|charity|gate)/.test(
+            x
+          )
+        );
+        console.log(`      signals: ${interesting.slice(0, 8).join(", ")}`);
+      }
+    }
+  }
+}
+
 function matchesBenchmark(
   sub: { merchant_name: string; merchant_key: string },
   bench: (typeof BENCHMARK_MERCHANTS)[number]
@@ -199,6 +280,19 @@ async function testRecall() {
       ? `all ${BENCHMARK_MERCHANTS.length} found · ${subs.length} confirmed subs total`
       : `MISSED ${missed.length}/${BENCHMARK_MERCHANTS.length}: ${missed.join(", ")}`
   );
+
+  // Diagnostic trace for every missed merchant — raw descriptors,
+  // canonical key, sub row state, classifier signals. This is what
+  // tells us WHY each one failed: not in data, fragmented, classifier
+  // returned needs_review, etc.
+  if (missed.length > 0) {
+    console.log(`\n=== RECALL TRACE (${missed.length} missed) ===`);
+    for (const name of missed) {
+      const bench = BENCHMARK_MERCHANTS.find((b) => b.canonical_hint === name);
+      if (bench) await traceBenchmark(bench);
+    }
+    console.log(`\n=== END TRACE ===\n`);
+  }
 }
 
 // ---------------------------------------------------------------------
