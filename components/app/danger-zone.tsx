@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { useClerk } from "@clerk/nextjs";
 import { AlertTriangle, Loader2 } from "lucide-react";
 
 // Client-side action buttons for the Settings page. Disconnect lives
@@ -64,6 +65,7 @@ export function DisconnectBankButton({ itemId }: { itemId: string }) {
 
 export function DeleteAccountCard() {
   const router = useRouter();
+  const { signOut } = useClerk();
   const [phrase, setPhrase] = useState("");
   const [submitting, startSubmit] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -86,8 +88,13 @@ export function DeleteAccountCard() {
         return;
       }
       setDone(true);
-      // Give the success message a beat, then send the user away.
-      setTimeout(() => router.push("/"), 2_000);
+      // Critical: kill the Clerk session BEFORE the user lands back on
+      // the marketing site. If we skip this, the session stays valid,
+      // and any subsequent visit to /app would silently upsert a fresh
+      // app_users row (since the user is still "logged in"), making the
+      // delete look reversible. signOut + redirect is the only way to
+      // make deletion truly final from the user's perspective.
+      await signOut({ redirectUrl: "/" });
     });
   };
 
@@ -111,10 +118,9 @@ export function DeleteAccountCard() {
           </div>
           <p className="mt-1 text-[12.5px] text-ink-body leading-relaxed">
             Removes every subscription, scan, cancellation, and bank
-            connection from our database. Plaid tokens are revoked so we
-            can never read your transactions again. This cannot be undone.
-            Your Clerk login stays — delete it separately if you want a
-            full account wipe.
+            connection from our database. Plaid tokens are revoked, any
+            active subscription is cancelled, and you&apos;ll be signed
+            out. This cannot be undone.
           </p>
           <div className="mt-3 flex flex-col sm:flex-row gap-2 sm:items-center">
             <input
