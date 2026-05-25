@@ -53,7 +53,8 @@ export const metadata: Metadata = {
     description:
       "Frugavo watches your subscriptions every day so you don't have to. Trial alerts, price-hike alerts, unusual charge alerts. 7 days free.",
   },
-  icons: { icon: "/favicon.svg" },
+  // Favicon is auto-served by Next.js from app/icon.png (App Router
+  // file convention). No explicit `icons` entry needed.
 };
 
 export default function RootLayout({
