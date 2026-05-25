@@ -74,6 +74,21 @@ export default async function WelcomePage({
   const requestedStage =
     searchParams?.stage === "reveal" ? "reveal" : "feedback";
 
+  // Stamp welcomed_at the moment the user reaches the reveal stage.
+  // We don't stamp on the feedback stage so the user can refresh
+  // mid-questionnaire without being kicked to the dashboard. Once they
+  // advance to reveal, the experience is one-shot — refreshing it is
+  // fine because welcomed_at is set and the dashboard won't bounce
+  // them back. Idempotent: subsequent renders no-op via the IS NULL
+  // guard so we don't keep bumping the timestamp.
+  if (requestedStage === "reveal") {
+    await supabaseAdmin
+      .from("app_users")
+      .update({ welcomed_at: new Date().toISOString() })
+      .eq("id", user.id)
+      .is("welcomed_at", null);
+  }
+
   // Pull subscriptions + charges. Includes the new recurring_type +
   // confidence_score columns so every selector downstream reads from
   // a tagged pool.

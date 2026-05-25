@@ -127,12 +127,26 @@ export default async function AppHome({
     );
   }
 
-  // First-scan path — kick scan and bounce to /app/welcome for the
-  // emotional reveal.
-  let snapshotRows = await fetchLatestSnapshotRows(user.id);
-  const noScanYet = items.every((i) => !i.last_synced_at);
-  if (snapshotRows.length === 0 && noScanYet) {
-    await runScanForUser(user.id);
+  // First-scan path — bounce to /app/welcome for the emotional
+  // reveal. The /app/connect flow already runs the scan via
+  // /app/scanning before redirecting back here, so by the time we
+  // hit this code there's always a scan_snapshot. The gate is
+  // app_users.welcomed_at — null means the user has never completed
+  // the welcome reveal, so they get sent there once. The welcome
+  // page stamps welcomed_at on first reveal-stage render so a
+  // mid-flow refresh doesn't ricochet.
+  const { data: userRow } = await supabaseAdmin
+    .from("app_users")
+    .select("welcomed_at")
+    .eq("id", user.id)
+    .maybeSingle();
+  if (!userRow?.welcomed_at) {
+    // Defensive: if somehow there are no snapshots yet, kick one
+    // off synchronously so the reveal has data to render.
+    const snapshotRows = await fetchLatestSnapshotRows(user.id);
+    if (snapshotRows.length === 0) {
+      await runScanForUser(user.id);
+    }
     redirect("/app/welcome");
   }
 
