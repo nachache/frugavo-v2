@@ -21,9 +21,9 @@ type Copy = {
 
 const COPY: Record<Variant, Copy> = {
   none: {
-    label: "Protection",
-    headline: "Activate your protection.",
-    body: "Frugavo watches for new charges, price hikes, trial conversions, and unusual recurring activity — and alerts you before they hit your account.",
+    label: "Not protected",
+    headline: "You're not protected yet.",
+    body: "Right now nothing is watching your accounts. Activate protection and Frugavo will catch new charges, price hikes, trial conversions, and unusual recurring activity before they hit — plus unlock cancel-assist and daily re-scans.",
     cta: "Activate Protection",
     subline: "7 days free. Cancel anytime.",
   },

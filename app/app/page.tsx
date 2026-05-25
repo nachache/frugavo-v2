@@ -150,6 +150,35 @@ export default async function AppHome({
   // dunning banner for grace_period / cancelled_active / past_due.
   const entitlement = await getEntitlement(user.id);
 
+  // Single source of truth for "is this user a paying customer right
+  // now?" — drives the row-level Cancel button visibility, the
+  // Re-scan icon affordance, and any other paid-only surface area.
+  // Treat trialing as paid: they have full access until the trial
+  // converts or lapses. cancelled_active = cancelled but still inside
+  // the paid period → also full access until expiry.
+  const isPaid =
+    entitlement.entitlement_state === "active" ||
+    entitlement.entitlement_state === "trialing" ||
+    entitlement.entitlement_state === "cancelled_active";
+
+  // Auto re-scan on /app open for paid users, capped at once per 24h.
+  // Fire-and-forget — we don't await it, so the dashboard renders
+  // immediately with the existing snapshot. The next render (or the
+  // watchdog overlay) picks up newly-discovered items. Free users
+  // skip this entirely; their "Re-scan" surface area is the locked
+  // icon in DashboardHeader.
+  if (isPaid && latestScanFinishedAt) {
+    const lastScanMs = new Date(latestScanFinishedAt).getTime();
+    const staleAfterMs = 24 * 60 * 60 * 1000; // 24h
+    if (Date.now() - lastScanMs > staleAfterMs) {
+      // No await — the scan can take 5–15s and we don't want to block
+      // first paint. runScanForUser's internal Plaid path is idempotent
+      // and the rate-limit on /api/plaid/scan protects against accidental
+      // concurrent triggers if the user refreshes mid-scan.
+      void runScanForUser(user.id, "auto");
+    }
+  }
+
   // New ProtectionPanel data — replaces the legacy coverage card.
   // Scoped to the active tab so "Guarding $X/mo" always reconciles
   // with the tab hero number.
@@ -219,6 +248,7 @@ export default async function AppHome({
       {watchdogDigest && <WatchdogOverlay digest={watchdogDigest} />}
       <DashboardHeader
         lastScannedAt={latestScanFinishedAt}
+        isPaid={isPaid}
         reveal={{
           // Numbers the ScanRevealOverlay animates TO when the user
           // hits Re-scan. Always uses the CURRENT view (subs only on
@@ -446,6 +476,7 @@ export default async function AppHome({
               potential_yearly_savings_cents={
                 data.actions.potential_yearly_savings_cents
               }
+              isPaid={isPaid}
             />
           ) : (
             <ActionCenter
@@ -455,6 +486,7 @@ export default async function AppHome({
               pruned={data.bill_actions.pruned}
               hidden={data.bill_actions.hidden}
               potential_yearly_savings_cents={0}
+              isPaid={isPaid}
             />
           )}
 

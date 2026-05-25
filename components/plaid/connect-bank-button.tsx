@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { usePlaidLink, type PlaidLinkOnSuccessMetadata } from "react-plaid-link";
 import { Loader2, ShieldCheck } from "lucide-react";
@@ -16,6 +16,14 @@ import { Loader2, ShieldCheck } from "lucide-react";
 //      in Supabase.
 //   5. Refresh the dashboard so /app/page.tsx routes them to the
 //      subscriptions view instead of the connect step.
+//
+// OAuth resume:
+//   For OAuth banks (Chase, Capital One, most CA banks) Plaid redirects
+//   the browser to APP_URL/app/connect?oauth_state_id=... after the user
+//   authenticates with their bank. The Link component needs to be
+//   re-initialized with the SAME link_token plus the receivedRedirectUri
+//   so it can resume where it left off. We persist the token in
+//   sessionStorage before redirect and rehydrate it on resume.
 
 type Status =
   | "loading"
@@ -24,21 +32,46 @@ type Status =
   | "exchanging"
   | "error";
 
+const OAUTH_TOKEN_KEY = "frugavo:plaid:link_token";
+
 export function ConnectBankButton() {
   const router = useRouter();
   const [linkToken, setLinkToken] = useState<string | null>(null);
   const [status, setStatus] = useState<Status>("loading");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  // Step 1 — fetch a Link token when the component mounts.
+  // Detect OAuth-resume entry (URL carries ?oauth_state_id=...). When
+  // this is the case we MUST reuse the original link_token rather than
+  // minting a fresh one — Plaid binds the OAuth state to the token that
+  // was used to start the flow.
+  const isOAuthResume = useMemo(() => {
+    if (typeof window === "undefined") return false;
+    return new URL(window.location.href).searchParams.has("oauth_state_id");
+  }, []);
+
+  // Step 1 — fetch a Link token when the component mounts. On OAuth
+  // resume, rehydrate from sessionStorage instead.
   useEffect(() => {
     let cancelled = false;
+    if (isOAuthResume && typeof window !== "undefined") {
+      const stored = window.sessionStorage.getItem(OAUTH_TOKEN_KEY);
+      if (stored) {
+        setLinkToken(stored);
+        setStatus("ready");
+        return;
+      }
+      // Fall through to fresh-token fetch if we somehow lost it — the
+      // user will need to restart Link, but at least we don't deadlock.
+    }
     fetch("/api/plaid/link-token", { method: "POST" })
       .then((r) => r.json())
       .then((data) => {
         if (cancelled) return;
         if (data.link_token) {
           setLinkToken(data.link_token);
+          if (typeof window !== "undefined") {
+            window.sessionStorage.setItem(OAUTH_TOKEN_KEY, data.link_token);
+          }
           setStatus("ready");
         } else {
           setStatus("error");
@@ -53,7 +86,7 @@ export function ConnectBankButton() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [isOAuthResume]);
 
   // Step 4 — when Link succeeds, exchange the public_token server-side.
   const onSuccess = useCallback(
@@ -78,7 +111,12 @@ export function ConnectBankButton() {
           setErrorMessage("Could not save the connection.");
           return;
         }
-        // Bank is connected. Route to /app/scanning so the user watches
+        // Bank is connected. Clear the cached OAuth link_token; a future
+        // re-connect should get a fresh one.
+        if (typeof window !== "undefined") {
+          window.sessionStorage.removeItem(OAUTH_TOKEN_KEY);
+        }
+        // Route to /app/scanning so the user watches
         // subscriptions stream in via the progress arc + reveal list
         // instead of landing on a blank dashboard while the scan runs.
         // The scanning page auto-forwards to /app once the scan completes.
@@ -94,6 +132,13 @@ export function ConnectBankButton() {
 
   const { open, ready } = usePlaidLink({
     token: linkToken ?? "",
+    // When Plaid redirects back from the bank's OAuth page, pass the
+    // current URL so Link can resume the flow. For first-time mounts
+    // this is undefined and Link starts a fresh session.
+    receivedRedirectUri:
+      isOAuthResume && typeof window !== "undefined"
+        ? window.location.href
+        : undefined,
     onSuccess,
     onExit: (err) => {
       if (err) {
@@ -103,6 +148,15 @@ export function ConnectBankButton() {
       setStatus("ready");
     },
   });
+
+  // On OAuth resume, auto-open Link as soon as it's ready — the user
+  // is mid-flow and clicking a button again would feel broken.
+  useEffect(() => {
+    if (isOAuthResume && ready && linkToken && status === "ready") {
+      setStatus("connecting");
+      open();
+    }
+  }, [isOAuthResume, ready, linkToken, status, open]);
 
   const disabled =
     status === "loading" ||

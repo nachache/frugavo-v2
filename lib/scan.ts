@@ -106,7 +106,11 @@ export type ScanSource =
   | "webhook"
   | "manual"
   | "first_connect"
-  | "cron";
+  | "cron"
+  // Background re-scan triggered on /app load for paid users when
+  // their last scan is >24h old. Fire-and-forget — distinct from
+  // 'manual' (which is the user-clicked re-scan button).
+  | "auto";
 
 export async function runScanForUser(
   userId: string,

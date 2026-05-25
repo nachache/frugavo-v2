@@ -2,10 +2,17 @@ import { Resend } from "resend";
 
 // Transactional email via Resend. The client is null-safe so the build
 // doesn't fail when the API key is missing (e.g. preview deploys).
-// Production must set RESEND_API_KEY and FROM_EMAIL.
+// Production must set RESEND_API_KEY and RESEND_FROM_EMAIL.
+//
+// FROM_EMAIL is a legacy alias kept for back-compat. New code paths
+// (lib/notifications/send-email.ts) only read RESEND_FROM_EMAIL.
+// Precedence: RESEND_FROM_EMAIL > FROM_EMAIL > hardcoded fallback.
 
 const apiKey = process.env.RESEND_API_KEY;
-const fromEmail = process.env.FROM_EMAIL ?? "Frugavo <hello@frugavo.com>";
+const fromEmail =
+  process.env.RESEND_FROM_EMAIL ??
+  process.env.FROM_EMAIL ??
+  "Frugavo <hello@frugavo.com>";
 
 export const resend: Resend | null = apiKey ? new Resend(apiKey) : null;
 

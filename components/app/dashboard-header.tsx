@@ -13,6 +13,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { Lock } from "lucide-react";
 import { ScanRevealOverlay } from "./scan-reveal-overlay";
 
 type Props = {
@@ -25,6 +26,11 @@ type Props = {
     annual_savings_cents: number;
     top_rows: { name: string; monthly_cents: number }[];
   };
+  // Paid-tier gate. When false, the Re-scan icon swaps to a locked
+  // affordance that routes to the upgrade flow instead of triggering
+  // a scan. Paid users also get an auto re-scan on every /app open
+  // (server-side, max 1/day), so manual re-scan is the override.
+  isPaid?: boolean;
 };
 
 function timeAgo(iso: string | null): string {
@@ -39,7 +45,11 @@ function timeAgo(iso: string | null): string {
   return `Last scanned ${day} day${day === 1 ? "" : "s"} ago`;
 }
 
-export function DashboardHeader({ lastScannedAt, reveal }: Props) {
+export function DashboardHeader({
+  lastScannedAt,
+  reveal,
+  isPaid = false,
+}: Props) {
   const router = useRouter();
   const [rescanning, startRescan] = useTransition();
   const [showReveal, setShowReveal] = useState(false);
@@ -82,32 +92,54 @@ export function DashboardHeader({ lastScannedAt, reveal }: Props) {
           on hover. Re-scan is a small icon-only button. Share +
           Protection links stay as-is. */}
       <div className="mt-3 md:mt-4 flex flex-wrap items-center gap-2 md:gap-3 text-[12px] md:text-[12.5px] text-ink-muted">
-        <button
-          type="button"
-          onClick={onRescan}
-          disabled={rescanning}
-          title={`${timeAgo(lastScannedAt)} — click to refresh`}
-          aria-label={`Re-scan. ${timeAgo(lastScannedAt)}`}
-          className="inline-flex items-center justify-center w-7 h-7 rounded-full text-ink-muted hover:text-ink hover:bg-ink/[0.05] transition disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          <svg
-            width="13"
-            height="13"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2.2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className={rescanning ? "animate-spin" : ""}
-            aria-hidden="true"
+        {isPaid ? (
+          <button
+            type="button"
+            onClick={onRescan}
+            disabled={rescanning}
+            title={`${timeAgo(lastScannedAt)} — click to refresh`}
+            aria-label={`Re-scan. ${timeAgo(lastScannedAt)}`}
+            className="inline-flex items-center justify-center w-7 h-7 rounded-full text-ink-muted hover:text-ink hover:bg-ink/[0.05] transition disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <polyline points="23 4 23 10 17 10" />
-            <polyline points="1 20 1 14 7 14" />
-            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10" />
-            <path d="M20.49 15a9 9 0 0 1-14.85 3.36L1 14" />
-          </svg>
-        </button>
+            <svg
+              width="13"
+              height="13"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className={rescanning ? "animate-spin" : ""}
+              aria-hidden="true"
+            >
+              <polyline points="23 4 23 10 17 10" />
+              <polyline points="1 20 1 14 7 14" />
+              <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10" />
+              <path d="M20.49 15a9 9 0 0 1-14.85 3.36L1 14" />
+            </svg>
+          </button>
+        ) : (
+          // Free tier — show a locked icon. Click triggers the same
+          // /api/billing/checkout flow the ActivateProtectionCard uses,
+          // so the user lands in Stripe Checkout instead of a dead end.
+          <button
+            type="button"
+            title="Re-scan is a Peace of Mind feature. Activate to unlock."
+            aria-label="Re-scan locked. Click to activate Protection."
+            onClick={() => {
+              void fetch("/api/billing/checkout", { method: "POST" })
+                .then((r) => r.json())
+                .then((d: { url?: string }) => {
+                  if (d.url) window.location.href = d.url;
+                })
+                .catch(() => {});
+            }}
+            className="inline-flex items-center justify-center w-7 h-7 rounded-full text-ink-muted hover:text-ink hover:bg-ink/[0.05] transition"
+          >
+            <Lock size={12} strokeWidth={2.2} aria-hidden="true" />
+          </button>
+        )}
         <ScanRevealOverlay
           visible={showReveal}
           monthlyCents={reveal.monthly_cents}

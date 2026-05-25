@@ -3,12 +3,18 @@ import { currentUser } from "@clerk/nextjs/server";
 import { runScanForUser } from "@/lib/scan";
 import { cacheKey, tryAcquireLock } from "@/lib/cache";
 import { SCAN_BUDGET_MS } from "@/lib/types/scan";
+import { assertEntitled } from "@/lib/billing/gates";
 
 // POST /api/scan/rescan
 //
 // Manual re-scan. Enforces the 30s server-side cooldown via SETNX in
 // Redis: the first call within the window acquires the lock and runs the
 // scan; subsequent calls within 30s see the existing lock and return 429.
+//
+// Paid-tier only. Free users see the locked Re-scan icon on the dashboard
+// and bounce off this 402 if they somehow hit the endpoint directly.
+// (Auto re-scan on /app open also runs server-side for paid users — see
+// app/app/page.tsx.)
 //
 // Returns the scan_id so the client can subscribe to /api/plaid/scan/stream
 // without waiting for the scan body to finish.
@@ -22,6 +28,12 @@ export async function POST(_req: Request) {
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  // Entitlement gate — re-scan is a paid feature. 402 Payment Required
+  // so the client can show an "Activate Protection" prompt instead of
+  // a generic permission error.
+  const gate = await assertEntitled({ clerkUserId: user.id });
+  if (gate) return gate;
 
   const cooldownKey = cacheKey.rescanCooldown(user.id);
   const fresh = await tryAcquireLock(

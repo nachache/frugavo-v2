@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { currentUser } from "@clerk/nextjs/server";
 import { CountryCode, Products } from "plaid";
 import { plaidClient } from "@/lib/plaid";
+import { appUrl } from "@/lib/billing/urls";
 
 // POST /api/plaid/link-token
 //
@@ -13,8 +14,31 @@ import { plaidClient } from "@/lib/plaid";
 // created — it doesn't need to be requested at link creation, and asking
 // for it as additional_consented_products often fails in sandbox unless
 // the account has been explicitly enabled for that product.
+//
+// Two parameters that are critical in production but optional in sandbox:
+//
+//   webhook       — Plaid's only channel for telling us about new
+//                   transactions, item errors, and recurring-transactions
+//                   refreshes. Without it, /api/plaid/webhook never
+//                   receives anything in prod and we'd be stuck polling.
+//
+//   redirect_uri  — Required for OAuth banks (Chase, Capital One, Wells
+//                   Fargo, most Canadian banks). The bank's auth page
+//                   redirects back to this URL with a state token; Plaid
+//                   Link reads it on resume. Must be whitelisted in the
+//                   Plaid Dashboard under Team Settings → API → Allowed
+//                   redirect URIs *for each environment* (sandbox + prod).
+//                   We point at /app/connect which already hosts Link.
 
 export const runtime = "nodejs";
+
+function plaidWebhookUrl(): string {
+  return `${appUrl().replace(/\/$/, "")}/api/plaid/webhook`;
+}
+
+function plaidRedirectUri(): string {
+  return `${appUrl().replace(/\/$/, "")}/app/connect`;
+}
 
 export async function POST() {
   const user = await currentUser();
@@ -36,6 +60,8 @@ export async function POST() {
       products: [Products.Transactions],
       country_codes: [CountryCode.Us, CountryCode.Ca],
       language: "en",
+      webhook: plaidWebhookUrl(),
+      redirect_uri: plaidRedirectUri(),
     });
 
     return NextResponse.json({ link_token: response.data.link_token });

@@ -41,6 +41,13 @@ export const cacheKey = {
   activeModel: () => `score:model:active:v1`,
   modelRoster: () => `score:model:roster:v1`,
   feedbackRateLimit: (userId: string) => `rl:feedback:${userId}`,
+  // Per-user limit on /api/plaid/scan — distinct from rescanCooldown
+  // because /scan is the auto-on-connect path while /rescan is the
+  // manual button. Same Redis pattern (SETNX), different key.
+  scanRateLimit: (userId: string) => `rl:scan:${userId}`,
+  // Per-IP, counter-based limit on the public /api/waitlist endpoint.
+  // Window-keyed so we get sliding-ish behavior without a Lua script.
+  waitlistIpLimit: (ip: string) => `rl:waitlist:${ip}`,
 } as const;
 
 // ---------- get / set / del ----------
@@ -96,6 +103,54 @@ export async function tryAcquireLock(
     // eslint-disable-next-line no-console
     console.error("[cache] lock failed", key, e);
     return true;
+  }
+}
+
+// Counter-based rate limit. Returns { ok: true } if the caller is under
+// the limit, { ok: false, retry_after_seconds } if they're over.
+//
+// Uses INCR + EXPIRE. The first request in a window sets EXPIRE so the
+// counter auto-resets. Cheap (one round-trip), no Lua, works fine on
+// Upstash REST. Not a true sliding window — a burst can use the full
+// allowance in the last second of one window plus the first second of
+// the next — but for our spam-prevention use case this is fine.
+//
+// Use cases:
+//   - /api/waitlist by IP    (block scripted floods of public form)
+//   - /api/plaid/scan by user (block accidental loops that hit Plaid)
+//
+// Degrades open if Redis is down (same philosophy as tryAcquireLock):
+// we'd rather serve a real user than reject everything during an
+// Upstash outage.
+export async function checkRateLimit(
+  key: string,
+  limit: number,
+  windowSeconds: number
+): Promise<{ ok: boolean; remaining: number; retry_after_seconds: number }> {
+  if (!redis) return { ok: true, remaining: limit, retry_after_seconds: 0 };
+  try {
+    const count = await redis.incr(key);
+    if (count === 1) {
+      // First hit in this window — set the TTL.
+      await redis.expire(key, windowSeconds);
+    }
+    if (count > limit) {
+      const ttl = await redis.ttl(key);
+      return {
+        ok: false,
+        remaining: 0,
+        retry_after_seconds: Math.max(1, ttl),
+      };
+    }
+    return {
+      ok: true,
+      remaining: Math.max(0, limit - count),
+      retry_after_seconds: 0,
+    };
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.error("[cache] rate-limit check failed", key, e);
+    return { ok: true, remaining: limit, retry_after_seconds: 0 };
   }
 }
 

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { currentUser } from "@clerk/nextjs/server";
 import { supabaseAdmin } from "@/lib/supabase";
+import { assertEntitled } from "@/lib/billing/gates";
 
 // POST /api/cancellations
 //
@@ -8,6 +9,11 @@ import { supabaseAdmin } from "@/lib/supabase";
 // to the provider's cancel page, copied the email template, or
 // self-reported. We mark `outcome=pending` until the next-bill watcher
 // confirms (separately wired once /transactions/sync lands).
+//
+// Paid-tier only. Cancel-assist (deep links, email templates, tracked
+// "did the next bill fire?" watcher) is a Peace of Mind feature.
+// The UI hides the Cancel button on the dashboard for free users; this
+// 402 is the belt-and-braces gate if anyone hits the endpoint directly.
 //
 // Body: { subscription_id: string, method: 'assist'|'manual', notes?: string }
 
@@ -22,6 +28,9 @@ export async function POST(req: Request) {
   if (!supabaseAdmin) {
     return NextResponse.json({ error: "Not configured" }, { status: 503 });
   }
+
+  const gate = await assertEntitled({ clerkUserId: user.id });
+  if (gate) return gate;
 
   let body: {
     subscription_id?: string;

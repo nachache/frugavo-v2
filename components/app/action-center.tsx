@@ -61,6 +61,11 @@ type Props = {
   // your mortgage), and offers a "Reclassify as subscription" action
   // instead. Default 'subscriptions' keeps the original cancel flow.
   mode?: "subscriptions" | "bills";
+  // Cancel-assist is a paid feature (deep links + email templates +
+  // next-bill verification). For free users we keep the row + Review
+  // CTA but hide Cancel — they upgrade prompt lives one card up via
+  // ActivateProtectionCard.
+  isPaid?: boolean;
 };
 
 function fmt(c: number, opts: { withCents?: boolean } = {}): string {
@@ -97,6 +102,7 @@ export function ActionCenter({
   hidden,
   potential_yearly_savings_cents,
   mode = "subscriptions",
+  isPaid = false,
 }: Props) {
   const isBills = mode === "bills";
   const router = useRouter();
@@ -316,6 +322,7 @@ export function ActionCenter({
                 onKeep={() => onKeep(item)}
                 onReclassify={() => onReclassify(item)}
                 isBills={isBills}
+                isPaid={isPaid}
               />
             ))}
           </div>
@@ -436,6 +443,7 @@ function Row({
   onKeep,
   onReclassify,
   isBills,
+  isPaid,
 }: {
   item: ActionItem;
   tab: Tab;
@@ -443,6 +451,7 @@ function Row({
   onKeep: () => void;
   onReclassify: () => void;
   isBills: boolean;
+  isPaid: boolean;
 }) {
   const muted = tab === "hidden" || item.override_type === "not_subscription" || item.override_type === "not_recurring";
   const pruned = tab === "pruned" || item.override_type === "cancelled";
@@ -520,7 +529,10 @@ function Row({
                 (Cancel for subs) + Review on hover. Keep / Mark as
                 bill / Move to subscriptions all live behind a ⋯
                 overflow menu so the row breathes. */}
-            {!isBills && (
+            {/* Cancel-assist is paid-only. Free users see Review only
+                (which still routes to /app/subscriptions/[id]) plus the
+                Activate Protection card above the action list. */}
+            {!isBills && isPaid && (
               <button
                 type="button"
                 onClick={onCancel}
