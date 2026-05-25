@@ -1,0 +1,20 @@
+# Frugavo robots.txt
+#
+# Marketing site is fully indexable. Authenticated app routes are
+# blocked because:
+#   1. They require auth — search bots see only a redirect to /sign-in.
+#   2. We don't want anyone surface-scraping the dashboard structure.
+#   3. /api/* should never be crawled — those are JSON endpoints.
+#
+# The /u/<slug> path is INDEXABLE because it powers shareable
+# personality cards; we want those to unfurl in search and social.
+
+User-agent: *
+Allow: /
+Disallow: /app
+Disallow: /app/
+Disallow: /api/
+Disallow: /sign-in
+Disallow: /sign-up
+
+Sitemap: https://frugavo.com/sitemap.xml

@@ -45,7 +45,7 @@ export const LEGAL: LegalConfig = {
     line1: "3546 Wyman Cres",
     city: "Ottawa",
     region: "ON",
-    postalCode: "",
+    postalCode: "K1V 0Z1",
     country: "Canada",
   },
   supportEmail: "hello@frugavo.com",

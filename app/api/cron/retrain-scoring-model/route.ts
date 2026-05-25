@@ -10,10 +10,11 @@ import { fitLogistic, type FitInput } from "@/lib/logistic-fit";
 // promotes the candidate via /api/admin/promote-model after reviewing
 // the loss + sample count on /app/admin/models.
 //
-// Auth: shared-secret header. Set FRUGAVO_CRON_SECRET in Netlify env;
-// the scheduled function (or a manual curl) includes it as
-// `x-cron-secret`. Netlify scheduled functions don't have Clerk
-// context, so we can't rely on currentUser() here.
+// Auth: shared-secret bearer. Reads CRON_SECRET (preferred) with
+// FRUGAVO_CRON_SECRET as a legacy alias for back-compat. Pass via the
+// standard `Authorization: Bearer <secret>` header, matching every
+// other /api/cron/* route. Netlify scheduled functions don't have
+// Clerk context, so we can't rely on currentUser() here.
 //
 // Determinism: same feedback_events set + same fitter config + same
 // scanner_version filter → same coefficients. Snapshots saved on the
@@ -71,9 +72,16 @@ function buildFeatureVector(f: FeedbackEventRow["features"]): number[] {
 }
 
 export async function POST(req: NextRequest) {
-  // Auth.
-  const expected = process.env.FRUGAVO_CRON_SECRET;
-  const got = req.headers.get("x-cron-secret");
+  // Auth — prefer CRON_SECRET (the canonical name), fall back to
+  // FRUGAVO_CRON_SECRET for back-compat with older Netlify env configs.
+  const expected =
+    process.env.CRON_SECRET ?? process.env.FRUGAVO_CRON_SECRET;
+  const auth = req.headers.get("authorization") ?? "";
+  const got =
+    auth.toLowerCase().startsWith("bearer ")
+      ? auth.slice(7).trim()
+      : // Legacy header for callers that haven't migrated yet.
+        req.headers.get("x-cron-secret") ?? "";
   if (!expected || expected !== got) {
     return NextResponse.json({ error: "forbidden" }, { status: 403 });
   }
