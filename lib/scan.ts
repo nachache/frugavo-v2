@@ -218,9 +218,13 @@ export async function runScanForUser(
   const resolveMetrics = { distinct: 0, resolved: 0, cache_hit_pct: 100 };
 
   // ---- Step 3: optional Plaid /transactions/recurring/get enrichment ----
-  // Fetched once per item. Only used for PFC + status hints on
-  // matching merchant_keys. NEVER drives stream membership.
-  const enrichment = await fetchPlaidRecurringEnrichment(userId);
+  // Fetched once per item. Provides:
+  //   (a) PFC + status hints on detected merchant_keys
+  //   (b) synthetic stream skeletons for merchants Plaid sees as
+  //       recurring in the user's FULL bank history but our 90-day
+  //       window can't confirm yet — see Bug #2 fix.
+  const { enrichment, plaidStreams: plaidOnlyMap } =
+    await fetchPlaidRecurringEnrichment(userId);
 
   // ---- Step 4: deterministic detection ----
   const { streams: detected, audits } = detectRecurringStreams(txns);
@@ -241,6 +245,26 @@ export async function runScanForUser(
   for (const r of rescued) {
     detected.push(r);
   }
+
+  // ---- Step 4.6: Plaid-recurring fallback ----
+  // For merchants we DIDN'T detect ourselves, fall back to Plaid's
+  // recurring API. This covers cases where Plaid's full-history view
+  // catches a stream our 90-day window can't:
+  //   - Single-charge subscriptions (e.g. Scotia bank fee once / 90d)
+  //   - Annual property taxes (one batch in window, next batch a year
+  //     out — our detector needs 2 observations to confirm cadence)
+  //   - Any merchant whose first occurrence in our window was just
+  //     this scan period
+  // The classifier still has final say. Plaid-only streams enter the
+  // same Gate A → B → Claude path as detector-native streams.
+  const detectedKeys = new Set(detected.map((s) => s.merchant_key));
+  let plaidOnlyAdded = 0;
+  for (const [key, plaidStream] of plaidOnlyMap) {
+    if (detectedKeys.has(key)) continue;
+    detected.push(plaidStream);
+    plaidOnlyAdded++;
+  }
+  void plaidOnlyAdded;
 
   // Debug instrumentation. Gated on FRUGAVO_SCAN_DEBUG_USER_ID matching
   // the scanning user — single-user opt-in so we can investigate one
@@ -1171,11 +1195,74 @@ type EnrichmentRecord = {
   pfc_detailed: string | null;
 };
 
+type PlaidEnrichmentResult = {
+  // Existing: PFC + status enrichment keyed by merchant_key.
+  enrichment: Map<string, EnrichmentRecord>;
+  // NEW (Bug #2): synthetic DetectedStream skeletons built from
+  // Plaid's recurring API for merchants where Plaid has confirmed
+  // recurrence using the user's FULL bank history (years), not just
+  // our 90-day transaction window. Used as a fallback source for
+  // streams our own detector can't reach yet — Scotia bank fees with
+  // only one charge in 90 days, annual property taxes, etc. The main
+  // pipeline merges these in for merchant_keys NOT already in the
+  // detected list, then runs them through the same classifier path.
+  plaidStreams: Map<string, DetectedStream>;
+};
+
+// Plaid's TransactionStream.frequency enum → our Cadence enum. We
+// drop QUARTERLY because Plaid doesn't have it, and skip UNKNOWN so
+// the classifier never sees an unclassified Plaid stream.
+function plaidFrequencyToCadence(
+  f: string | null | undefined
+): "WEEKLY" | "BIWEEKLY" | "SEMI_MONTHLY" | "MONTHLY" | "ANNUALLY" | null {
+  switch ((f ?? "").toUpperCase()) {
+    case "WEEKLY":
+      return "WEEKLY";
+    case "BIWEEKLY":
+      return "BIWEEKLY";
+    case "SEMI_MONTHLY":
+      return "SEMI_MONTHLY";
+    case "MONTHLY":
+      return "MONTHLY";
+    case "ANNUALLY":
+      return "ANNUALLY";
+    default:
+      return null;
+  }
+}
+
+function cadenceMedianDays(c: string): number {
+  switch (c) {
+    case "WEEKLY":
+      return 7;
+    case "BIWEEKLY":
+      return 14;
+    case "SEMI_MONTHLY":
+      return 15;
+    case "MONTHLY":
+      return 30;
+    case "QUARTERLY":
+      return 90;
+    case "ANNUALLY":
+      return 365;
+    default:
+      return 30;
+  }
+}
+
+function addDaysIso(dateStr: string, days: number): string {
+  if (!dateStr) return "";
+  const d = new Date(dateStr);
+  d.setDate(d.getDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
 async function fetchPlaidRecurringEnrichment(
   userId: string
-): Promise<Map<string, EnrichmentRecord>> {
-  const out = new Map<string, EnrichmentRecord>();
-  if (!supabaseAdmin || !plaidClient) return out;
+): Promise<PlaidEnrichmentResult> {
+  const enrichment = new Map<string, EnrichmentRecord>();
+  const plaidStreams = new Map<string, DetectedStream>();
+  if (!supabaseAdmin || !plaidClient) return { enrichment, plaidStreams };
   const { data: items } = await supabaseAdmin
     .from("plaid_items")
     .select("id, plaid_access_token")
@@ -1190,10 +1277,55 @@ async function fetchPlaidRecurringEnrichment(
       });
       for (const s of res.data.outflow_streams ?? []) {
         const desc = s.description ?? s.merchant_name ?? "";
+        if (!desc) continue;
         const norm = normalizeDescriptor(desc);
         const key = (norm.catalog_key ?? norm.merchant_name).toLowerCase();
-        out.set(key, {
+
+        enrichment.set(key, {
           status: s.status ?? "",
+          pfc_primary: s.personal_finance_category?.primary ?? null,
+          pfc_detailed: s.personal_finance_category?.detailed ?? null,
+        });
+
+        // Bug #2: also synthesize a DetectedStream skeleton so we can
+        // surface this merchant when our own 90-day window doesn't have
+        // enough data to confirm cadence. Skip if Plaid's own confidence
+        // signals say we shouldn't trust it.
+        const cadence = plaidFrequencyToCadence(s.frequency);
+        if (!cadence) continue;
+        if ((s.status ?? "").toUpperCase() === "TOMBSTONED") continue;
+        const avg = Math.abs(s.average_amount?.amount ?? 0);
+        if (avg === 0) continue;
+        const currency = s.average_amount?.iso_currency_code ?? "USD";
+        const lastDate = s.last_date ?? "";
+        if (!lastDate) continue;
+        const medianGap = cadenceMedianDays(cadence);
+        // transaction_ids tells us how many real charges Plaid observed
+        // across the full bank history. Default to 2 when missing so
+        // downstream code doesn't divide-by-zero or flag as one-shot.
+        const txnIdCount = Array.isArray(s.transaction_ids)
+          ? s.transaction_ids.length
+          : 0;
+        const occurrences = Math.max(2, txnIdCount);
+
+        plaidStreams.set(key, {
+          merchant_key: key,
+          canonical_name: norm.merchant_name,
+          representative_descriptor: desc,
+          normalized_descriptor: norm.merchant_name,
+          occurrences,
+          median_gap_days: medianGap,
+          frequency: cadence,
+          average_amount_dollars: avg,
+          median_amount_dollars: avg,
+          currency,
+          last_date: lastDate,
+          next_expected_date: addDaysIso(lastDate, medianGap),
+          // transactions stays empty: per-transaction TxnInput rows live
+          // in plaid_transactions and the pipeline doesn't need them
+          // for the classifier path. Stream-only persistence is fine.
+          transactions: [],
+          outliers: [],
           pfc_primary: s.personal_finance_category?.primary ?? null,
           pfc_detailed: s.personal_finance_category?.detailed ?? null,
         });
@@ -1206,7 +1338,7 @@ async function fetchPlaidRecurringEnrichment(
       });
     }
   }
-  return out;
+  return { enrichment, plaidStreams };
 }
 
 // (firstNonNull placeholder removed — TxnInput now carries pfc_primary

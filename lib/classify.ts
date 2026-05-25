@@ -111,19 +111,24 @@ export type LlmClassifyResponse = {
 // ---------- Gate A: hard denylist ----------
 
 // HARD-DENY PFC primaries. These are unambiguous non-recurring-spend
-// categories: money movement, taxes, income.
+// categories: money movement, income.
 //
 // NOTE: LOAN_PAYMENTS was previously here (inherited from the v1
 // binary classifier where "loan" wasn't recognized as a tier). In the
 // new 4-tier model, mortgages / car loans / student loans / credit
 // card loans are legitimate recurring_bill candidates and must reach
 // the classifier. Moved to soft-route via PFC_PRIMARY_SOFT_REVIEW.
+//
+// TAX was previously here, but moved to soft-route too: property tax
+// paid monthly through a city (e.g. PC-Gatineau, City of Ottawa) is a
+// real recurring_bill. PFC_DETAILED_DENY_TOKENS still hard-blocks
+// `TAX_PAYMENT` (one-off CRA / IRS filings) so income-tax filings
+// don't sneak in.
 const PFC_PRIMARY_DENY = new Set<string>([
   "TRANSFER_IN",
   "TRANSFER_OUT",
   "BANK_FEES",
   "INCOME",
-  "TAX",
 ]);
 
 // Soft-route PFC primaries. Pass Gate A with a soft_review signal so
@@ -131,6 +136,7 @@ const PFC_PRIMARY_DENY = new Set<string>([
 // recurring bill but historically got over-rejected.
 const PFC_PRIMARY_SOFT_REVIEW = new Set<string>([
   "LOAN_PAYMENTS",
+  "TAX",
 ]);
 
 const PFC_DETAILED_DENY_TOKENS = [
@@ -152,8 +158,19 @@ const PFC_DETAILED_DENY_TOKENS = [
 // now route to needs_review so the LLM classifier can rescue real
 // subscriptions that pattern-match like vendor invoices or rent.
 const DESCRIPTOR_DENY_GROUPS: { name: string; pattern: RegExp }[] = [
-  { name: "tax",        pattern: /\b(tax|gst|hst|cra|irs|government\s+tax|tax\s+payment)\b/i },
-  { name: "government", pattern: /\b(govern|federal\s+govt|gvt\s+of|municipal|passport|passeport|cour\s+municipal)\b/i },
+  // Tax patterns are now scoped to INCOME / SALES tax indicators. The
+  // bare `\btax\b` token was rejecting real recurring property-tax bills
+  // like "Pc-Gatineau City Tax" and "City of Ottawa Tax" — those are
+  // legitimate recurring_bill rows. We still hard-block CRA / IRS
+  // filings, GST/HST remittances, generic "tax payment" / "tax refund"
+  // descriptors, and the explicit "income tax" / "sales tax" phrasings.
+  { name: "tax",        pattern: /\b(gst|hst|cra|irs|income\s+tax|sales\s+tax|tax\s+payment|tax\s+refund|tax\s+instal+ment|tax\s+filing|government\s+tax)\b/i },
+  // Government patterns scoped to one-off identity / court fees. Bare
+  // `municipal` removed — it was a needless overreach that risked
+  // dropping municipal utilities and municipal tax bills. We keep the
+  // "cour municipal" (Quebec municipal court fees) signal because that
+  // IS a one-off settlement.
+  { name: "government", pattern: /\b(federal\s+govt|gvt\s+of|passport|passeport|cour\s+municipal|municipal\s+court)\b/i },
   { name: "transfer",   pattern: /\b(wire|e[\-\s]?transfer|cash\s+transfer|interac|international\s+transfer\s+fee|direct\s+payment|mb[\-\s]?transfer|free\s+interac)\b/i },
   { name: "settlement", pattern: /\b(settlement|sd\s+settlement|stripe\s+settlement|square\s+settlement|wire\s+settlement|disbursement)\b/i },
   { name: "merchant_svc", pattern: /\b(merchant\s+svc|mrchnt|merchant\s+services)\b/i },

@@ -135,6 +135,53 @@ function median(nums: number[]): number {
   return sorted[Math.floor(sorted.length / 2)];
 }
 
+// Collapse same-day same-merchant_key transactions into one synthetic
+// charge. WHY: utility / property-tax / insurance billers commonly
+// post multiple line items on a single day — e.g. PC-Gatineau debits
+// seven separate property-tax parcels on the same day, Hydro-Quebec
+// posts a 3-charge electricity batch, Gazifere posts gas in sets of
+// three monthly. The raw transaction stream has zero-day gaps inside
+// each batch; the detector's median-gap math then resolves to 0 days,
+// which falls into no cadence band (smallest band starts at 4 days),
+// and the entire merchant gets dropped with `no_cadence_band`.
+//
+// After collapse: each same-day cluster becomes one event with the
+// summed amount. The detector sees monthly cadence between batches
+// (~30 days) and accepts the stream. The merchant's reported
+// monthly equivalent is correct because we summed within the day.
+//
+// Single-charge days are passed through unchanged. Stable sort by
+// date so downstream gap computation stays deterministic.
+function collapseSameDayCharges(items: TxnInput[]): TxnInput[] {
+  if (items.length <= 1) return items;
+  const byDate = new Map<string, TxnInput[]>();
+  for (const t of items) {
+    const arr = byDate.get(t.date) ?? [];
+    arr.push(t);
+    byDate.set(t.date, arr);
+  }
+  const collapsed: TxnInput[] = [];
+  for (const [date, group] of byDate) {
+    if (group.length === 1) {
+      collapsed.push(group[0]);
+      continue;
+    }
+    // Sum signed amounts (all outflows here, so all negative).
+    const sumAmount = group.reduce((s, t) => s + t.amount_dollars, 0);
+    // Use the middle item as template — preserves currency, descriptor,
+    // PFC, and canonical_name. Override amount + txn_id so the synthetic
+    // event is identifiable in audits.
+    const template = group[Math.floor(group.length / 2)];
+    collapsed.push({
+      ...template,
+      txn_id: `collapsed:${template.merchant_key}:${date}:${group.length}`,
+      amount_dollars: sumAmount,
+    });
+  }
+  collapsed.sort((a, b) => a.date.localeCompare(b.date));
+  return collapsed;
+}
+
 function daysBetween(a: string, b: string): number {
   return Math.round(
     (new Date(b).getTime() - new Date(a).getTime()) / 86_400_000
@@ -178,7 +225,11 @@ export function detectRecurringStreams(
   const streams: DetectedStream[] = [];
   const audits: GroupAudit[] = [];
 
-  for (const [key, items] of groups) {
+  for (const [key, rawItems] of groups) {
+    // Same-day batch collapse — see collapseSameDayCharges() doc.
+    // This MUST run before drift + cadence math; otherwise multi-charge
+    // batches inflate occurrences and zero out median_gap_days.
+    const items = collapseSameDayCharges(rawItems);
     const rep = items[Math.floor(items.length / 2)];
     const repDescriptor = rep?.raw_descriptor ?? "";
 
