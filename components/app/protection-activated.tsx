@@ -43,6 +43,10 @@ export function ProtectionActivated({
   const [phase, setPhase] = useState<"drawing" | "settled" | "exiting">(
     "drawing"
   );
+  // Escape hatch: after 8s of polling without resolution, expose a
+  // manual "Continue to dashboard" link so the user is never stuck
+  // here when the Stripe webhook is delayed or mis-configured.
+  const [showEscape, setShowEscape] = useState(false);
 
   // Hold + redirect choreography. ~600ms of shield draw, then
   // "settled" (text in, breathing), then either poll until activated
@@ -51,6 +55,8 @@ export function ProtectionActivated({
     const t1 = window.setTimeout(() => setPhase("settled"), 700);
     let exitTimer: number | null = null;
     let pollTimer: number | null = null;
+    let escapeTimer: number | null = null;
+    let safetyTimer: number | null = null;
 
     if (variant === "preview") {
       exitTimer = window.setTimeout(() => {
@@ -81,10 +87,27 @@ export function ProtectionActivated({
       // Wait until settled phase before starting polling so the
       // animation has time to land.
       const startTimer = window.setTimeout(tick, 900);
+
+      // Show the manual "Continue" link after 8s so users have an
+      // out even if the webhook is slow.
+      escapeTimer = window.setTimeout(() => setShowEscape(true), 8000);
+
+      // Hard safety net: after 30s of polling, force-redirect to /app.
+      // The dashboard re-checks entitlement on render and will display
+      // whatever state the projector has caught up to by then. Better
+      // to land users on a slightly stale dashboard than trap them on
+      // a polling screen if the webhook never lands.
+      safetyTimer = window.setTimeout(() => {
+        setPhase("exiting");
+        window.setTimeout(() => router.push(redirectTo), 400);
+      }, 30000);
+
       return () => {
         window.clearTimeout(t1);
         window.clearTimeout(startTimer);
         if (pollTimer) window.clearTimeout(pollTimer);
+        if (escapeTimer) window.clearTimeout(escapeTimer);
+        if (safetyTimer) window.clearTimeout(safetyTimer);
       };
     } else {
       exitTimer = window.setTimeout(() => {
@@ -97,6 +120,8 @@ export function ProtectionActivated({
       window.clearTimeout(t1);
       if (exitTimer) window.clearTimeout(exitTimer);
       if (pollTimer) window.clearTimeout(pollTimer);
+      if (escapeTimer) window.clearTimeout(escapeTimer);
+      if (safetyTimer) window.clearTimeout(safetyTimer);
     };
   }, [variant, pollUrl, redirectTo, router]);
 
@@ -162,7 +187,7 @@ export function ProtectionActivated({
 
           <h1
             className={[
-              "mt-7 font-display text-[32px] md:text-[44px] font-bold tracking-[-0.03em] leading-[1.05] transition-all duration-500",
+              "mt-7 font-display text-canvas text-[32px] md:text-[44px] font-bold tracking-[-0.03em] leading-[1.05] transition-all duration-500",
               phase === "drawing"
                 ? "opacity-0 translate-y-2"
                 : "opacity-100 translate-y-0",
@@ -195,6 +220,36 @@ export function ProtectionActivated({
                 : "Preparing your dashboard…"}
             </span>
           </div>
+
+          {/* Escape hatch — appears after 8s if polling hasn't
+              resolved. Stripe webhooks usually land in under 2s but
+              can be delayed under load; the user shouldn't have to
+              stare at a spinner indefinitely. */}
+          {showEscape && variant === "activated" && (
+            <button
+              type="button"
+              onClick={() => {
+                setPhase("exiting");
+                window.setTimeout(() => router.push(redirectTo), 250);
+              }}
+              className="mt-6 inline-flex items-center gap-1.5 text-[13px] text-canvas/70 hover:text-canvas underline-offset-4 hover:underline transition animate-fadeIn"
+            >
+              Continue to dashboard
+              <svg
+                width="12"
+                height="12"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <polyline points="9 18 15 12 9 6" />
+              </svg>
+            </button>
+          )}
         </div>
       </div>
     </div>

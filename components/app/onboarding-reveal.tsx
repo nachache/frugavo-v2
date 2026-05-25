@@ -211,7 +211,7 @@ export function OnboardingReveal(props: Props) {
           <div className="text-[12px] md:text-[14px] font-medium uppercase tracking-[0.18em] text-canvas/55">
             Before we show you the damage
           </div>
-          <h1 className="mt-4 md:mt-6 font-display text-[28px] md:text-[44px] font-bold tracking-[-0.03em] leading-[1.06]">
+          <h1 className="mt-4 md:mt-6 font-display text-canvas text-[28px] md:text-[44px] font-bold tracking-[-0.03em] leading-[1.06]">
             Did you know about all of these?
           </h1>
           <p className="mt-3 md:mt-4 text-[14.5px] md:text-[17px] text-canvas/80 leading-relaxed max-w-[520px] mx-auto">
@@ -319,7 +319,7 @@ export function OnboardingReveal(props: Props) {
           <div className="text-[12px] md:text-[14px] font-medium uppercase tracking-[0.18em] text-canvas/55">
             One last thing
           </div>
-          <h1 className="mt-5 md:mt-7 font-display text-[34px] md:text-[60px] font-bold tracking-[-0.03em] leading-[1.05]">
+          <h1 className="mt-5 md:mt-7 font-display text-canvas text-[34px] md:text-[60px] font-bold tracking-[-0.03em] leading-[1.05]">
             Want us to keep watching?
           </h1>
           <p className="mt-4 md:mt-5 text-[15px] md:text-[18px] text-canvas/85 leading-relaxed max-w-[540px] mx-auto">
@@ -408,7 +408,7 @@ export function OnboardingReveal(props: Props) {
               filter: "blur(20px)",
             }}
           />
-          <h1 className="relative font-display font-bold tracking-[-0.03em] leading-[1.02] text-[36px] sm:text-[56px] md:text-[80px]">
+          <h1 className="relative font-display text-canvas font-bold tracking-[-0.03em] leading-[1.02] text-[36px] sm:text-[56px] md:text-[80px]">
             you&apos;re the
             <br />
             <span className="text-brand">{personalityLabel}</span>
