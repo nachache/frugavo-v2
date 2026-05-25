@@ -30,7 +30,7 @@ async function main() {
     process.exit(1);
   }
   const stripe = new Stripe(key, {
-    apiVersion: "2025-02-24.acacia",
+    apiVersion: "2026-04-22.dahlia",
     typescript: true,
   });
 

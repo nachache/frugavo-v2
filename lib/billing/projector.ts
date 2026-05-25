@@ -145,7 +145,10 @@ function stateFromSubscription(
   trialEndsAt: string | null;
 } {
   const trialEnd = tsToIso(sub.trial_end);
-  const periodEnd = tsToIso(sub.current_period_end);
+  // SDK 2026-04-22.dahlia moved current_period_start / current_period_end
+  // from the Subscription to each Subscription Item. Frugavo has a single
+  // price per sub, so the first item's period IS the sub's period.
+  const periodEnd = tsToIso(sub.items.data[0]?.current_period_end ?? null);
 
   if (sub.status === "canceled" || sub.status === "incomplete_expired") {
     return { state: "expired", expiresAt: null, trialEndsAt: trialEnd };
@@ -165,7 +168,9 @@ function stateFromSubscription(
     // Map to our 21-day grace window. expires_at anchors on the
     // first failure timestamp from the event log, not "now", so
     // replaying produces the same answer.
-    const baseIso = paymentFailedAtIso ?? tsToIso(sub.current_period_end);
+    const baseIso =
+      paymentFailedAtIso ??
+      tsToIso(sub.items.data[0]?.current_period_end ?? null);
     const expires = baseIso
       ? new Date(
           new Date(baseIso).getTime() + GRACE_PERIOD_DAYS * 86400_000
@@ -200,8 +205,12 @@ function subscriptionToRow(
     cancel_at_period_end: sub.cancel_at_period_end,
     trial_start: tsToIso(sub.trial_start),
     trial_end: tsToIso(sub.trial_end),
-    current_period_start: tsToIso(sub.current_period_start),
-    current_period_end: tsToIso(sub.current_period_end),
+    current_period_start: tsToIso(
+      sub.items.data[0]?.current_period_start ?? null
+    ),
+    current_period_end: tsToIso(
+      sub.items.data[0]?.current_period_end ?? null
+    ),
     canceled_at: tsToIso(sub.canceled_at),
     ended_at: tsToIso(sub.ended_at),
   };
