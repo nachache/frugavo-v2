@@ -158,6 +158,31 @@ export function ConnectBankButton() {
     }
   }, [isOAuthResume, ready, linkToken, status, open]);
 
+  // Intelligent loading copy: rotates while Plaid's modal is opening
+  // and again while we exchange the public token. Feels like the
+  // system is "thinking" rather than blocked. Cycles every 1.2s.
+  const EXCHANGING_LINES = useMemo(
+    () => [
+      "Scanning recurring merchants…",
+      "Detecting subscription patterns…",
+      "Analyzing renewals…",
+      "Finding hidden recurring charges…",
+    ],
+    []
+  );
+  const [exchangeLineIdx, setExchangeLineIdx] = useState(0);
+  useEffect(() => {
+    if (status !== "exchanging") return;
+    const t = setInterval(
+      () =>
+        setExchangeLineIdx(
+          (i) => (i + 1) % EXCHANGING_LINES.length
+        ),
+      1200
+    );
+    return () => clearInterval(t);
+  }, [status, EXCHANGING_LINES.length]);
+
   const disabled =
     status === "loading" ||
     status === "exchanging" ||
@@ -167,40 +192,66 @@ export function ConnectBankButton() {
 
   const label =
     status === "loading"
-      ? "Preparing the connection…"
+      ? "Preparing your scan…"
       : status === "connecting"
-      ? "Opening your bank…"
-      : status === "exchanging"
-      ? "Saving connection…"
-      : "Connect my bank with Plaid";
+        ? "Opening secure bank login…"
+        : status === "exchanging"
+          ? EXCHANGING_LINES[exchangeLineIdx]
+          : "Scan my subscriptions";
 
   return (
-    <div>
+    <div className="flex flex-col items-start">
+      {/* Eyebrow copy — sets expectations BEFORE the click. */}
+      <p className="text-[12.5px] md:text-[13px] text-ink-muted mb-3">
+        Free scan. No credit card required.
+      </p>
+
       <button
         onClick={() => {
           setStatus("connecting");
           open();
         }}
         disabled={disabled}
-        className="inline-flex h-12 items-center gap-2 rounded-full bg-accent px-6 text-[15px] font-medium text-white hover:bg-accent-hover transition disabled:opacity-50 disabled:cursor-not-allowed"
+        className="group inline-flex h-13 sm:h-14 items-center justify-center gap-2.5 rounded-2xl bg-ink px-7 sm:px-8 text-[15px] sm:text-[16px] font-semibold text-canvas shadow-[0_8px_24px_-8px_rgba(10,10,10,0.4)] hover:bg-ink/90 hover:shadow-[0_12px_28px_-8px_rgba(10,10,10,0.5)] hover:-translate-y-0.5 active:translate-y-0 active:shadow-[0_4px_12px_-4px_rgba(10,10,10,0.4)] transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:translate-y-0"
+        style={{ height: "3.25rem" }}
       >
         {(status === "loading" || status === "exchanging") && (
-          <Loader2 size={16} className="animate-spin" />
+          <Loader2 size={16} className="animate-spin -ml-0.5" />
         )}
-        {label}
+        <span>{label}</span>
+        {status === "ready" && (
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="-mr-0.5 transition-transform group-hover:translate-x-0.5"
+            aria-hidden="true"
+          >
+            <line x1="5" y1="12" x2="19" y2="12" />
+            <polyline points="12 5 19 12 12 19" />
+          </svg>
+        )}
       </button>
 
+      {/* Sub-copy: anchors expected duration so the user doesn't bail. */}
+      <p className="mt-3 text-[12.5px] md:text-[13px] text-ink-muted">
+        Takes about 30 seconds.
+      </p>
+
       {errorMessage && (
-        <p className="mt-3 text-[13px] text-danger" role="alert">
+        <p
+          className="mt-3 inline-flex items-center gap-1.5 text-[13px] text-danger"
+          role="alert"
+        >
+          <ShieldCheck size={13} />
           {errorMessage}
         </p>
       )}
-
-      <p className="mt-4 inline-flex items-center gap-2 text-[12.5px] text-ink-muted">
-        <ShieldCheck size={13} />
-        Read-only access. We can&apos;t move money or change your account.
-        Connection is sandboxed during pre-launch.
-      </p>
     </div>
   );
 }

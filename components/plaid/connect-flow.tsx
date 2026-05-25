@@ -1,16 +1,17 @@
 "use client";
 
-import { useState } from "react";
-import { ConnectCarousel } from "./connect-carousel";
 import { ConnectBankButton } from "./connect-bank-button";
 
-// Orchestrates the connect flow: 3-screen onboarding carousel first,
-// then renders the actual Plaid Link button. Splitting it out keeps
-// the server-rendered /app/connect page simple and lets the carousel
-// own its own state without polluting the rest.
+// ConnectFlow used to gate the bank-connect button behind a 3-screen
+// onboarding carousel ("here's how we work" / "what we can do" /
+// "what we can't do"). That added 3 clicks before Plaid opened, and
+// the redesigned /app/connect already does all the trust signaling
+// above-the-fold — so the carousel was pure conversion drag.
+//
+// The wrapper component stays for backwards compatibility with any
+// other surface that imported it, but is now a thin pass-through
+// to the actual Plaid Link button.
 
 export function ConnectFlow() {
-  const [ready, setReady] = useState(false);
-  if (!ready) return <ConnectCarousel onComplete={() => setReady(true)} />;
   return <ConnectBankButton />;
 }
