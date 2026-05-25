@@ -131,7 +131,19 @@ export type ActionItem = {
   // Display-derived monthly equivalent (used for the right-side $/mo
   // column in the list).
   monthly_cents: number;
+  // FORWARD-LOOKING projection: monthly × 12. Useful for "if you cancel
+  // this, you save $X/yr" decisions. Always present.
   yearly_cents: number;
+  // ACTUAL trailing-12-months paid (sum of accepted charges in the
+  // last 365 days). For new bank connections with only N months of
+  // history, this is the real amount paid so far — much smaller than
+  // yearly_cents. The UI shows this with "$Y over Nmo" framing when
+  // months_observed < 12 so the math matches the data span.
+  paid_recent_cents: number;
+  // Number of distinct calendar months in which this subscription
+  // has at least one accepted charge, capped at 12. Drives the UI's
+  // choice of "/yr" vs "over Nmo" label.
+  months_observed: number;
   // RAW amount as stored on the subscription. CancelModal consumes
   // this together with frequency to derive its own monthly/annual.
   amount_cents: number;
@@ -384,6 +396,37 @@ export async function buildDashboardData(
     rankedByPrice.slice(0, 3).map((b) => b.sub.id)
   );
 
+  // Build per-subscription real spend + observation span maps so each
+  // action item carries an HONEST number alongside the projection.
+  //
+  // paid_recent_cents = sum of accepted charges in the trailing 365 days.
+  // months_observed   = count of distinct YYYY-MM buckets in which this
+  //                     sub has at least one accepted charge in the same
+  //                     window (capped at 12).
+  //
+  // For a 3-month-old bank connection these correctly land at e.g.
+  // $1,874 / 3, not the m × 12 projection of $7,496 / 12. The UI uses
+  // these to render "/yr" or "over Nmo" depending on which is honest.
+  const yearAgoIso = (() => {
+    const d = new Date(asOf);
+    d.setDate(d.getDate() - 365);
+    return d.toISOString().slice(0, 10);
+  })();
+  const paidBySub = new Map<string, number>();
+  const monthsBySub = new Map<string, Set<string>>();
+  for (const c of charges) {
+    if (c.detector_status !== "accepted") continue;
+    if (c.posted_date < yearAgoIso) continue;
+    const sid = c.subscription_id;
+    paidBySub.set(sid, (paidBySub.get(sid) ?? 0) + c.amount_cents);
+    let set = monthsBySub.get(sid);
+    if (!set) {
+      set = new Set<string>();
+      monthsBySub.set(sid, set);
+    }
+    set.add(c.posted_date.slice(0, 7));
+  }
+
   // "Unused 90+ days" — renamed from "Might be forgotten" and raised
   // from 60 → 90 days. Critic round 2: when 7 of 7 items said "Might
   // be forgotten" the label meant nothing. Two changes:
@@ -417,6 +460,8 @@ export async function buildDashboardData(
       tags.push("Unused 90+ days");
     }
     const ov = s.merchant_key ? overrideByMerchant.get(s.merchant_key) ?? null : null;
+    const paidRecent = paidBySub.get(s.id) ?? 0;
+    const monthsObs = Math.min(12, monthsBySub.get(s.id)?.size ?? 0);
     return {
       subscription_id: s.id,
       merchant_name: s.merchant_name,
@@ -425,6 +470,8 @@ export async function buildDashboardData(
       category: s.category,
       monthly_cents: m,
       yearly_cents: m * 12,
+      paid_recent_cents: paidRecent,
+      months_observed: monthsObs,
       amount_cents: s.amount_cents,
       currency: s.currency,
       frequency: s.frequency,

@@ -516,9 +516,24 @@ function Row({
           ].join(" ")}>
             {fmt(item.monthly_cents)}<span className="text-ink-muted">/mo</span>
           </div>
-          {/* Yearly hidden on phone for density. */}
+          {/* Yearly column — hidden on phone for density.
+              Shows actual paid + span when history is < 12 months, so
+              the math matches the data. e.g. "$1,874 over 3 mo" instead
+              of "$7,496 /yr" (which would imply you've paid $7,496
+              already on a 3-month-old bank connection). */}
           <div className="hidden sm:block text-[11px] text-ink-muted tabular-nums">
-            {fmt(item.yearly_cents, { withCents: false })}/yr
+            {item.months_observed >= 12 || item.months_observed === 0 ? (
+              <>
+                {fmt(item.yearly_cents, { withCents: false })}/yr
+              </>
+            ) : (
+              <>
+                {fmt(item.paid_recent_cents, { withCents: false })}
+                <span className="text-ink-muted/80">
+                  {" "}over {item.months_observed} mo
+                </span>
+              </>
+            )}
           </div>
         </div>
 
