@@ -29,7 +29,9 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { motion } from "framer-motion";
 import { ProtectionActivated } from "./protection-activated";
+import { CountUp } from "@/components/motion/count-up";
 
 type Props = {
   subscriptionCount: number;
@@ -389,49 +391,75 @@ export function OnboardingReveal(props: Props) {
           {greeting}
         </div>
 
-        {/* Personality — the lead identity statement */}
-        <h1 className="mt-3 md:mt-5 font-display font-bold tracking-[-0.03em] leading-[1.02] text-[36px] sm:text-[56px] md:text-[80px]">
-          you&apos;re the
-          <br />
-          <span className="text-brand">{personalityLabel}</span>
-        </h1>
+        {/* Personality — the lead identity statement. Soft brand-color
+            halo fades in behind the label after the heading lands, so
+            the eye is drawn to the archetype without the page feeling
+            decorated. Halo is purely visual, no scrim opacity changes. */}
+        <div className="relative mt-3 md:mt-5">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.7 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.9, delay: 0.45, ease: "easeOut" }}
+            aria-hidden="true"
+            className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[80%] h-[80%] pointer-events-none"
+            style={{
+              background:
+                "radial-gradient(closest-side, rgba(16,185,129,0.18), transparent 70%)",
+              filter: "blur(20px)",
+            }}
+          />
+          <h1 className="relative font-display font-bold tracking-[-0.03em] leading-[1.02] text-[36px] sm:text-[56px] md:text-[80px]">
+            you&apos;re the
+            <br />
+            <span className="text-brand">{personalityLabel}</span>
+          </h1>
+        </div>
         {props.personality?.sub && (
           <p className="mt-3 md:mt-4 text-[14px] md:text-[17px] text-canvas/75 leading-relaxed max-w-[600px] mx-auto">
             {props.personality.sub}
           </p>
         )}
 
-        {/* Stats grid — the receipt */}
+        {/* Stats grid — the receipt. Each tile counts up from 0 to its
+            target with a 100ms stagger so the receipt "lands" tile by
+            tile instead of materializing all at once. The animation
+            ends ~1.2s after the grid appears. */}
         <div className="mt-9 md:mt-12 grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 max-w-[760px] mx-auto">
           <Stat
             label="Monthly"
-            big={fmtBig(props.monthlyBurnCents)}
+            countToCents={props.monthlyBurnCents}
             accent
+            delay={0.0}
           />
           <Stat
             label="Yearly"
-            big={fmtBig(props.yearlyBurnCents)}
+            countToCents={props.yearlyBurnCents}
+            delay={0.12}
           />
           <Stat
             label="Active charges"
-            big={String(props.subscriptionCount)}
+            countToInt={props.subscriptionCount}
+            delay={0.24}
           />
           {props.aiCount > 0 ? (
             <Stat
               label="AI stack"
-              big={fmtBig(props.aiMonthlyCents)}
+              countToCents={props.aiMonthlyCents}
               suffix="/mo"
+              delay={0.36}
             />
           ) : props.topCategory ? (
             <Stat
               label="Top category"
               big={props.topCategory.label}
               compact
+              delay={0.36}
             />
           ) : (
             <Stat
               label="Money leaks"
-              big={String(props.moneyLeakCount)}
+              countToInt={props.moneyLeakCount}
+              delay={0.36}
             />
           )}
         </div>
@@ -513,18 +541,33 @@ function RevealShell({ children }: { children: React.ReactNode }) {
 function Stat({
   label,
   big,
+  countToCents,
+  countToInt,
   suffix,
   accent,
   compact,
+  delay = 0,
 }: {
   label: string;
-  big: string;
+  // Static string fallback — used for non-numeric stats like "Streaming"
+  big?: string;
+  // Money in cents — animates as a $-prefixed count-up
+  countToCents?: number;
+  // Integer count — animates as a bare number count-up
+  countToInt?: number;
   suffix?: string;
   accent?: boolean;
   compact?: boolean;
+  // Stagger delay (seconds) for the entrance animation
+  delay?: number;
 }) {
   return (
-    <div className="rounded-2xl border border-canvas/10 bg-canvas/[0.04] px-3.5 py-4 md:px-5 md:py-5 text-left">
+    <motion.div
+      initial={{ opacity: 0, y: 14, scale: 0.985 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      transition={{ duration: 0.5, delay, ease: [0.16, 1, 0.3, 1] }}
+      className="rounded-2xl border border-canvas/10 bg-canvas/[0.04] px-3.5 py-4 md:px-5 md:py-5 text-left"
+    >
       <div className="text-[10px] md:text-[11px] font-medium uppercase tracking-[0.14em] text-canvas/55">
         {label}
       </div>
@@ -537,14 +580,25 @@ function Stat({
             : "text-[22px] md:text-[34px]",
         ].join(" ")}
       >
-        {big}
+        {countToCents != null ? (
+          <CountUp
+            to={Math.round(countToCents / 100)}
+            duration={900}
+            prefix="$"
+            triggerOnInView
+          />
+        ) : countToInt != null ? (
+          <CountUp to={countToInt} duration={700} triggerOnInView />
+        ) : (
+          big
+        )}
         {suffix && (
           <span className="text-[55%] font-medium text-canvas/55 ml-0.5">
             {suffix}
           </span>
         )}
       </div>
-    </div>
+    </motion.div>
   );
 }
 
