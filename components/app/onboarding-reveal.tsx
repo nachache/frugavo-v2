@@ -101,9 +101,24 @@ export function OnboardingReveal(props: Props) {
   const [excludedIds, setExcludedIds] = useState<Set<string>>(new Set());
   const [submittingFeedback, setSubmittingFeedback] = useState(false);
 
+  // Fire-and-forget. Marks the onboarding flow as completed so
+  // the dashboard's "redirect to /app/welcome if welcomed_at IS NULL"
+  // guard doesn't bounce the user back into the upsell after they
+  // decline. Idempotent on the server; safe to call multiple times.
+  function markWelcomed() {
+    fetch("/api/user/welcomed", { method: "POST" }).catch(() => {
+      // Best-effort. If the call fails the worst case is the user
+      // sees the welcome flow once more — not catastrophic.
+    });
+  }
+
   async function activate() {
     setActivating(true);
     setError(null);
+    // Stamp BEFORE the redirect so when Stripe sends them back to
+    // /app/billing/success → /app, the dashboard never bounces them
+    // into the welcome flow again.
+    markWelcomed();
     try {
       const res = await fetch("/api/billing/checkout", { method: "POST" });
       const data = (await res.json()) as { url?: string; error?: string };
@@ -117,6 +132,14 @@ export function OnboardingReveal(props: Props) {
       setError("Couldn't open checkout — please try again.");
       setActivating(false);
     }
+  }
+
+  function declineProtection() {
+    // Stamp synchronously-ish before the ProtectionActivated overlay
+    // runs its 2.4s timeout + router.push("/app"). The dashboard
+    // server render will see welcomed_at set and skip the redirect.
+    markWelcomed();
+    setStage("preview");
   }
 
   async function submitFeedbackAndAdvance() {
@@ -338,7 +361,7 @@ export function OnboardingReveal(props: Props) {
             </div>
             <button
               type="button"
-              onClick={() => setStage("preview")}
+              onClick={declineProtection}
               className="mt-2 text-[13px] text-canvas/55 hover:text-canvas/90 underline-offset-4 hover:underline transition"
             >
               Continue without protection

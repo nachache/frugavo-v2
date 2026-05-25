@@ -26,10 +26,16 @@ import { Loader2, ShieldCheck } from "lucide-react";
 //   sessionStorage before redirect and rehydrate it on resume.
 
 type Status =
-  | "loading"
-  | "ready"
-  | "connecting"
-  | "exchanging"
+  | "idle"          // initial; link token may still be loading in
+                    // the background but we present the button as
+                    // ready-to-click so it doesn't look "loading"
+                    // before the user has done anything
+  | "ready"         // token loaded, no click pending
+  | "queued"        // user clicked while token wasn't ready yet —
+                    // we auto-open as soon as the token lands
+  | "connecting"    // Plaid Link modal is opening / open
+  | "exchanging"    // Plaid succeeded, we're swapping public_token
+                    // for an access_token server-side
   | "error";
 
 const OAUTH_TOKEN_KEY = "frugavo:plaid:link_token";
@@ -37,7 +43,12 @@ const OAUTH_TOKEN_KEY = "frugavo:plaid:link_token";
 export function ConnectBankButton() {
   const router = useRouter();
   const [linkToken, setLinkToken] = useState<string | null>(null);
-  const [status, setStatus] = useState<Status>("loading");
+  // Default to "idle" rather than "loading". The link-token fetch
+  // happens in the background; meanwhile the button shows the active
+  // CTA. Showing a spinner on initial paint was the old "Bug 2" —
+  // it made the page look like it was already working before the
+  // user had clicked anything.
+  const [status, setStatus] = useState<Status>("idle");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   // Detect OAuth-resume entry (URL carries ?oauth_state_id=...). When
@@ -72,7 +83,10 @@ export function ConnectBankButton() {
           if (typeof window !== "undefined") {
             window.sessionStorage.setItem(OAUTH_TOKEN_KEY, data.link_token);
           }
-          setStatus("ready");
+          // Promote idle → ready, BUT preserve "queued" if the user
+          // clicked while we were fetching. The auto-open effect
+          // below will pick it up.
+          setStatus((prev) => (prev === "queued" ? "queued" : "ready"));
         } else {
           setStatus("error");
           setErrorMessage(data.error ?? "Could not initialize Plaid.");
@@ -158,45 +172,40 @@ export function ConnectBankButton() {
     }
   }, [isOAuthResume, ready, linkToken, status, open]);
 
-  // Intelligent loading copy: rotates while Plaid's modal is opening
-  // and again while we exchange the public token. Feels like the
-  // system is "thinking" rather than blocked. Cycles every 1.2s.
-  const EXCHANGING_LINES = useMemo(
-    () => [
-      "Scanning recurring merchants…",
-      "Detecting subscription patterns…",
-      "Analyzing renewals…",
-      "Finding hidden recurring charges…",
-    ],
-    []
-  );
-  const [exchangeLineIdx, setExchangeLineIdx] = useState(0);
+  // Auto-open for the queued case: user clicked while we were still
+  // fetching the link token. The moment the token + plaidLink are
+  // ready, fire open() so the click feels instant despite the
+  // background fetch.
   useEffect(() => {
-    if (status !== "exchanging") return;
-    const t = setInterval(
-      () =>
-        setExchangeLineIdx(
-          (i) => (i + 1) % EXCHANGING_LINES.length
-        ),
-      1200
-    );
-    return () => clearInterval(t);
-  }, [status, EXCHANGING_LINES.length]);
+    if (status === "queued" && ready && linkToken) {
+      setStatus("connecting");
+      open();
+    }
+  }, [status, ready, linkToken, open]);
 
+  // Disabled only while Plaid Link is actively opening or we're
+  // exchanging the token. "idle" and "queued" remain clickable —
+  // the queued state shows a subtle spinner so the user knows their
+  // click registered, but the button isn't visually broken.
+  //
+  // We intentionally do NOT disable during link-token fetch, so the
+  // initial render looks ready-to-click (Bug 2 was the button
+  // landing in a loading state before the user did anything).
   const disabled =
-    status === "loading" ||
-    status === "exchanging" ||
-    status === "connecting" ||
-    !ready ||
-    !linkToken;
+    status === "connecting" || status === "exchanging" || status === "error";
 
+  // Static labels. The previous rotating "Scanning recurring
+  // merchants…" copy during exchange was Bug 1 — it duplicated the
+  // cinematic progress the /app/scanning page already runs. Keep the
+  // button visually quiet between Plaid modal close and the
+  // navigation to /app/scanning.
   const label =
-    status === "loading"
-      ? "Preparing your scan…"
-      : status === "connecting"
-        ? "Opening secure bank login…"
-        : status === "exchanging"
-          ? EXCHANGING_LINES[exchangeLineIdx]
+    status === "connecting"
+      ? "Opening secure bank login…"
+      : status === "exchanging"
+        ? "Connecting your bank…"
+        : status === "queued"
+          ? "Preparing your scan…"
           : "Scan my subscriptions";
 
   return (
@@ -208,18 +217,25 @@ export function ConnectBankButton() {
 
       <button
         onClick={() => {
-          setStatus("connecting");
-          open();
+          // If the link token + plaidLink hooks are both ready, open
+          // immediately. Otherwise queue — the useEffect above will
+          // auto-open as soon as both become ready.
+          if (ready && linkToken && status !== "queued") {
+            setStatus("connecting");
+            open();
+          } else {
+            setStatus("queued");
+          }
         }}
         disabled={disabled}
         className="group inline-flex h-13 sm:h-14 items-center justify-center gap-2.5 rounded-2xl bg-ink px-7 sm:px-8 text-[15px] sm:text-[16px] font-semibold text-canvas shadow-[0_8px_24px_-8px_rgba(10,10,10,0.4)] hover:bg-ink/90 hover:shadow-[0_12px_28px_-8px_rgba(10,10,10,0.5)] hover:-translate-y-0.5 active:translate-y-0 active:shadow-[0_4px_12px_-4px_rgba(10,10,10,0.4)] transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:translate-y-0"
         style={{ height: "3.25rem" }}
       >
-        {(status === "loading" || status === "exchanging") && (
+        {(status === "queued" || status === "exchanging" || status === "connecting") && (
           <Loader2 size={16} className="animate-spin -ml-0.5" />
         )}
         <span>{label}</span>
-        {status === "ready" && (
+        {(status === "idle" || status === "ready") && (
           <svg
             width="14"
             height="14"
