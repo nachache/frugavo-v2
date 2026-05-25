@@ -86,24 +86,26 @@ export function DashboardHeader({
         Every recurring charge on your connected accounts.
       </p>
 
-      {/* Utility row: scan controls demoted to small icon (per critic:
-          users assume the dashboard is fresh; exposing the plumbing
-          erodes trust). 'Last scanned X ago' lives in the title attr
-          on hover. Re-scan is a small icon-only button. Share +
-          Protection links stay as-is. */}
+      {/* Utility row: re-scan is now a labeled button so users can
+          actually find it after the engine fixes. Was previously a
+          tiny 28px icon ("scan plumbing demoted") which made it
+          functionally invisible. Trade-off: shows the plumbing, but
+          discoverability of the manual refresh path won out — users
+          testing a freshly-fixed scanner shouldn't have to hunt for
+          the icon. */}
       <div className="mt-3 md:mt-4 flex flex-wrap items-center gap-2 md:gap-3 text-[12px] md:text-[12.5px] text-ink-muted">
         {isPaid ? (
           <button
             type="button"
             onClick={onRescan}
             disabled={rescanning}
-            title={`${timeAgo(lastScannedAt)} — click to refresh`}
+            title={`${timeAgo(lastScannedAt)}`}
             aria-label={`Re-scan. ${timeAgo(lastScannedAt)}`}
-            className="inline-flex items-center justify-center w-7 h-7 rounded-full text-ink-muted hover:text-ink hover:bg-ink/[0.05] transition disabled:opacity-50 disabled:cursor-not-allowed"
+            className="inline-flex items-center gap-1.5 h-8 px-3 rounded-full border border-hairline bg-surface text-ink hover:border-ink/30 hover:bg-ink/[0.04] transition disabled:opacity-50 disabled:cursor-not-allowed text-[12.5px] font-medium"
           >
             <svg
-              width="13"
-              height="13"
+              width="12"
+              height="12"
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
@@ -118,9 +120,10 @@ export function DashboardHeader({
               <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10" />
               <path d="M20.49 15a9 9 0 0 1-14.85 3.36L1 14" />
             </svg>
+            <span>{rescanning ? "Scanning…" : "Re-scan"}</span>
           </button>
         ) : (
-          // Free tier — show a locked icon. Click triggers the same
+          // Free tier — labeled lock button. Click triggers the same
           // /api/billing/checkout flow the ActivateProtectionCard uses,
           // so the user lands in Stripe Checkout instead of a dead end.
           <button
@@ -135,9 +138,10 @@ export function DashboardHeader({
                 })
                 .catch(() => {});
             }}
-            className="inline-flex items-center justify-center w-7 h-7 rounded-full text-ink-muted hover:text-ink hover:bg-ink/[0.05] transition"
+            className="inline-flex items-center gap-1.5 h-8 px-3 rounded-full border border-hairline bg-surface text-ink-muted hover:text-ink hover:border-ink/30 hover:bg-ink/[0.04] transition text-[12.5px] font-medium"
           >
             <Lock size={12} strokeWidth={2.2} aria-hidden="true" />
+            <span>Re-scan</span>
           </button>
         )}
         <ScanRevealOverlay
