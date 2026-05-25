@@ -92,39 +92,12 @@ export default async function AppHome({
     .eq("user_id", user.id);
 
   if (!items || items.length === 0) {
-    return (
-      <section className="container-page py-16 md:py-24 max-w-[720px]">
-        <span className="text-[13px] font-medium text-brand">
-          Welcome to Frugavo
-        </span>
-        <h1 className="mt-2 font-display text-[36px] md:text-[44px] font-bold tracking-[-0.03em] leading-[1.05] text-ink">
-          Let&apos;s connect your bank.
-        </h1>
-        <p className="mt-5 text-[17px] leading-relaxed text-ink-body">
-          Frugavo connects to your bank through Plaid — the same infrastructure
-          your bank app uses. We use a read-only scope: we can see your
-          recurring charges, we cannot move money or send email on your behalf.
-        </p>
-        <p className="mt-4 text-[14px] leading-relaxed text-ink-muted">
-          Bank-grade encryption. Your credentials never touch our servers. You
-          can disconnect any time and your data is deleted within 30 days.
-        </p>
-        <div className="mt-8 flex flex-wrap gap-3">
-          <Link
-            href="/app/connect"
-            className="inline-flex h-12 items-center gap-2 rounded-full bg-accent px-6 text-[15px] font-medium text-white hover:bg-accent-hover transition"
-          >
-            Connect my bank
-          </Link>
-          <Link
-            href="/learn"
-            className="inline-flex h-12 items-center gap-2 rounded-full px-6 text-[15px] font-medium text-ink hover:bg-ink/[0.04] transition"
-          >
-            Read about how it works
-          </Link>
-        </div>
-      </section>
-    );
+    // No bank connected yet — skip the intermediate "Welcome / Let's
+    // connect your bank" screen and send the user straight to the
+    // redesigned /app/connect page. That page does all the trust
+    // signaling and value-prop work above-the-fold, so a separate
+    // landing card here was pure friction (extra click, no info gain).
+    redirect("/app/connect");
   }
 
   // First-scan path — bounce to /app/welcome for the emotional
