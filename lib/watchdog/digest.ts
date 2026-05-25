@@ -20,6 +20,13 @@ import { monthlyEqCents } from "@/lib/insights";
 // to the recent past.
 const MAX_LOOKBACK_DAYS = 7;
 
+// Cooldown after dismissal. The monitoring cron generates new
+// alerts every hour, so without this gate the overlay would reappear
+// on every login (which would feel like a popup nag). 24h cap is
+// the UX rule: "at most once a day, only when something new
+// happened in the last 24h".
+const SHOW_COOLDOWN_HOURS = 24;
+
 export type WatchdogVerb =
   | "flagged"   // price hike, unusual charge, missing renewal
   | "stopped"   // trial converting, dunning
@@ -85,6 +92,18 @@ export async function buildWatchdogDigest(
     .maybeSingle();
   const seenAt = (u?.watchdog_seen_at as string | null) ?? null;
   const userCreatedAt = (u?.created_at as string | null) ?? null;
+
+  // ── 1a. Cooldown gate ──────────────────────────────────────────
+  // If the user dismissed the overlay less than SHOW_COOLDOWN_HOURS
+  // ago, suppress it entirely. The next 24h of cron-generated alerts
+  // will surface in the dashboard's normal feed; the overlay reappears
+  // tomorrow when there's an accumulated set of events worth a reveal.
+  if (seenAt) {
+    const hoursSinceSeen = (now.getTime() - new Date(seenAt).getTime()) / 3_600_000;
+    if (hoursSinceSeen < SHOW_COOLDOWN_HOURS) {
+      return null;
+    }
+  }
 
   const lookbackFloor = new Date(
     now.getTime() - MAX_LOOKBACK_DAYS * 86_400_000
