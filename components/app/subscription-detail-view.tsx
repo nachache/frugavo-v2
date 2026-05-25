@@ -139,13 +139,33 @@ export function SubscriptionDetailView({
     const key = c.posted_date.slice(0, 7);
     bucketMap.set(key, (bucketMap.get(key) ?? 0) + c.amount_cents);
   }
-  // Last 12 months ending at last_charge_date OR today.
-  const anchor = stats.last_charge_date
+
+  // Span the chart from the FIRST charge we have on file → the most
+  // recent one, capped at 12 months. Old behavior padded the chart
+  // with 9 empty buckets when Plaid only returned 3 months of history,
+  // which read as "we have 12 months of data and most of it is zero"
+  // — misleading and made the totals look small.
+  //
+  // New behavior: chart length = actual data span. The header label
+  // adapts to "Last N months" where N is the real number rendered.
+  const lastAnchor = stats.last_charge_date
     ? new Date(stats.last_charge_date + "T00:00:00Z")
     : new Date();
+  const firstAnchor = stats.first_charge_date
+    ? new Date(stats.first_charge_date + "T00:00:00Z")
+    : lastAnchor;
+
+  function monthIndex(d: Date): number {
+    return d.getUTCFullYear() * 12 + d.getUTCMonth();
+  }
+  const spanMonths = Math.min(
+    12,
+    Math.max(1, monthIndex(lastAnchor) - monthIndex(firstAnchor) + 1)
+  );
+
   const buckets: { month: string; cents: number; label: string }[] = [];
-  for (let i = 11; i >= 0; i--) {
-    const d = new Date(anchor);
+  for (let i = spanMonths - 1; i >= 0; i--) {
+    const d = new Date(lastAnchor);
     d.setUTCMonth(d.getUTCMonth() - i);
     const key = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
     buckets.push({
@@ -155,6 +175,11 @@ export function SubscriptionDetailView({
     });
   }
   const maxBar = Math.max(1, ...buckets.map((b) => b.cents));
+  // Chart header is honest about the visible span.
+  const chartHeader =
+    spanMonths >= 12
+      ? "Last 12 months"
+      : `Last ${spanMonths} month${spanMonths === 1 ? "" : "s"}`;
 
   return (
     <div className="space-y-6 md:space-y-8">
@@ -226,7 +251,15 @@ export function SubscriptionDetailView({
       <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4">
         <Stat label="Total paid" value={fmtCents(stats.total_charged_cents)} sub={`${stats.accepted_count} charge${stats.accepted_count === 1 ? "" : "s"}`} />
         <Stat label="Average charge" value={fmtCents(stats.average_amount_cents)} sub={`Across ${stats.months_active} month${stats.months_active === 1 ? "" : "s"}`} />
-        <Stat label="Last 12 months" value={fmtCents(stats.yearly_spend_cents, { withCents: false })} sub="Real money paid" />
+        <Stat
+          label={chartHeader}
+          value={fmtCents(stats.yearly_spend_cents, { withCents: false })}
+          sub={
+            spanMonths < 12
+              ? `Real money paid so far`
+              : "Real money paid"
+          }
+        />
         <Stat
           label="Highest"
           value={stats.highest_charge ? fmtCents(stats.highest_charge.amount_cents) : "—"}
@@ -293,10 +326,10 @@ export function SubscriptionDetailView({
         </div>
       )}
 
-      {/* ─── 4. 12-MONTH CHART ────────────────────────────────────── */}
+      {/* ─── 4. CHARGE HISTORY CHART ─────────────────────────────── */}
       <div className="rounded-2xl border border-hairline bg-surface p-5 md:p-6 animate-fadeUp">
         <div className="text-[11px] md:text-[12px] font-medium uppercase tracking-[0.12em] text-ink-muted">
-          Last 12 months
+          {chartHeader}
         </div>
         <div className="mt-1 text-[13px] text-ink-body mb-4">
           Real charges for this subscription
@@ -305,12 +338,16 @@ export function SubscriptionDetailView({
           viewBox="0 0 100 32"
           preserveAspectRatio="none"
           className="w-full h-32 md:h-40 animate-fadeIn"
-          aria-label="12-month spend chart"
+          aria-label={`${chartHeader.toLowerCase()} spend chart`}
         >
           {buckets.map((b, i) => {
             const h = (b.cents / maxBar) * 28;
-            const x = i * (100 / 12) + (100 / 12) * 0.18;
-            const w = (100 / 12) * 0.64;
+            // Bar widths are derived from the ACTUAL span shown — so
+            // short histories (3 months) get fat bars filling the
+            // canvas rather than 3 skinny bars on a 12-slot grid.
+            const slot = 100 / buckets.length;
+            const x = i * slot + slot * 0.18;
+            const w = slot * 0.64;
             const y = 30 - h;
             return (
               <rect
@@ -333,9 +370,17 @@ export function SubscriptionDetailView({
             strokeWidth="0.2"
           />
         </svg>
-        <div className="mt-2 grid grid-cols-12 text-[10px] md:text-[11px] text-ink-muted tabular-nums">
+        {/* X-axis labels: grid columns match the number of buckets
+            actually rendered so labels line up with bars. On mobile we
+            still skip alternates for legibility when the span is wide. */}
+        <div
+          className="mt-2 grid text-[10px] md:text-[11px] text-ink-muted tabular-nums"
+          style={{
+            gridTemplateColumns: `repeat(${buckets.length}, minmax(0, 1fr))`,
+          }}
+        >
           {buckets.map((b, i) => {
-            const showOnMobile = i % 2 === 0;
+            const showOnMobile = buckets.length <= 6 || i % 2 === 0;
             return (
               <div
                 key={b.month}
