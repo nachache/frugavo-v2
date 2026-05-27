@@ -2,33 +2,27 @@
 
 // DashboardHeader — page title, subtitle, utility row.
 //
-// Utility row holds:
-//   • Last scanned X ago
-//   • Re-scan button → triggers the ScanRevealOverlay theatrical
-//     reveal, then refreshes the page so the dashboard reflects
-//     any newly-detected items.
+// Utility row:
+//   • Re-scan button (cycles Scanning → Updating → Re-scan)
+//   • Last scanned X ago (in the button title)
 //   • Share link
 //   • Protection history
+//
+// The earlier ScanRevealOverlay popup ("we just looked through
+// everything") was removed: QuickChecks at the top of the dashboard
+// is now the curation surface, and a full-screen reveal popup after
+// every rescan made the flow feel interrupted. Re-scan now updates
+// the dashboard in place — totals, ActionCenter buckets, and Quick
+// Checks all refresh together via router.refresh().
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ScanRevealOverlay } from "./scan-reveal-overlay";
 
 type Props = {
   lastScannedAt: string | null;
-  // Reveal payload — passed from the page so the overlay knows what
-  // numbers to animate to. These are the CURRENT dashboard totals;
-  // any new detections from the re-scan land on the next render.
-  reveal: {
-    monthly_cents: number;
-    annual_savings_cents: number;
-    top_rows: { name: string; monthly_cents: number }[];
-  };
-  // Paid-tier gate. When false, the Re-scan icon swaps to a locked
-  // affordance that routes to the upgrade flow instead of triggering
-  // a scan. Paid users also get an auto re-scan on every /app open
-  // (server-side, max 1/day), so manual re-scan is the override.
+  // Paid-tier gate (kept for future surfaces; currently no behavior
+  // gate since the 30s Redis cooldown is the only anti-abuse layer).
   isPaid?: boolean;
 };
 
@@ -44,35 +38,26 @@ function timeAgo(iso: string | null): string {
   return `Last scanned ${day} day${day === 1 ? "" : "s"} ago`;
 }
 
-export function DashboardHeader({
-  lastScannedAt,
-  reveal,
-  isPaid = false,
-}: Props) {
+export function DashboardHeader({ lastScannedAt }: Props) {
   const router = useRouter();
   // Two-phase rescan state:
-  //   scanning           true while the POST is in flight
-  //   awaitingRefresh    true after POST resolved; waiting for the server
-  //                      re-render to arrive (signaled by lastScannedAt
-  //                      prop changing)
-  //   showReveal         true ONLY once awaitingRefresh has cleared, so
-  //                      the overlay animates to FRESH post-scan numbers
+  //   scanning           POST is in flight
+  //   awaitingRefresh    POST resolved; waiting for the parent server
+  //                      component to re-render with the new
+  //                      lastScannedAt (so we can flip back to idle
+  //                      with the user-visible feedback "your data
+  //                      is now fresh").
   const [scanning, setScanning] = useState(false);
   const [awaitingRefresh, setAwaitingRefresh] = useState(false);
-  const [showReveal, setShowReveal] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const lastScannedRef = useRef(lastScannedAt);
 
-  // Watch for lastScannedAt to change AFTER a scan request. That's our
-  // signal that router.refresh() has propagated and the parent server
-  // component has handed us new reveal numbers. Only THEN do we show
-  // the overlay — so the user never sees a reveal animated to stale
-  // pre-scan totals.
+  // When lastScannedAt prop changes after a rescan request, the
+  // refresh has propagated. Drop the awaitingRefresh state.
   useEffect(() => {
     if (awaitingRefresh && lastScannedAt !== lastScannedRef.current) {
       lastScannedRef.current = lastScannedAt;
       setAwaitingRefresh(false);
-      setShowReveal(true);
     }
   }, [lastScannedAt, awaitingRefresh]);
 
@@ -98,18 +83,11 @@ export function DashboardHeader({
       setScanning(false);
       return;
     }
-    // Scan is complete on the server. Now wait for the client to see
-    // the new data: trigger a refresh and watch the lastScannedAt
-    // prop for the change signal (handled in the useEffect above).
+    // Scan finished on the server. Trigger refresh; useEffect above
+    // clears awaitingRefresh once the new lastScannedAt arrives.
     setAwaitingRefresh(true);
     setScanning(false);
     router.refresh();
-  }
-
-  function onRevealDone() {
-    setShowReveal(false);
-    // No additional refresh — the dashboard already has fresh data
-    // since the overlay only opened AFTER router.refresh landed.
   }
 
   const buttonBusy = scanning || awaitingRefresh;
@@ -121,7 +99,9 @@ export function DashboardHeader({
 
   return (
     <div>
-      <span className="text-[12px] md:text-[13px] font-medium text-brand">Dashboard</span>
+      <span className="text-[12px] md:text-[13px] font-medium text-brand">
+        Dashboard
+      </span>
       <h1 className="mt-1.5 md:mt-2 font-display text-[30px] sm:text-[36px] md:text-[44px] font-bold tracking-[-0.03em] leading-[1.05] text-ink">
         Your subscriptions
       </h1>
@@ -129,19 +109,7 @@ export function DashboardHeader({
         Every recurring charge on your connected accounts.
       </p>
 
-      {/* Utility row: re-scan is now a labeled button so users can
-          actually find it after the engine fixes. Was previously a
-          tiny 28px icon ("scan plumbing demoted") which made it
-          functionally invisible. Trade-off: shows the plumbing, but
-          discoverability of the manual refresh path won out — users
-          testing a freshly-fixed scanner shouldn't have to hunt for
-          the icon. */}
       <div className="mt-3 md:mt-4 flex flex-wrap items-center gap-2 md:gap-3 text-[12px] md:text-[12.5px] text-ink-muted">
-        {/* v9 — Re-scan is now available to all users. The first-connect
-            flow can land users on an empty dashboard because Plaid
-            hadn't finished pulling transactions; we want every user to
-            be able to retry without paying. The 30s Redis cooldown
-            still prevents abuse. */}
         <button
           type="button"
           onClick={onRescan}
@@ -174,13 +142,6 @@ export function DashboardHeader({
             {errorMsg}
           </span>
         ) : null}
-        <ScanRevealOverlay
-          visible={showReveal}
-          monthlyCents={reveal.monthly_cents}
-          annualSavingsCents={reveal.annual_savings_cents}
-          topRows={reveal.top_rows}
-          onDone={onRevealDone}
-        />
         <Link
           href="/app/share"
           className="inline-flex items-center gap-1.5 text-ink-muted hover:text-ink transition"

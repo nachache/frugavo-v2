@@ -381,27 +381,6 @@ export default async function AppHome({
       <DashboardHeader
         lastScannedAt={latestScanFinishedAt}
         isPaid={isPaid}
-        reveal={{
-          // Numbers the ScanRevealOverlay animates TO when the user
-          // hits Re-scan. Always uses the CURRENT view (subs only on
-          // subs tab, bills only on bills tab) so the overlay matches
-          // what the user is already looking at.
-          monthly_cents:
-            activeTab === "bills"
-              ? data?.monthly.other_recurring_cents ?? 0
-              : data?.monthly.sub_only_cents ?? 0,
-          annual_savings_cents:
-            data?.actions.potential_yearly_savings_cents ?? 0,
-          top_rows: (activeTab === "bills"
-            ? data?.top_bills ?? []
-            : data?.top_subscriptions ?? []
-          )
-            .slice(0, 4)
-            .map((t) => ({
-              name: t.merchant_name,
-              monthly_cents: t.monthly_cents,
-            })),
-        }}
       />
 
       {/* ProtectionStatusPill (Protected since…) moved to Layer 3

@@ -8,7 +8,9 @@ import type { ScanEvent, ScanRow } from "@/lib/types/scan";
 import { ProgressArc } from "./ProgressArc";
 import { FallbackCard } from "./FallbackCard";
 import { WaitingForBankCard } from "./WaitingForBankCard";
-import { ScanRevealOverlay } from "@/components/app/scan-reveal-overlay";
+// ScanRevealOverlay was removed — QuickChecks at the top of the
+// dashboard is the curation surface now; the full-screen "ta-da"
+// popup after every scan made the flow feel interrupted.
 
 // Scanning state machine.
 //
@@ -221,37 +223,24 @@ export function StreamingList({ scanId }: Props) {
   // inside finalizeScan covers cross-tab and cron-initiated scans;
   // refresh() is the in-tab guarantee that this navigation sees fresh
   // data.
-  // v10 — instead of auto-navigating to /app after the scan
-  // completes, show the verdict overlay (the "ta-da" card with
-  // monthly total + top subs + savings line). The overlay holds
-  // until the user dismisses it via the "See my dashboard" button.
-  // This was previously only triggered by the dashboard's Re-scan
-  // button; now first-scan users get the same wow moment before
-  // landing on the welcome flow.
-  const [showVerdict, setShowVerdict] = useState(false);
+  // After scan completes, route straight to /app — no full-screen
+  // verdict overlay anymore. QuickChecks at the top of the
+  // dashboard handles "is this real / not a sub" curation in a
+  // less interrupting way. The streaming list above already gave
+  // the "ta-da" of watching rows appear in real time during the
+  // scan, so the redirect feels earned rather than abrupt.
   useEffect(() => {
     if (!isComplete) return;
     // v11 — awaiting_bank_data wins. Plaid hasn't delivered yet, so
-    // skip both the verdict overlay AND the auto-redirect to /app.
-    // The WaitingForBankCard stays on screen until the user clicks
-    // "Go to dashboard" themselves.
+    // skip the auto-redirect. The WaitingForBankCard stays on
+    // screen until the user clicks "Go to dashboard" themselves.
     if (awaitingBank) return;
-    // Zero-row completion (no awaiting signal — genuinely just no
-    // subs found): route straight to the dashboard with the
-    // existing empty-state copy above.
-    if (rows.length === 0) {
-      const t = setTimeout(() => {
-        router.refresh();
-        router.push("/app");
-      }, POST_COMPLETE_REDIRECT_MS);
-      return () => clearTimeout(t);
-    }
-    // Brief beat after complete so the final SSE total has a
-    // moment to land in state. The overlay's own animation gives
-    // another second of "we just finished" feel.
-    const t = setTimeout(() => setShowVerdict(true), POST_COMPLETE_REDIRECT_MS);
+    const t = setTimeout(() => {
+      router.refresh();
+      router.push("/app");
+    }, POST_COMPLETE_REDIRECT_MS);
     return () => clearTimeout(t);
-  }, [isComplete, rows.length, router, awaitingBank]);
+  }, [isComplete, awaitingBank, router]);
 
   // Memoized navigation handler for the "I'll wait" recovery flow.
   // Same refresh-before-push contract so the dashboard never shows
@@ -260,24 +249,6 @@ export function StreamingList({ scanId }: Props) {
     router.refresh();
     router.push("/app");
   }, [router]);
-
-  const onVerdictDone = useCallback(() => {
-    setShowVerdict(false);
-    router.refresh();
-    router.push("/app");
-  }, [router]);
-
-  // Top 4 rows for the overlay, sorted by monthly amount.
-  const topVerdictRows = [...rows]
-    .sort(
-      (a, b) =>
-        Math.abs(b.amount_cents ?? 0) - Math.abs(a.amount_cents ?? 0)
-    )
-    .slice(0, 4)
-    .map((r) => ({
-      name: r.merchant_name,
-      monthly_cents: Math.abs(r.amount_cents ?? 0),
-    }));
 
   // ---------- render ----------
 
@@ -369,23 +340,8 @@ export function StreamingList({ scanId }: Props) {
         </div>
       )}
 
-      {/* v10 — first-scan verdict overlay. Same ScanRevealOverlay
-          the dashboard's Re-scan button shows. Now fires on
-          first-scan completion too: scan finishes, brief beat,
-          verdict card pops with monthly total + top subs + savings
-          line, holds until user clicks "See my dashboard", then
-          hard-navigates to /app. Skipped when 0 rows confirmed
-          (the brief routes user straight to the empty-state
-          dashboard with the existing copy above). */}
-      {rows.length > 0 && (
-        <ScanRevealOverlay
-          visible={showVerdict}
-          monthlyCents={totalCents}
-          annualSavingsCents={totalCents * 12}
-          topRows={topVerdictRows}
-          onDone={onVerdictDone}
-        />
-      )}
+      {/* Verdict overlay removed — see top of file. QuickChecks at
+          the top of /app handles curation when the user lands. */}
     </div>
   );
 }
