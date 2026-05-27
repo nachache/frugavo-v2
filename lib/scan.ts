@@ -31,6 +31,11 @@ import { SCANNER_VERSION, ENGINE_SIGNATURE } from "./scanner-version";
 import { subscriptionKey } from "./subscription-key";
 import { syncAllItemsForUser, nudgePlaidItemsForUser } from "./plaid-sync";
 import { markFirstReadyIfNeeded } from "./ingestion-state";
+import { getBrandVerdict, type BrandVerdict } from "./brand-verdicts";
+import {
+  computeConfidence,
+  shouldCreateDoubt,
+} from "./doubt-detection";
 import {
   scoreCandidate,
   featuresFromCharges,
@@ -830,6 +835,33 @@ async function processDetectedStream(args: {
 
   const monthlyEq = monthlyEquivalentCents(amountCents, frequency);
 
+  // ---- Phase B shadow lookup ----
+  //
+  // Call getBrandVerdict in parallel with the existing classifier
+  // path. Result lands in four new shadow columns on the subscription
+  // row and (if confidence falls in the prompt zones) a doubt_items
+  // row. Nothing here changes visible dashboard behavior — the
+  // existing classification + subscription_key formulas stay
+  // untouched. Phase C wires the doubt items into the UI.
+  //
+  // Failure is non-fatal: on Claude outage or network blip, the
+  // verdict lookup returns null and the shadow columns stay NULL.
+  // The existing classifier path keeps the scan flowing.
+  const brandVerdict: BrandVerdict | null = await getBrandVerdict({
+    source_key: stream.merchant_key,
+    descriptor: stream.representative_descriptor,
+    pfc_primary: stream.pfc_primary,
+  }).catch((e) => {
+    // eslint-disable-next-line no-console
+    console.warn("[scan] brand verdict lookup failed", e instanceof Error ? e.message : e);
+    return null;
+  });
+
+  const engineConfidence = computeConfidence({
+    stream,
+    verdict: brandVerdict,
+  });
+
   // ---- Upsert into subscriptions on (user_id, subscription_key) ----
   // User decisions live on this table and survive across scans because
   // subscription_key is stable.
@@ -869,6 +901,16 @@ async function processDetectedStream(args: {
         confidence_score: tierConfidence,
         scanner_version: SCANNER_VERSION,
         updated_at: asOfIso,
+        // ---- Phase B shadow columns (Phase C reads these) ----
+        // source_key mirrors merchant_key today; Phase C will swap
+        // merchant_key to hold the canonical and source_key keeps
+        // the noisy engine output for traceability.
+        source_key: stream.merchant_key,
+        canonical_merchant_key: brandVerdict?.merchant_key ?? null,
+        brand_verdict_likelihood:
+          brandVerdict?.subscription_likelihood ?? null,
+        brand_verdict_confidence: brandVerdict?.confidence_score ?? null,
+        confidence: engineConfidence,
       },
       { onConflict: "user_id,subscription_key" }
     )
@@ -879,6 +921,44 @@ async function processDetectedStream(args: {
     // eslint-disable-next-line no-console
     console.error("[scan] subscriptions upsert failed", upsertErr);
     return null;
+  }
+
+  // ---- Phase B shadow doubt write ----
+  //
+  // If the brand verdict + confidence put this candidate in a prompt
+  // zone, write a doubt_items row + a 'created' event to
+  // doubt_prompts_log. Idempotent on
+  // (user_id, subscription_id, prompt_kind) — re-scans don't
+  // duplicate rows but DO record fresh events when confidence shifts.
+  //
+  // SHADOW: no UI reads these tables today. Phase C wires both
+  // surfaces. Failure here is non-fatal — the subscription row is
+  // already persisted; missing doubt rows just mean Phase C's UI
+  // would surface fewer prompts.
+  if (brandVerdict) {
+    const doubtDecision = shouldCreateDoubt({
+      stream: {
+        occurrences: stream.occurrences,
+        monthly_equivalent_cents: monthlyEq,
+      },
+      verdict: brandVerdict,
+      confidence: engineConfidence,
+    });
+    if (doubtDecision) {
+      await writeShadowDoubt({
+        userId,
+        subscriptionId: upserted.id as string,
+        merchantKey: brandVerdict.merchant_key,
+        promptKind: doubtDecision.prompt_kind,
+        confidence: engineConfidence,
+      }).catch((e) => {
+        // eslint-disable-next-line no-console
+        console.warn(
+          "[scan] shadow doubt write failed",
+          e instanceof Error ? e.message : e
+        );
+      });
+    }
   }
 
   // ---- Phase 4: write subscription_charges (real billing history) ----
@@ -1710,6 +1790,80 @@ async function runWithCap<T, R>(
 
 async function emit(scanId: string, event: ScanEvent): Promise<void> {
   await publishScanEvent(scanId, event);
+}
+
+// ---------------------------------------------------------------------------
+// Phase B shadow doubt writer.
+//
+// Upserts a doubt_items row on (user_id, subscription_id, prompt_kind)
+// and appends a 'created' event to doubt_prompts_log on first insert.
+// Skips re-prompting for rows that are already resolved or silenced
+// — the re-evaluation gate (lib/doubt-detection.canReEvaluateSilencedDoubt)
+// gets wired in Phase C alongside the resolve/ignore APIs.
+// ---------------------------------------------------------------------------
+
+async function writeShadowDoubt(args: {
+  userId: string;
+  subscriptionId: string;
+  merchantKey: string;
+  promptKind: "is_real_sub";
+  confidence: number;
+}): Promise<void> {
+  if (!supabaseAdmin) return;
+  const { userId, subscriptionId, merchantKey, promptKind, confidence } = args;
+
+  // Read existing row to know whether we're creating or updating —
+  // doubt_prompts_log only gets a 'created' event on first insert.
+  // Also short-circuits if the doubt is already resolved or silenced
+  // so we don't re-create a row the user already actioned.
+  const { data: existing } = await supabaseAdmin
+    .from("doubt_items")
+    .select("id, resolved_at, silenced_at")
+    .eq("user_id", userId)
+    .eq("subscription_id", subscriptionId)
+    .eq("prompt_kind", promptKind)
+    .maybeSingle();
+
+  if (existing && (existing.resolved_at || existing.silenced_at)) {
+    // User has answered or silenced this — do not re-prompt during
+    // shadow mode. Re-evaluation logic lands in Phase C.
+    return;
+  }
+
+  const nowIso = new Date().toISOString();
+  const { data: upserted, error } = await supabaseAdmin
+    .from("doubt_items")
+    .upsert(
+      {
+        user_id: userId,
+        subscription_id: subscriptionId,
+        merchant_key: merchantKey,
+        prompt_kind: promptKind,
+        confidence,
+        updated_at: nowIso,
+      },
+      { onConflict: "user_id,subscription_id,prompt_kind" }
+    )
+    .select("id")
+    .single();
+
+  if (error || !upserted) {
+    // eslint-disable-next-line no-console
+    console.error("[scan] doubt_items upsert failed", error);
+    return;
+  }
+
+  // Append a 'created' log event only on first insert. We detect
+  // first-insert by absence of `existing` above.
+  if (!existing) {
+    await supabaseAdmin.from("doubt_prompts_log").insert({
+      user_id: userId,
+      doubt_item_id: upserted.id as string,
+      event: "created",
+      surface: null, // engine-side event, no UI surface yet
+      confidence_at_event: confidence,
+    });
+  }
 }
 
 // ---------------------------------------------------------------------------
