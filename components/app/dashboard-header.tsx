@@ -13,7 +13,6 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Lock } from "lucide-react";
 import { ScanRevealOverlay } from "./scan-reveal-overlay";
 
 type Props = {
@@ -94,56 +93,38 @@ export function DashboardHeader({
           testing a freshly-fixed scanner shouldn't have to hunt for
           the icon. */}
       <div className="mt-3 md:mt-4 flex flex-wrap items-center gap-2 md:gap-3 text-[12px] md:text-[12.5px] text-ink-muted">
-        {isPaid ? (
-          <button
-            type="button"
-            onClick={onRescan}
-            disabled={rescanning}
-            title={`${timeAgo(lastScannedAt)}`}
-            aria-label={`Re-scan. ${timeAgo(lastScannedAt)}`}
-            className="inline-flex items-center gap-1.5 h-8 px-3 rounded-full border border-hairline bg-surface text-ink hover:border-ink/30 hover:bg-ink/[0.04] transition disabled:opacity-50 disabled:cursor-not-allowed text-[12.5px] font-medium"
+        {/* v9 — Re-scan is now available to all users. The first-connect
+            flow can land users on an empty dashboard because Plaid
+            hadn't finished pulling transactions; we want every user to
+            be able to retry without paying. The 30s Redis cooldown
+            still prevents abuse. */}
+        <button
+          type="button"
+          onClick={onRescan}
+          disabled={rescanning}
+          title={`${timeAgo(lastScannedAt)}`}
+          aria-label={`Re-scan. ${timeAgo(lastScannedAt)}`}
+          className="inline-flex items-center gap-1.5 h-8 px-3 rounded-full border border-hairline bg-surface text-ink hover:border-ink/30 hover:bg-ink/[0.04] transition disabled:opacity-50 disabled:cursor-not-allowed text-[12.5px] font-medium"
+        >
+          <svg
+            width="12"
+            height="12"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className={rescanning ? "animate-spin" : ""}
+            aria-hidden="true"
           >
-            <svg
-              width="12"
-              height="12"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2.2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className={rescanning ? "animate-spin" : ""}
-              aria-hidden="true"
-            >
-              <polyline points="23 4 23 10 17 10" />
-              <polyline points="1 20 1 14 7 14" />
-              <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10" />
-              <path d="M20.49 15a9 9 0 0 1-14.85 3.36L1 14" />
-            </svg>
-            <span>{rescanning ? "Scanning…" : "Re-scan"}</span>
-          </button>
-        ) : (
-          // Free tier — labeled lock button. Click triggers the same
-          // /api/billing/checkout flow the ActivateProtectionCard uses,
-          // so the user lands in Stripe Checkout instead of a dead end.
-          <button
-            type="button"
-            title="Re-scan is a Peace of Mind feature. Activate to unlock."
-            aria-label="Re-scan locked. Click to activate Protection."
-            onClick={() => {
-              void fetch("/api/billing/checkout", { method: "POST" })
-                .then((r) => r.json())
-                .then((d: { url?: string }) => {
-                  if (d.url) window.location.href = d.url;
-                })
-                .catch(() => {});
-            }}
-            className="inline-flex items-center gap-1.5 h-8 px-3 rounded-full border border-hairline bg-surface text-ink-muted hover:text-ink hover:border-ink/30 hover:bg-ink/[0.04] transition text-[12.5px] font-medium"
-          >
-            <Lock size={12} strokeWidth={2.2} aria-hidden="true" />
-            <span>Re-scan</span>
-          </button>
-        )}
+            <polyline points="23 4 23 10 17 10" />
+            <polyline points="1 20 1 14 7 14" />
+            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10" />
+            <path d="M20.49 15a9 9 0 0 1-14.85 3.36L1 14" />
+          </svg>
+          <span>{rescanning ? "Scanning…" : "Re-scan"}</span>
+        </button>
         <ScanRevealOverlay
           visible={showReveal}
           monthlyCents={reveal.monthly_cents}

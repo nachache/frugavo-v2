@@ -78,10 +78,37 @@ export async function POST(req: Request) {
     .maybeSingle();
 
   // Branch on code. Anything we don't recognize is logged and ack'd.
-  if (
+  //
+  // v9 — Three transaction-data webhook codes now trigger a scan,
+  // not just RECURRING_TRANSACTIONS_UPDATE:
+  //
+  //   SYNC_UPDATES_AVAILABLE — fires when /transactions/sync has new
+  //     updates ready. THIS is the critical one for new connections:
+  //     when Plaid finishes pulling a user's initial transaction
+  //     history (10-60s after bank connect), this code arrives.
+  //     Without it, the first scan ran on an empty Plaid backend and
+  //     the user landed on an empty dashboard — the bug the user
+  //     reported as "first scan finds nothing, re-scan after trial
+  //     works."
+  //
+  //   INITIAL_UPDATE — legacy transactions code, kept as a fallback
+  //     for older Plaid item configurations that haven't fully
+  //     migrated to /transactions/sync. Same semantics: initial pull
+  //     is complete, data is ready.
+  //
+  //   RECURRING_TRANSACTIONS_UPDATE — Plaid's own recurring
+  //     enrichment update. Still triggers a re-scan because it can
+  //     deliver fresh status/pfc enrichment our engine reads.
+  //
+  // All three fire a fire-and-forget scan; we must 200 inside Plaid's
+  // 10s retry window.
+  const transactionDataReady =
     body.webhook_type === "TRANSACTIONS" &&
-    body.webhook_code === "RECURRING_TRANSACTIONS_UPDATE"
-  ) {
+    (body.webhook_code === "SYNC_UPDATES_AVAILABLE" ||
+      body.webhook_code === "INITIAL_UPDATE" ||
+      body.webhook_code === "RECURRING_TRANSACTIONS_UPDATE");
+
+  if (transactionDataReady) {
     await supabaseAdmin
       .from("plaid_items")
       .update({ needs_refresh: true })
@@ -92,7 +119,10 @@ export async function POST(req: Request) {
       void runScanForUser(item.user_id, "webhook").catch((e) => {
         observeError(e, {
           route: "webhook.scan",
-          tags: { itemId: body.item_id },
+          tags: {
+            itemId: body.item_id,
+            webhookCode: body.webhook_code,
+          },
         });
       });
     }
