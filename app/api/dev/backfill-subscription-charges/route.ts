@@ -188,6 +188,7 @@ export async function POST() {
         tier: "discretionary" as const,
         rescued: false,
         rescue_reason: null,
+        events: [],
       };
       await writeSubscriptionCharges({
         userId: user.id,

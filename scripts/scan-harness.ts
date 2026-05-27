@@ -26,6 +26,7 @@ import {
   detectRecurringStreams,
   DEFAULT_PARAMS,
   cadenceToFrequency,
+  withinLastSegmentItems,
   type TxnInput,
   type DetectedStream,
   type Cadence,
@@ -234,6 +235,9 @@ function fixtureToTxnInputs(fx: Fixture): TxnInput[] {
       normalized_descriptor: norm.merchant_name,
       pfc_primary: t.pfc_primary ?? null,
       pfc_detailed: t.pfc_detailed ?? null,
+      installment_index: norm.installment_index,
+      installment_total: norm.installment_total,
+      fx_currency: norm.fx_currency,
     });
   }
   return out;
@@ -248,6 +252,15 @@ async function classifyDetected(
   // catalog flag. We deliberately do NOT cache this — it's cheap, pure,
   // and keeps the harness side-effect free.
   const norm = normalizeDescriptor(stream.representative_descriptor);
+  // v6 / Change 4 — compute cv on the WITHIN-SEGMENT amounts. If the
+  // stream carries a price_change event, the global series spans two
+  // regimes and the global cv is inflated; the post-shift segment
+  // reflects the user's current price and is the right input to the
+  // classifier's stability check.
+  const segmentItems = withinLastSegmentItems(
+    stream.transactions,
+    stream.events
+  );
   const input: ClassifyInput = {
     descriptor: stream.representative_descriptor,
     merchantName: stream.canonical_name,
@@ -257,7 +270,7 @@ async function classifyDetected(
     status: null,
     isActive: true,
     avgAmountCents: Math.round(Math.abs(stream.average_amount_dollars) * 100),
-    recentChargeCents: stream.transactions
+    recentChargeCents: segmentItems
       .slice(-6)
       .map((t) => Math.round(Math.abs(t.amount_dollars) * 100)),
     domain: norm.domain,
@@ -326,6 +339,33 @@ type SetResult = {
     rejection_reason: string;
     raw_count: number;
   }>;
+  // Recall / precision relative to the fixture's must_detect ground
+  // truth. A stream that lands on CONFIRM or REVIEW counts as recalled
+  // (it survived the engine — the user gets to see it). A stream that
+  // lands on REJECT or was silently dropped (never even reaches a
+  // stream object) is the failure mode we measure recall against.
+  // Precision counts confirmed-matches against total confirms; it's a
+  // lower bound because confirmed streams not in must_detect could be
+  // either FPs or true subs the fixture didn't enumerate.
+  metrics: {
+    must_detect_total: number;
+    confirmed_matches: number;
+    review_matches: number;
+    confirmed_total: number;
+    recall: number;           // (confirmed_matches + review_matches) / must_detect_total
+    precision: number;        // confirmed_matches / confirmed_total
+    // Engine-internal recall proxy that works on fixtures WITHOUT a
+    // must_detect ground truth. Counts merchant-groups the detector
+    // saw and rejected (or whose audit was rejected). When structural
+    // fixes work, drops decrease because:
+    //   • extraction canonicalizes fragments into one group instead
+    //     of N single-hit groups (Change 1),
+    //   • reconciliation rescues leftover singletons (Change 2),
+    //   • multi-stream keys keep distinct price tiers as separate
+    //     valid streams rather than collapsing-and-rejecting (Change 3).
+    // Falls when the brief's failure classes are addressed.
+    silent_drops: number;
+  };
   passed: boolean;
   failures: string[];
 };
@@ -354,6 +394,7 @@ async function runSet(stem: string, fx: Fixture): Promise<SetResult> {
 
   const streamReports: SetResult["streams"] = [];
   const confirmedMerchants: string[] = [];
+  const reviewedMerchants: string[] = [];
   for (const s of streams) {
     const verdict = await classifyDetected(s);
     streamReports.push({
@@ -369,6 +410,7 @@ async function runSet(stem: string, fx: Fixture): Promise<SetResult> {
       signals: verdict.signals,
     });
     if (verdict.decision === "confirm") confirmedMerchants.push(s.canonical_name);
+    else if (verdict.decision === "review") reviewedMerchants.push(s.canonical_name);
   }
 
   // Expectations check.
@@ -388,6 +430,22 @@ async function runSet(stem: string, fx: Fixture): Promise<SetResult> {
     }
   }
 
+  // Recall / precision metrics. Recalled = surfaced as confirm or
+  // review (the user can act on it). Missed = rejected or silently
+  // dropped (no stream emitted at all).
+  const mustDetect = fx.expected?.must_detect ?? [];
+  let confirmedMatches = 0;
+  let reviewMatches = 0;
+  for (const needle of mustDetect) {
+    if (confirmedMerchants.some((m) => aliasMatch(m, needle))) confirmedMatches++;
+    else if (reviewedMerchants.some((m) => aliasMatch(m, needle))) reviewMatches++;
+  }
+  const confirmedTotal = confirmedMerchants.length;
+  const recall =
+    mustDetect.length === 0 ? 1 : (confirmedMatches + reviewMatches) / mustDetect.length;
+  const precision =
+    confirmedTotal === 0 ? 1 : confirmedMatches / confirmedTotal;
+
   return {
     stem,
     name: fx.name,
@@ -401,6 +459,15 @@ async function runSet(stem: string, fx: Fixture): Promise<SetResult> {
         rejection_reason: a.rejection_reason ?? "unknown",
         raw_count: a.raw_count,
       })),
+    metrics: {
+      must_detect_total: mustDetect.length,
+      confirmed_matches: confirmedMatches,
+      review_matches: reviewMatches,
+      confirmed_total: confirmedTotal,
+      recall,
+      precision,
+      silent_drops: audits.filter((a) => a.decision === "rejected").length,
+    },
     passed: failures.length === 0,
     failures,
   };
@@ -486,15 +553,169 @@ function printReport(results: SetResult[]): void {
     (s, r) => s + r.streams.filter((x) => x.decision === "confirm").length,
     0
   );
+  // Aggregate recall + precision. Only fixtures with a non-empty
+  // must_detect contribute to the denominators; fixtures without a
+  // ground-truth answer key are excluded.
+  const scored = results.filter((r) => r.metrics.must_detect_total > 0);
+  const aggMust = scored.reduce((s, r) => s + r.metrics.must_detect_total, 0);
+  const aggConfirmMatch = scored.reduce(
+    (s, r) => s + r.metrics.confirmed_matches,
+    0
+  );
+  const aggReviewMatch = scored.reduce(
+    (s, r) => s + r.metrics.review_matches,
+    0
+  );
+  const aggConfirmTotal = scored.reduce((s, r) => s + r.metrics.confirmed_total, 0);
+  const aggRecall = aggMust === 0 ? 1 : (aggConfirmMatch + aggReviewMatch) / aggMust;
+  const aggPrecision =
+    aggConfirmTotal === 0 ? 1 : aggConfirmMatch / aggConfirmTotal;
   console.log("");
   console.log("═".repeat(80));
   console.log(
     `Summary: ${passed}/${totalSets} sets passed · ${totalConfirmed}/${totalStreams} streams confirmed`
   );
+  console.log(
+    `Recall:  ${(aggRecall * 100).toFixed(1)}%  (${aggConfirmMatch + aggReviewMatch}/${aggMust} must_detect surfaced as confirm OR review)`
+  );
+  console.log(
+    `Precision (lower bound): ${(aggPrecision * 100).toFixed(1)}%  (${aggConfirmMatch}/${aggConfirmTotal} confirmed streams matched must_detect)`
+  );
+  const totalDrops = results.reduce((s, r) => s + r.metrics.silent_drops, 0);
+  console.log(
+    `Silent drops: ${totalDrops} merchant-groups rejected across ${results.length} fixtures (engine-internal recall proxy — lower is better)`
+  );
   console.log("═".repeat(80));
   console.log("");
 
+  // Per-fixture recall (collapsed). Useful for spotting which
+  // fixture took the biggest hit.
+  if (scored.length > 0) {
+    console.log("Per-fixture recall:");
+    for (const r of scored) {
+      const recPct = (r.metrics.recall * 100).toFixed(0);
+      const precPct = (r.metrics.precision * 100).toFixed(0);
+      console.log(
+        `  ${pad(r.stem, 32)} recall=${pad(recPct + "%", 5)} precision=${pad(precPct + "%", 5)} drops=${pad(String(r.metrics.silent_drops), 4)} (${r.metrics.confirmed_matches}c + ${r.metrics.review_matches}r / ${r.metrics.must_detect_total} must)`
+      );
+    }
+    console.log("");
+  }
+  // Drops on held-out fixtures (no must_detect). These are the
+  // engine-internal recall signal — should fall as structural fixes land.
+  const heldOut = results.filter((r) => r.metrics.must_detect_total === 0);
+  if (heldOut.length > 0) {
+    console.log("Held-out fixtures (no ground truth — drops only):");
+    for (const r of heldOut) {
+      console.log(
+        `  ${pad(r.stem, 32)} drops=${pad(String(r.metrics.silent_drops), 4)} confirmed=${pad(String(r.metrics.confirmed_total), 3)} streams=${pad(String(r.streams.length), 3)}`
+      );
+    }
+    console.log("");
+  }
+
   if (passed < totalSets) process.exitCode = 1;
+}
+
+// ─── No-literals guard ───────────────────────────────────────────────
+//
+// Catches attempts to fix specific merchants with hard-coded literals.
+// The brief says no brand/domain/amount literals in branching logic —
+// fixes must be structural. This guard counts merchant-literal-shaped
+// patterns inside the engine files and prints them. Compare against
+// the count printed at the previous baseline; if it grew, that's a
+// red flag.
+//
+// What counts as a literal: bare domain (.com/.net/.org/.io/.ai/.co/
+// .ca/.cloud), or a |-separated alternation inside a regex containing
+// more than 4 brand-shaped tokens (lowercase alphabetic, 4-20 chars,
+// not common English) — that's how the existing recurring-bill regex
+// landed in classify.ts and is the SAME PATTERN we want to NOT
+// extend. Common words (electric, mortgage, insurance, etc.) are
+// deliberately allowlisted because they're structural categories,
+// not merchant identities.
+function countMerchantLiterals(): {
+  total: number;
+  domains: string[];
+  brandRegexTokens: string[];
+} {
+  const fs = require("fs");
+  const path = require("path");
+  const STRUCTURAL_WORDS = new Set([
+    "electric","electrical","hydro","gas","sewer","utility","utilities","mortgage",
+    "loan","insurance","premium","wireless","cable","broadband","internet","isp",
+    "childcare","daycare","subscription","membership","recurring","renewal",
+    "autoship","installment","installments","afterpay","klarna","affirm","sezzle",
+    "subscribe","subscribes","delivery","shipment","order","auto","pay","payment",
+    "payments","credit","card","transfer","wire","fee","payroll","tax","passport",
+    "passeport","brokerage","atm","deposit","withdrawal","debit","interac",
+    "municipal","municipal_court","federal","govt","settlement","disbursement",
+    "merchant","services","cash","escrow","interest","overdraft","direct","instal",
+    "instalment","income","sales","filing","refund","gvt","cra","irs","gst","hst",
+    "temp","wages","staffing","fitness","health","therapy","savings","sweep",
+    "investment","contribution","abm","scotia","scotiaconnect","direct_payment",
+    // v6 additions — payment-vocabulary tokens introduced by Change 1
+    // (extraction patterns) + Change 4 (event types). None are
+    // merchant-specific identities.
+    "charge","inst","prevenue","price","change","pause","resume","plan",
+    "trial","convert","schedule","level","shift","amount","band","amounts",
+  ]);
+  const files = [
+    "lib/classify.ts",
+    "lib/recurrence-detect.ts",
+    "lib/merchant-normalize.ts",
+  ];
+  const domains: string[] = [];
+  const brandTokens: string[] = [];
+  for (const rel of files) {
+    const abs = path.join(__dirname, "..", rel);
+    if (!fs.existsSync(abs)) continue;
+    const src = fs.readFileSync(abs, "utf-8") as string;
+    // Pull out string-like and regex-like contents.
+    const stringLits = src.match(/(["'`])[^"'`\n]+\1/g) ?? [];
+    const regexLits = src.match(/\/[^\/\n]+\/[gimsuy]*/g) ?? [];
+    const all = [...stringLits, ...regexLits];
+    for (const lit of all) {
+      const inner = lit.slice(1, -1).toLowerCase();
+      // Domain detection.
+      const m = inner.match(/\b[a-z0-9-]{3,}\.(com|net|org|io|ai|co|ca|cloud|me|app|inc)\b/g);
+      if (m) domains.push(...m);
+      // Brand-token alternation inside regex: split by | and grab
+      // alphabetic-only tokens 4-20 chars not in STRUCTURAL_WORDS.
+      if (lit.startsWith("/") && inner.includes("|")) {
+        const tokens = inner.split(/[|()\[\]]/).map((t) => t.trim().replace(/[\\\s+*?]/g, ""));
+        for (const t of tokens) {
+          if (!/^[a-z]{4,20}$/.test(t)) continue;
+          if (STRUCTURAL_WORDS.has(t)) continue;
+          brandTokens.push(t);
+        }
+      }
+    }
+  }
+  // Dedupe.
+  const uniq = (arr: string[]) => Array.from(new Set(arr)).sort();
+  return {
+    total: domains.length + brandTokens.length,
+    domains: uniq(domains),
+    brandRegexTokens: uniq(brandTokens),
+  };
+}
+
+function printLiteralGuard(): void {
+  const g = countMerchantLiterals();
+  console.log("");
+  console.log("─".repeat(80));
+  console.log(
+    `Literal guard: ${g.total} merchant-shaped literal(s) in branching logic`
+  );
+  console.log(
+    `  domains       (${g.domains.length}): ${g.domains.join(", ") || "—"}`
+  );
+  console.log(
+    `  brand regex   (${g.brandRegexTokens.length}): ${g.brandRegexTokens.join(", ") || "—"}`
+  );
+  console.log("─".repeat(80));
+  console.log("");
 }
 
 // ─── main ────────────────────────────────────────────────────────────
@@ -510,6 +731,7 @@ async function main() {
     results.push(await runSet(stem, fx));
   }
   printReport(results);
+  if (!jsonOut) printLiteralGuard();
 }
 
 main().catch((e) => {

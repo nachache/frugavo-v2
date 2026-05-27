@@ -1349,6 +1349,7 @@ async function fetchPlaidRecurringEnrichment(
           tier: "discretionary",
           rescued: false,
           rescue_reason: null,
+          events: [],
         });
       }
     } catch (e) {

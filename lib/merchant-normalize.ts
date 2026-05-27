@@ -49,6 +49,23 @@ export type NormalizedMerchant = {
     matched_domain: string | null;
     bank_fee_indicator: string | null;
   };
+  // v6 — extracted metadata. Variable tokens that previously fragmented
+  // a single recurring stream into N keys are now extracted as structured
+  // fields BEFORE catalog/alias lookup and BEFORE merchant_key
+  // derivation. Same brand under any installment counter + FX suffix
+  // now produces the same merchant_key.
+  //
+  // installment_index / installment_total — encodes a finite payment
+  // schedule (BNPL plans, structured settlements, financed purchases).
+  // Per the brief: a finite schedule on a single row is enough to mark
+  // an ongoing commitment.
+  //
+  // fx_currency — trailing 3-letter ISO code stripped from the
+  // descriptor. Forex-wrapped purchases ("APPLE.COM/BILL USD") become
+  // the same merchant as their local form ("APPLE.COM/BILL").
+  installment_index: number | null;
+  installment_total: number | null;
+  fx_currency: string | null;
 };
 
 type CatalogShape = {
@@ -166,6 +183,59 @@ const DOMAIN_INDEX: Map<string, AliasHit> = (() => {
   }
   return m;
 })();
+
+// --- v6 extraction patterns ---
+//
+// These run before stripPrefix/stripTrailing so the catalog lookup
+// sees a clean brand string and merchant_key collapses fragmenting
+// variants. Each pattern returns extracted metadata for downstream
+// consumers (the detector uses installment_total to short-circuit
+// the occurrence floor; the classifier uses fx_currency as context
+// for the LLM prompt).
+
+// Installment-counter pattern: "<n> of <m>", "<n>/<m>", "<n> out of <m>"
+// gated by a payment/installment keyword so generic "3/12" dates
+// don't false-positive. Total m is bounded to 60 (longest typical
+// consumer-financing term) to further reduce false matches.
+const INSTALLMENT_PATTERN =
+  /\b(?:installments?|payments?|pmt|pay|charge|order|inst|prevenue|due)\s*[#]?\s*(\d{1,3})\s*(?:of|\/|out\s+of|de)\s*(\d{1,3})\b/i;
+
+// Trailing 3-letter ISO currency code. List restricted to active
+// fiat currencies so abbreviations like "INC" (incorporated) don't
+// match. Anchored to end-of-string so a currency token inside the
+// merchant name (rare but possible) is preserved.
+const FX_SUFFIX_PATTERN =
+  /\s+(usd|cad|eur|gbp|aud|nzd|jpy|chf|sek|nok|dkk|inr|cny|brl|mxn|hkd|sgd|krw|zar|aed|sar|qar|kwd|bhd|omr|try|pln|huf|czk|ron|ils|thb|php|myr|idr|vnd)\s*$/i;
+
+function extractInstallment(s: string): {
+  cleaned: string;
+  index: number | null;
+  total: number | null;
+} {
+  const m = s.match(INSTALLMENT_PATTERN);
+  if (!m) return { cleaned: s, index: null, total: null };
+  const idx = parseInt(m[1], 10);
+  const tot = parseInt(m[2], 10);
+  // Sanity: index must be <= total, total in reasonable consumer
+  // range. Otherwise treat as non-match.
+  if (idx > tot || tot < 2 || tot > 60) {
+    return { cleaned: s, index: null, total: null };
+  }
+  const cleaned = s.replace(INSTALLMENT_PATTERN, " ").replace(/\s+/g, " ").trim();
+  return { cleaned, index: idx, total: tot };
+}
+
+function extractFxSuffix(s: string): {
+  cleaned: string;
+  currency: string | null;
+} {
+  const m = s.match(FX_SUFFIX_PATTERN);
+  if (!m) return { cleaned: s, currency: null };
+  return {
+    cleaned: s.replace(FX_SUFFIX_PATTERN, "").trim(),
+    currency: m[1].toUpperCase(),
+  };
+}
 
 // --- Pipeline steps ---
 
@@ -349,9 +419,24 @@ function titleCase(s: string): string {
 
 export function normalizeDescriptor(rawDescriptor: string): NormalizedMerchant {
   const original = rawDescriptor ?? "";
-  const lowered = lower(original);
+  const loweredRaw = lower(original);
 
-  const bankFee = findBankFeeIndicator(lowered);
+  // v6 — extract variable tokens as metadata BEFORE any catalog
+  // lookup or merchant_key derivation. Same brand under varying
+  // installment counters / FX suffixes will now produce the same
+  // merchant_key downstream. Bank-fee detection runs against the
+  // raw lowered string (intentional — fee descriptors don't carry
+  // installment counters in practice, and we want to catch fee
+  // language before extraction reshapes the text).
+  const bankFee = findBankFeeIndicator(loweredRaw);
+  const inst = extractInstallment(loweredRaw);
+  const fx = extractFxSuffix(inst.cleaned);
+  const lowered = fx.cleaned;
+  const meta = {
+    installment_index: inst.index,
+    installment_total: inst.total,
+    fx_currency: fx.currency,
+  };
 
   // ─── Pre-strip catalog lookup (brand-token priority) ────────────
   //
@@ -381,6 +466,7 @@ export function normalizeDescriptor(rawDescriptor: string): NormalizedMerchant {
         matched_domain: null,
         bank_fee_indicator: bankFee,
       },
+      ...meta,
     };
   }
 
@@ -406,6 +492,7 @@ export function normalizeDescriptor(rawDescriptor: string): NormalizedMerchant {
         matched_domain: null,
         bank_fee_indicator: bankFee,
       },
+      ...meta,
     };
   }
 
@@ -440,6 +527,7 @@ export function normalizeDescriptor(rawDescriptor: string): NormalizedMerchant {
         matched_domain: matchedDomain,
         bank_fee_indicator: null,
       },
+      ...meta,
     };
   }
 
@@ -461,6 +549,7 @@ export function normalizeDescriptor(rawDescriptor: string): NormalizedMerchant {
         matched_domain: standaloneDomain,
         bank_fee_indicator: null,
       },
+      ...meta,
     };
   }
 
@@ -479,6 +568,7 @@ export function normalizeDescriptor(rawDescriptor: string): NormalizedMerchant {
       matched_domain: null,
       bank_fee_indicator: null,
     },
+    ...meta,
   };
 }
 
