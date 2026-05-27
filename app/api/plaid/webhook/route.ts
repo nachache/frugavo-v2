@@ -206,6 +206,24 @@ export async function POST(req: Request) {
     .update({ processed_at: new Date().toISOString() })
     .eq("webhook_id", webhookId);
 
+  // Piggyback opportunity — any webhook arrival is a free moment to
+  // sweep for users who've passed the 15-min mark and still haven't
+  // had their dashboard ready. Fire-and-forget, idempotent.
+  void (async () => {
+    try {
+      const { dispatchPendingCheckinEmails } = await import(
+        "@/lib/email/dispatch-checkins"
+      );
+      await dispatchPendingCheckinEmails();
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.warn(
+        "[webhook] opportunistic checkin dispatch failed",
+        e instanceof Error ? e.message : e
+      );
+    }
+  })();
+
   return NextResponse.json({ ok: true });
 }
 
