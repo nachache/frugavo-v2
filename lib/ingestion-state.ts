@@ -336,6 +336,17 @@ export async function markFirstReadyIfNeeded(
     .eq("id", userId)
     .is("first_ready_at", null);
 
+  // eslint-disable-next-line no-console
+  console.log(
+    "[first-ready] triggered",
+    JSON.stringify({
+      userId,
+      email: data.email,
+      reachedState,
+      hasResendKey: Boolean(process.env.RESEND_API_KEY),
+    })
+  );
+
   // Email completion. Fire-and-forget — if the send fails,
   // first_ready_email_sent_at stays null and the next scan retries.
   void sendFirstReadyEmail({
@@ -350,19 +361,43 @@ async function sendFirstReadyEmail(args: {
   email: string | null;
   reachedState: "ready_with_results" | "ready_but_empty";
 }): Promise<void> {
-  if (!supabaseAdmin || !args.email) return;
+  if (!supabaseAdmin) {
+    // eslint-disable-next-line no-console
+    console.warn("[first-ready-email] skipped: no supabaseAdmin");
+    return;
+  }
+  if (!args.email) {
+    // eslint-disable-next-line no-console
+    console.warn("[first-ready-email] skipped: no email on app_users for", args.userId);
+    return;
+  }
   try {
     // Lazy import so the dashboard render path doesn't pull in the
     // mailer's dependencies until it actually has to send.
     const { sendFirstReadyEmail: send } = await import("./email/first-ready");
-    await send({ email: args.email, reachedState: args.reachedState });
+    const result = await send({
+      email: args.email,
+      reachedState: args.reachedState,
+    });
+    // eslint-disable-next-line no-console
+    console.log(
+      "[first-ready-email] send result",
+      JSON.stringify({ email: args.email, result })
+    );
     await supabaseAdmin
       .from("app_users")
       .update({ first_ready_email_sent_at: new Date().toISOString() })
       .eq("id", args.userId);
   } catch (e) {
     // eslint-disable-next-line no-console
-    console.error("[ingestion-state] sendFirstReadyEmail failed", e);
+    console.error(
+      "[first-ready-email] FAILED",
+      JSON.stringify({
+        email: args.email,
+        userId: args.userId,
+        error: e instanceof Error ? e.message : String(e),
+      })
+    );
   }
 }
 
