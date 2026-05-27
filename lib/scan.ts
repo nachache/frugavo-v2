@@ -196,19 +196,37 @@ export async function runScanForUser(
   // Total budget: ~30 seconds, which matches Plaid's typical ready
   // latency. Non-first-connect scans only sync once (fast path —
   // existing connections usually have current data).
-  const FIRST_CONNECT_SYNC_RETRIES = 6;
-  const FIRST_CONNECT_SYNC_DELAY_MS = 5_000;
+  // v10 — drain-until-stable sync.
+  //
+  // v9 exited as soon as ANY sync call returned rows. That's why
+  // production found 9 subs on first-connect but a manual re-scan
+  // found 16: Plaid delivers transaction history in batches over
+  // time, and the first non-empty batch is RARELY the complete set.
+  // Real subs hiding in later batches were dropped because the
+  // engine ran before Plaid finished pulling them.
+  //
+  // New behavior: keep syncing in a loop. Reset a zero-streak
+  // counter whenever new rows arrive. Stop only when (a) Plaid
+  // returns zero added/modified for several consecutive attempts
+  // AND we've collected at least one row, or (b) we hit the safety
+  // budget of 12 attempts × 5s = 60s. The webhook
+  // (SYNC_UPDATES_AVAILABLE) will pick up anything Plaid delivers
+  // after that point and re-trigger the scan.
+  const FIRST_CONNECT_MAX_ATTEMPTS = 12;
+  const SYNC_DELAY_MS = 5_000;
+  const ZERO_STREAK_TOLERANCE = 2;
   let syncMetrics = { items: 0, added: 0, modified: 0, removed: 0, pages: 0 };
   if (!plaidClient) {
     // eslint-disable-next-line no-console
     console.warn("[scan] plaidClient unavailable — skipping sync, will re-classify existing transactions");
   } else {
-    const maxAttempts =
-      source === "first_connect" ? FIRST_CONNECT_SYNC_RETRIES : 1;
+    const isFirstConnect = source === "first_connect";
+    const maxAttempts = isFirstConnect ? FIRST_CONNECT_MAX_ATTEMPTS : 1;
+    let zeroStreak = 0;
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       try {
         const sync = await syncAllItemsForUser(userId);
-        // Accumulate — each attempt may bring new rows.
+        const newRows = sync.result.added + sync.result.modified;
         syncMetrics = {
           items: sync.items,
           added: syncMetrics.added + sync.result.added,
@@ -216,33 +234,33 @@ export async function runScanForUser(
           removed: syncMetrics.removed + sync.result.removed,
           pages: syncMetrics.pages + sync.result.pages,
         };
-        // Exit early if Plaid delivered anything OR this is the last
-        // attempt OR we're not a first-connect scan (single try).
-        if (
-          syncMetrics.added > 0 ||
-          syncMetrics.modified > 0 ||
-          attempt === maxAttempts
-        ) {
-          break;
-        }
+        if (!isFirstConnect) break;
+
+        if (newRows > 0) zeroStreak = 0;
+        else zeroStreak += 1;
+
+        const haveAnyRows =
+          syncMetrics.added > 0 || syncMetrics.modified > 0;
+
+        // Stop when: we've collected rows AND Plaid has been quiet
+        // for ZERO_STREAK_TOLERANCE consecutive attempts. If we still
+        // have nothing, keep waiting (Plaid may not have started
+        // pulling yet for this item).
+        if (haveAnyRows && zeroStreak >= ZERO_STREAK_TOLERANCE) break;
+        if (attempt === maxAttempts) break;
+
         // eslint-disable-next-line no-console
         console.log(
-          `[scan] first-connect sync attempt ${attempt}/${maxAttempts} returned 0 rows; waiting ${FIRST_CONNECT_SYNC_DELAY_MS}ms for Plaid to finish pulling`
+          `[scan] first-connect sync ${attempt}/${maxAttempts}: +${sync.result.added}/${sync.result.modified} (cum ${syncMetrics.added}/${syncMetrics.modified}). zero-streak=${zeroStreak}/${ZERO_STREAK_TOLERANCE}. waiting ${SYNC_DELAY_MS}ms`
         );
-        await new Promise((r) =>
-          setTimeout(r, FIRST_CONNECT_SYNC_DELAY_MS)
-        );
+        await new Promise((r) => setTimeout(r, SYNC_DELAY_MS));
       } catch (e) {
         observeError(e, {
           route: "scan.sync",
           tags: { userId, attempt: String(attempt) },
         });
-        // Network blip — continue to next attempt for first-connect,
-        // otherwise stop and let the pipeline run on existing data.
-        if (source !== "first_connect") break;
-        await new Promise((r) =>
-          setTimeout(r, FIRST_CONNECT_SYNC_DELAY_MS)
-        );
+        if (!isFirstConnect) break;
+        await new Promise((r) => setTimeout(r, SYNC_DELAY_MS));
       }
     }
   }
