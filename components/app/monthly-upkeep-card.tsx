@@ -52,6 +52,24 @@ function fmtRound(c: number): string {
   return `$${Math.round(c / 100).toLocaleString("en-US")}`;
 }
 
+// Eyebrow label that reflects the chart's actual span. The series
+// length is variable now (leading all-zero months are trimmed in
+// computeMonthlySpendSeries) so a hardcoded "Last 12 months" lies
+// for new users with only 1–3 months of bank history. Length 12 →
+// "Last 12 months". 1 → "This month". Otherwise → "Since {Month
+// YYYY}", which reads honestly as "this is everything we have."
+function chartEyebrow(series: MonthBucket[]): string {
+  if (series.length >= 12) return "Last 12 months";
+  if (series.length <= 1) return "This month";
+  const first = series[0]?.month;
+  if (!first) return `Last ${series.length} months`;
+  const label = new Date(first + "-01").toLocaleDateString("en-US", {
+    month: "short",
+    year: "numeric",
+  });
+  return `Since ${label}`;
+}
+
 function timeAgo(iso: string | null): string {
   if (!iso) return "Never scanned";
   const ms = Date.now() - new Date(iso).getTime();
@@ -126,7 +144,7 @@ export function MonthlyUpkeepCard({
       <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-5 md:gap-6 items-end">
         <div className="md:col-span-2">
           <div className="text-[10px] font-medium uppercase tracking-[0.12em] text-ink-muted mb-2">
-            Last 12 months
+            {chartEyebrow(chart12mo)}
           </div>
           <LineChart data={chart12mo} />
         </div>
@@ -265,14 +283,22 @@ function LineChart({ data }: { data: MonthBucket[] }) {
         )}
       </svg>
 
-      {/* Month labels */}
-      <div className="mt-1.5 grid grid-cols-12 text-[10px] md:text-[11px] text-ink-muted tabular-nums">
+      {/* Month labels. Grid columns track the actual series length
+          (computeMonthlySpendSeries now trims leading zero months,
+          so this can be anywhere from 1 to 12). Mobile-skip kicks in
+          only when there's enough density to need it. */}
+      <div
+        className="mt-1.5 grid text-[10px] md:text-[11px] text-ink-muted tabular-nums"
+        style={{ gridTemplateColumns: `repeat(${Math.max(1, data.length)}, minmax(0, 1fr))` }}
+      >
         {data.map((d, i) => {
           const abbr = new Date(d.month + "-01").toLocaleDateString("en-US", {
             month: "short",
           });
-          // On mobile show every other month to reduce crowding.
-          const showOnMobile = i % 2 === 0;
+          // Only thin labels on mobile if the series is dense enough
+          // that all-on-mobile would crowd them.
+          const crowded = data.length > 6;
+          const showOnMobile = !crowded || i % 2 === 0;
           return (
             <div
               key={d.month}

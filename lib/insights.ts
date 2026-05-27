@@ -282,7 +282,7 @@ export function computeMonthlySpendSeries(
   charges: LedgerCharge[],
   asOf: Date
 ): MonthBucket[] {
-  // Build 12 month buckets ending at asOf's month.
+  // Build up to 12 month buckets ending at asOf's month.
   const buckets: Map<string, MonthBucket> = new Map();
   for (let i = 11; i >= 0; i--) {
     const d = new Date(asOf);
@@ -300,7 +300,20 @@ export function computeMonthlySpendSeries(
     b.charge_count += 1;
   }
 
-  return Array.from(buckets.values());
+  // Trim leading all-zero buckets. New connections (Plaid still
+  // backfilling history) typically have data for only the last 1–3
+  // months. Showing 9 empty bars then 3 with data made it look like
+  // spending suddenly appeared — the truth is just that we don't
+  // have the earlier months yet. Keep trailing buckets even if they
+  // happen to be zero (a month with no charges INSIDE the data
+  // window is real signal, not missing data).
+  const series = Array.from(buckets.values());
+  let firstNonEmpty = series.findIndex((b) => b.charge_count > 0);
+  // If every bucket is empty (no charges at all), keep just the
+  // current month so the chart still renders an axis instead of an
+  // empty array that the LineChart might choke on.
+  if (firstNonEmpty === -1) firstNonEmpty = series.length - 1;
+  return series.slice(firstNonEmpty);
 }
 
 // ---------------------------------------------------------------------------
