@@ -31,13 +31,66 @@ type Props = {
   className?: string;
 };
 
-const PHASE_LABEL: Record<ScanPhase, string> = {
-  connecting: "Connecting securely",
-  reading: "Reading transactions",
-  spotting: "Spotting patterns",
+// v9 — 5-beat narrative. Each beat carries an UPPERCASE eyebrow, a
+// declarative headline, and a factual subtitle. The wait of 15-45
+// seconds is real (Plaid sync + detection + classifier) — these
+// beats make it feel intentional and set up the welcome reveal as
+// the payoff. Copy is honest: every line maps to something the
+// engine literally does at that stage.
+type Beat = {
+  eyebrow: string;
+  headline: string;
+  subtitle: string;
 };
 
-const PHASE_ORDER: ScanPhase[] = ["connecting", "reading", "spotting"];
+const PHASE_BEATS: Record<ScanPhase, Beat> = {
+  connecting: {
+    eyebrow: "CONNECT",
+    headline: "Meeting your bank, through Plaid.",
+    subtitle:
+      "Same secure channel Venmo and Robinhood use. Read-only, never stored.",
+  },
+  reading: {
+    eyebrow: "READ",
+    headline: "Pulling your transaction history.",
+    subtitle:
+      "Plaid sends us the last 90 days. We never see your bank login.",
+  },
+  spotting: {
+    eyebrow: "PATTERN",
+    headline: "Looking for charges that repeat.",
+    subtitle: "Same merchant, similar amount, a monthly heartbeat.",
+  },
+  identifying: {
+    eyebrow: "IDENTIFY",
+    headline: "Matching descriptors to brands.",
+    subtitle:
+      'APL*BILL 800-275 becomes Apple. AMZN MKTP becomes Amazon.',
+  },
+  counting: {
+    eyebrow: "COUNT",
+    headline: "Adding up what you didn't know.",
+    subtitle:
+      "About to show you exactly what leaves your accounts every month.",
+  },
+};
+
+// Back-compat label used by aria-label (single short string).
+const PHASE_LABEL: Record<ScanPhase, string> = {
+  connecting: "Connecting to your bank",
+  reading: "Reading transactions",
+  spotting: "Looking for recurring patterns",
+  identifying: "Identifying merchants",
+  counting: "Computing your totals",
+};
+
+const PHASE_ORDER: ScanPhase[] = [
+  "connecting",
+  "reading",
+  "spotting",
+  "identifying",
+  "counting",
+];
 const CROSSFADE_MS = 220;
 
 export function ProgressArc({ phase, className }: Props) {
@@ -175,10 +228,12 @@ export function ProgressArc({ phase, className }: Props) {
         })}
       </div>
 
-      {/* Label + step counter. Single mounted node; opacity + small
-          translate transitions on phase change. Fixed min-h reserves
-          space so layout doesn't shift during the crossfade. */}
-      <div className="text-center min-h-[56px]">
+      {/* v9 — narrative beat: eyebrow + headline + subtitle. Single
+          mounted node, crossfade on phase change. Fixed min-h reserves
+          space so layout doesn't shift during the transition. The
+          subtitle's max-width keeps line-length human (60-65 chars) on
+          wide viewports while staying flexible on mobile. */}
+      <div className="text-center min-h-[112px] w-full max-w-[460px]">
         <div
           className="transition-all ease-out"
           style={{
@@ -188,11 +243,17 @@ export function ProgressArc({ phase, className }: Props) {
             filter: visible ? "blur(0)" : "blur(1.5px)",
           }}
         >
-          <div className="text-[11px] uppercase tracking-[0.22em] font-semibold text-ink-muted">
-            Step {displayIdx + 1} of 3
+          <div className="text-[11px] uppercase tracking-[0.22em] font-semibold text-brand">
+            {PHASE_BEATS[displayPhase].eyebrow}
+            <span className="ml-2 text-ink-muted/70 normal-case tracking-normal font-medium">
+              · Step {displayIdx + 1} of {PHASE_ORDER.length}
+            </span>
           </div>
-          <div className="mt-1.5 text-[18px] font-display font-semibold text-ink">
-            {PHASE_LABEL[displayPhase]}
+          <div className="mt-2 text-[20px] md:text-[22px] font-display font-semibold text-ink leading-[1.2]">
+            {PHASE_BEATS[displayPhase].headline}
+          </div>
+          <div className="mt-2.5 text-[13.5px] text-ink-body leading-relaxed">
+            {PHASE_BEATS[displayPhase].subtitle}
           </div>
         </div>
       </div>

@@ -39,13 +39,16 @@ type Props = {
   scanId: string;
 };
 
-type Phase = "connecting" | "reading" | "spotting";
+// v9 — uses the canonical ScanPhase from lib/types/scan.ts (5 beats:
+// connecting/reading/spotting/identifying/counting). The previous
+// 3-state local type rejected the two new phases the engine now
+// emits.
 
 export function StreamingList({ scanId }: Props) {
   const router = useRouter();
   const [rows, setRows] = useState<ScanRow[]>([]);
   const [totalCents, setTotalCents] = useState(0);
-  const [phase, setPhase] = useState<Phase | null>(null);
+  const [phase, setPhase] = useState<import("@/lib/types/scan").ScanPhase | null>(null);
   const [isComplete, setIsComplete] = useState(false);
   const [isSlow, setIsSlow] = useState(false);
   const [error, setError] = useState<{ code: string; recoverable: boolean } | null>(null);

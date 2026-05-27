@@ -179,21 +179,72 @@ export async function runScanForUser(
   // ---- Step 1: sync every item's transactions via /transactions/sync ----
   // Skipped when plaidClient is absent (verify / replay / CI paths).
   // The pipeline still runs against the transactions already in DB.
+  //
+  // v9 first-connect timing fix:
+  //
+  // When a user just finished Plaid Link, the bank's data ISN'T yet
+  // available from Plaid's side. Plaid acknowledges the connection
+  // immediately and starts pulling history in their own background;
+  // the first /transactions/sync call typically returns 0 added /
+  // modified / removed because Plaid hasn't finished pulling. Without
+  // a retry, the engine sees 0 transactions, detects 0 streams, and
+  // the user lands on an empty dashboard.
+  //
+  // For source="first_connect" we now retry the sync with a 5-second
+  // wait between attempts, up to FIRST_CONNECT_SYNC_RETRIES tries.
+  // We exit early as soon as a sync returns at least one new row.
+  // Total budget: ~30 seconds, which matches Plaid's typical ready
+  // latency. Non-first-connect scans only sync once (fast path —
+  // existing connections usually have current data).
+  const FIRST_CONNECT_SYNC_RETRIES = 6;
+  const FIRST_CONNECT_SYNC_DELAY_MS = 5_000;
   let syncMetrics = { items: 0, added: 0, modified: 0, removed: 0, pages: 0 };
   if (!plaidClient) {
     // eslint-disable-next-line no-console
     console.warn("[scan] plaidClient unavailable — skipping sync, will re-classify existing transactions");
-  } else try {
-    const sync = await syncAllItemsForUser(userId);
-    syncMetrics = {
-      items: sync.items,
-      added: sync.result.added,
-      modified: sync.result.modified,
-      removed: sync.result.removed,
-      pages: sync.result.pages,
-    };
-  } catch (e) {
-    observeError(e, { route: "scan.sync", tags: { userId } });
+  } else {
+    const maxAttempts =
+      source === "first_connect" ? FIRST_CONNECT_SYNC_RETRIES : 1;
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        const sync = await syncAllItemsForUser(userId);
+        // Accumulate — each attempt may bring new rows.
+        syncMetrics = {
+          items: sync.items,
+          added: syncMetrics.added + sync.result.added,
+          modified: syncMetrics.modified + sync.result.modified,
+          removed: syncMetrics.removed + sync.result.removed,
+          pages: syncMetrics.pages + sync.result.pages,
+        };
+        // Exit early if Plaid delivered anything OR this is the last
+        // attempt OR we're not a first-connect scan (single try).
+        if (
+          syncMetrics.added > 0 ||
+          syncMetrics.modified > 0 ||
+          attempt === maxAttempts
+        ) {
+          break;
+        }
+        // eslint-disable-next-line no-console
+        console.log(
+          `[scan] first-connect sync attempt ${attempt}/${maxAttempts} returned 0 rows; waiting ${FIRST_CONNECT_SYNC_DELAY_MS}ms for Plaid to finish pulling`
+        );
+        await new Promise((r) =>
+          setTimeout(r, FIRST_CONNECT_SYNC_DELAY_MS)
+        );
+      } catch (e) {
+        observeError(e, {
+          route: "scan.sync",
+          tags: { userId, attempt: String(attempt) },
+        });
+        // Network blip — continue to next attempt for first-connect,
+        // otherwise stop and let the pipeline run on existing data.
+        if (source !== "first_connect") break;
+        await new Promise((r) =>
+          setTimeout(r, FIRST_CONNECT_SYNC_DELAY_MS)
+        );
+      }
+    }
   }
 
   await emit(scanId, { type: "progress", scan_id: scanId, phase: "reading" });
@@ -287,6 +338,12 @@ export async function runScanForUser(
 
   await emit(scanId, { type: "progress", scan_id: scanId, phase: "spotting" });
 
+  // v9 — emit "identifying" the moment we shift from grouping into
+  // per-stream classifier work. This is the beat-4 advance signal for
+  // the narrative loading UI; without it the bar held on "spotting"
+  // through the entire (slowest) classifier phase.
+  await emit(scanId, { type: "progress", scan_id: scanId, phase: "identifying" });
+
   // ---- Step 5: classify + persist each detected stream ----
   let monthlyTotalCents = 0;
   let detectedConfirmed = 0;
@@ -375,6 +432,11 @@ export async function runScanForUser(
       }
     }
   }
+
+  // v9 — beat-5 narrative signal. The classifier loop just finished;
+  // we're now computing totals + writing the snapshot. The loading UI
+  // advances to "Adding up what you didn't know" on this signal.
+  await emit(scanId, { type: "progress", scan_id: scanId, phase: "counting" });
 
   await emit(scanId, {
     type: "total",

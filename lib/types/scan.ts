@@ -33,7 +33,17 @@ export type ScanRow = {
   ai_source: AiSource;
 };
 
-export type ScanPhase = "connecting" | "reading" | "spotting";
+// v9 — 5-beat narrative phases. Each maps to a real engine stage so
+// the loading UI's text/visual transitions are tied to real backend
+// progress. Splits the legacy "spotting" into detection + classify
+// so the user gets two extra real-signal advance points during the
+// wait. The wait of 15-45s now has 5 honest acts instead of 3.
+export type ScanPhase =
+  | "connecting"   // beat 1 — Plaid item active, sync about to start
+  | "reading"      // beat 2 — transactions arriving from Plaid
+  | "spotting"     // beat 3 — engine grouping + detecting cadence
+  | "identifying"  // beat 4 — classifier deciding what's a sub
+  | "counting";    // beat 5 — final totals being computed
 
 export type ScanErrorCode =
   | "plaid_timeout"
