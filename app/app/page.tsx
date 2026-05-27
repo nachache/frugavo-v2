@@ -30,6 +30,8 @@ import { computeIngestionState } from "@/lib/ingestion-state";
 import { PreparingScreen } from "@/components/app/preparing-screen";
 import { NeedsReauthScreen } from "@/components/app/needs-reauth-screen";
 import { DecisionStrip } from "@/components/app/decision-strip";
+import { QuickChecks } from "@/components/app/quick-checks";
+import { loadOpenDoubts, autoPromoteStaleDoubts } from "@/lib/doubt/load";
 
 // /app — the authenticated dashboard root.
 //
@@ -232,6 +234,17 @@ export default async function AppHome({
   const data = await buildDashboardData(user.id);
   const latestScanFinishedAt = data?.meta.last_scanned_at ?? null;
 
+  // Phase C — open doubts for the Quick Checks dashboard module.
+  // Run the 7-day auto-promote sweep first so any low-confidence
+  // scan-chip items the user has been ignoring surface here as
+  // worth-a-look candidates. Both calls are cheap server queries and
+  // gracefully degrade to empty arrays on failure.
+  await autoPromoteStaleDoubts(user.id).catch(() => 0);
+  const openDoubts = await loadOpenDoubts(user.id, {
+    limit: 5,
+    surface: "dashboard_module",
+  }).catch(() => []);
+
   // Public share slug — lazily provisioned on first dashboard view.
   // Drives the canonical /u/<slug> URL the share buttons attach to
   // navigator.share so social previews unfurl personalized.
@@ -399,6 +412,16 @@ export default async function AppHome({
               numbers (OverviewCard), then the heart of the product
               (ActionCenter with worth-a-look / watching / pruned).
               No protection, no identity yet. */}
+
+          {/* Quick Checks — open doubt prompts from the Phase B engine.
+              Self-hides when there's nothing to ask. Sits above the
+              DecisionStrip per the IA: "questions you can answer
+              right now" first, then "what's worth your attention"
+              (Decision strip), then "what you can act on"
+              (ActionCenter). */}
+          {activeTab === "subscriptions" && openDoubts.length > 0 && (
+            <QuickChecks items={openDoubts} />
+          )}
 
           {activeTab === "subscriptions" && (
             <DecisionStrip
