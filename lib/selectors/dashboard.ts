@@ -207,7 +207,11 @@ export async function buildDashboardData(
   const { data: subsData } = await supabaseAdmin
     .from("subscriptions")
     .select(
-      "id, merchant_name, merchant_key, category, amount_cents, currency, frequency, status, classification, last_charged_at, next_expected_charge_at, user_decision, recurring_type, confidence_score, updated_at"
+      // Phase F — brand_verdict_likelihood + confidence (0..1) are
+      // the cutover signals the new baseActions filter reads. Keep
+      // legacy fields (classification, recurring_type, confidence_score)
+      // as fallback for rows that predate Phase B.
+      "id, merchant_name, merchant_key, category, amount_cents, currency, frequency, status, classification, last_charged_at, next_expected_charge_at, user_decision, recurring_type, confidence_score, updated_at, brand_verdict_likelihood, confidence, canonical_merchant_key, source_key"
     )
     .eq("user_id", userId);
   const subsRaw = (subsData ?? []) as Array<
@@ -369,13 +373,52 @@ export async function buildDashboardData(
   // "Actually a subscription?" button, the override sets recurring_type
   // → confirmed_subscription on the next render and it will appear
   // here. The filter is safe across that round-trip.
+  // Phase F cutover — the dashboard now reads Claude's brand verdict
+  // + engine confidence as the PRIMARY signal, falling back to the
+  // legacy classifier columns only for rows that predate Phase B (no
+  // brand_verdict_likelihood populated yet).
+  //
+  // Rules, in order:
+  //   1. user_override wins outright.
+  //      - 'confirmed' → include
+  //      - 'not_subscription' / 'not_recurring' → exclude
+  //   2. brand_verdict_likelihood (Claude's per-merchant judgment)
+  //      - 'never'     → exclude (gas, fees, ATM — never a sub)
+  //      - 'always'    → include (Netflix, Spotify, etc)
+  //      - 'sometimes' → include only when confidence ≥ 0.85.
+  //                      Lower-confidence rows live in the doubt
+  //                      surface (QuickChecks) until the user
+  //                      resolves them or the 7-day auto-promote
+  //                      fires.
+  //   3. NULL brand_verdict (pre-Phase-B scan) → legacy fallback:
+  //      classification='confirmed' AND recurring_type in the old
+  //      allowed set.
+  const CUTOVER_CONFIDENCE_AUTO_CONFIRM = 0.85;
   const baseActions = subs
     .filter((s) => {
+      // Defensive: a row without merchant_key has no overrides + no
+      // brand verdict to consult; defer to legacy classifier below.
+      const override = s.merchant_key
+        ? overrideByMerchant.get(s.merchant_key)
+        : undefined;
+      if (override === "not_subscription" || override === "not_recurring") {
+        return false;
+      }
+      if (override === "confirmed") return true;
+
+      // Brand verdict path.
+      const likelihood = (s as { brand_verdict_likelihood?: string | null })
+        .brand_verdict_likelihood;
+      const confidence =
+        (s as { confidence?: number | null }).confidence ?? 0.5;
+      if (likelihood === "never") return false;
+      if (likelihood === "always") return true;
+      if (likelihood === "sometimes") {
+        return confidence >= CUTOVER_CONFIDENCE_AUTO_CONFIRM;
+      }
+
+      // Legacy fallback — pre-Phase-B scans only.
       if (s.classification !== "confirmed") return false;
-      // Allow null tier (pre-migration rows) so we don't regress
-      // anyone's existing dashboard during the transition window.
-      // Once everyone re-scans, the only nullable rows will be the
-      // ones the new classifier explicitly marked uncertain.
       const tier = s.recurring_type ?? null;
       if (tier === "recurring_commerce") return false;
       if (tier === "uncertain_recurring") return false;

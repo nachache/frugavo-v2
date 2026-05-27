@@ -1,127 +1,115 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Check, X, ChevronDown, ChevronUp, Sparkles } from "lucide-react";
+import { Check, Sparkles } from "lucide-react";
 import type { OpenDoubt } from "@/lib/doubt/load";
 
-// QuickChecks — Layer 1 dashboard module, above the DecisionStrip.
+// QuickChecks — single-question carousel.
 //
-// Renders 3-5 open doubts (confidence 0.55–0.85 zone, plus any
-// auto-promoted scan-chip items from the 7-day rule). Each row is a
-// single subscription with a one-tap chip set:
+// Replaces the earlier 5-row list with a focused, one-question-at-a-time
+// UX. Reasoning:
+//   - The user only ever sees ONE question, in the same fixed location
+//     on the dashboard. The card height + outer position never change,
+//     so successive answers feel like ONE place updating, not a queue
+//     ticking down.
+//   - Buttons have intentional micro-feedback: press-scale, success
+//     pulse, slide-and-fade between questions. The act of answering
+//     should feel like a small win, not a form submission.
+//   - Progress dots make the loop legible without surfacing all the
+//     pending questions at once — "5 of 7" with a row of dots is
+//     enough.
 //
-//   ✓ Yes      → resolution='confirmed' (real subscription)
-//   Not a sub  → resolution='not_sub'
-//   Shared     → resolution='shared'   (still a sub, just shared)
-//   Work       → resolution='work'
-//   Family     → resolution='family'
-//   Skip       → dismiss (bumps ignored_count; 2 = silenced)
+// Resolution flow:
+//   tap chip → optimistic local advance + small "✓" pulse →
+//   POST /api/doubt/:id/{resolve|dismiss} →
+//   slide next question in →
+//   on last question answered: brief celebration → router.refresh()
 //
-// Copy is intentionally in-character: "Help Frugavo understand your
-// subscriptions better." NOT "Fix our classifier." Never make the
-// user feel like they're labeling training data.
-//
-// Behavior contract:
-//   - Collapsible (state in localStorage). Auto-expands when new
-//     items arrive.
-//   - Auto-hides when empty. No "everything's clear!" empty state —
-//     the section just doesn't render.
-//   - Optimistic UI: chip tap removes the row immediately, then the
-//     server call fires. On failure, the row reappears with an error
-//     line.
+// Same API as before. Telemetry surface is still 'dashboard_module'.
 
 type Props = {
   items: OpenDoubt[];
 };
 
-const STORAGE_KEY = "frugavo:quick_checks_collapsed_v1";
+type ResolutionChoice =
+  | "confirmed"
+  | "not_sub"
+  | "shared"
+  | "work"
+  | "family";
 
 export function QuickChecks({ items: initialItems }: Props) {
   const router = useRouter();
-  const [items, setItems] = useState(initialItems);
-  const [collapsed, setCollapsed] = useState<boolean>(() => {
-    if (typeof window === "undefined") return false;
-    return window.localStorage.getItem(STORAGE_KEY) === "1";
-  });
+  const [queue, setQueue] = useState<OpenDoubt[]>(initialItems);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [transitionDir, setTransitionDir] = useState<"in" | "out">("in");
+  const [pulseId, setPulseId] = useState<string | null>(null);
+  const [allDone, setAllDone] = useState(false);
   const [errorIds, setErrorIds] = useState<Set<string>>(new Set());
   const [, startTransition] = useTransition();
 
-  // Auto-hide when nothing to show. Important: this branch runs every
-  // render so once the user resolves everything, the section vanishes
-  // on the next paint.
-  if (items.length === 0) return null;
+  const totalShown = useMemo(() => initialItems.length, [initialItems.length]);
 
-  function toggleCollapsed() {
-    setCollapsed((prev) => {
-      const next = !prev;
-      try {
-        window.localStorage.setItem(STORAGE_KEY, next ? "1" : "0");
-      } catch {
-        // ignore quota errors
-      }
-      return next;
-    });
-  }
-
-  async function resolve(id: string, resolution: ResolutionChoice) {
-    // Optimistic remove. If the request fails, we'll re-insert below.
-    const removed = items.find((i) => i.id === id);
-    setItems((prev) => prev.filter((i) => i.id !== id));
-    setErrorIds((prev) => {
-      const next = new Set(prev);
-      next.delete(id);
-      return next;
-    });
-
-    try {
-      const res = await fetch(`/api/doubt/${id}/resolve`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ resolution, surface: "dashboard_module" }),
-      });
-      if (!res.ok) throw new Error(`http_${res.status}`);
-      // Refresh server state — the resolution may have unlocked
-      // additional items for the user (e.g. if we ever fetch more
-      // than 5 and pop the queue).
-      startTransition(() => router.refresh());
-    } catch {
-      // Restore the row + mark it errored.
-      if (removed) {
-        setItems((prev) => [removed, ...prev]);
-      }
-      setErrorIds((prev) => {
-        const next = new Set(prev);
-        next.add(id);
-        return next;
-      });
+  // Hide entirely once the user has answered every question. The
+  // celebration moment is a brief beat (~900ms) before the section
+  // unmounts.
+  useEffect(() => {
+    if (allDone) {
+      const t = setTimeout(() => {
+        startTransition(() => router.refresh());
+      }, 1400);
+      return () => clearTimeout(t);
     }
+  }, [allDone, router]);
+
+  if (queue.length === 0 && !allDone) return null;
+
+  const current = queue[activeIndex] ?? null;
+  const answered = totalShown - queue.length;
+  const progress = `${Math.min(answered + 1, totalShown)} of ${totalShown}`;
+
+  function advanceTo(nextIndex: number, removedId: string) {
+    setTransitionDir("out");
+    // Pulse the success state briefly, then swap in the next question.
+    setPulseId(removedId);
+    setTimeout(() => {
+      setQueue((prev) => prev.filter((q) => q.id !== removedId));
+      setActiveIndex(0); // always show the head of the queue
+      setTransitionDir("in");
+      setPulseId(null);
+      // If the queue had exactly one item and we just answered it,
+      // flip into "all done" celebration mode.
+      if (nextIndex >= queue.length - 1) {
+        if (queue.length <= 1) setAllDone(true);
+      }
+    }, 280);
   }
 
-  async function dismiss(id: string) {
-    const removed = items.find((i) => i.id === id);
-    setItems((prev) => prev.filter((i) => i.id !== id));
+  async function send(
+    doubt: OpenDoubt,
+    endpoint: "resolve" | "dismiss",
+    resolution: ResolutionChoice | null
+  ) {
     setErrorIds((prev) => {
       const next = new Set(prev);
-      next.delete(id);
+      next.delete(doubt.id);
       return next;
     });
-
     try {
-      const res = await fetch(`/api/doubt/${id}/dismiss`, {
+      const body: Record<string, string> = { surface: "dashboard_module" };
+      if (resolution) body.resolution = resolution;
+      const res = await fetch(`/api/doubt/${doubt.id}/${endpoint}`, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ surface: "dashboard_module" }),
+        body: JSON.stringify(body),
       });
       if (!res.ok) throw new Error(`http_${res.status}`);
-      startTransition(() => router.refresh());
+      advanceTo(activeIndex, doubt.id);
     } catch {
-      if (removed) {
-        setItems((prev) => [removed, ...prev]);
-      }
       setErrorIds((prev) => {
         const next = new Set(prev);
-        next.add(id);
+        next.add(doubt.id);
         return next;
       });
     }
@@ -136,109 +124,148 @@ export function QuickChecks({ items: initialItems }: Props) {
         <div className="min-w-0">
           <div className="inline-flex items-center gap-1.5 text-[11.5px] md:text-[12px] font-medium uppercase tracking-[0.1em] text-ink-muted">
             <Sparkles size={12} strokeWidth={2.2} className="text-brand" />
-            Quick checks
+            Quick check
           </div>
           <h2
             id="quick-checks-heading"
             className="mt-1.5 font-display text-[16.5px] md:text-[18px] font-semibold tracking-[-0.015em] text-ink leading-tight"
           >
-            Help Frugavo understand your subscriptions better.
+            {allDone
+              ? "You're all caught up."
+              : "Help Frugavo understand your subscriptions better."}
           </h2>
-          <p className="mt-1 text-[13px] leading-relaxed text-ink-body">
-            {items.length === 1
-              ? "One charge needs your eyes."
-              : `${items.length} charges need your eyes.`}{" "}
-            Tap a chip — takes a second.
-          </p>
         </div>
-        <button
-          type="button"
-          onClick={toggleCollapsed}
-          aria-expanded={!collapsed}
-          aria-controls="quick-checks-list"
-          className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-ink-muted hover:text-ink hover:bg-ink/[0.04] transition"
-        >
-          {collapsed ? (
-            <ChevronDown size={16} strokeWidth={2.2} aria-hidden="true" />
-          ) : (
-            <ChevronUp size={16} strokeWidth={2.2} aria-hidden="true" />
-          )}
-          <span className="sr-only">
-            {collapsed ? "Expand quick checks" : "Collapse quick checks"}
-          </span>
-        </button>
+        {totalShown > 1 && !allDone ? (
+          <div className="shrink-0 text-right">
+            <div className="text-[11px] text-ink-muted tabular-nums">
+              {progress}
+            </div>
+            <ProgressDots
+              total={totalShown}
+              done={answered}
+              className="mt-1.5"
+            />
+          </div>
+        ) : null}
       </header>
 
-      {!collapsed && (
-        <ul
-          id="quick-checks-list"
-          className="mt-4 md:mt-5 space-y-2.5 md:space-y-3"
-        >
-          {items.map((item) => (
-            <DoubtRow
-              key={item.id}
-              item={item}
-              errored={errorIds.has(item.id)}
-              onResolve={resolve}
-              onDismiss={dismiss}
-            />
-          ))}
-        </ul>
-      )}
+      {/* Fixed-height question slot — the card never reflows as
+          questions advance. This is what makes successive answers
+          feel like ONE location updating. */}
+      <div className="mt-5 md:mt-6 min-h-[176px] md:min-h-[160px] relative">
+        {allDone ? (
+          <AllDoneCelebration count={totalShown} />
+        ) : current ? (
+          <QuestionCard
+            key={current.id}
+            doubt={current}
+            transitionDir={transitionDir}
+            pulsing={pulseId === current.id}
+            errored={errorIds.has(current.id)}
+            onAnswer={(resolution) =>
+              send(current, "resolve", resolution)
+            }
+            onSkip={() => send(current, "dismiss", null)}
+          />
+        ) : null}
+      </div>
+
+      <style jsx>{`
+        @keyframes qslideIn {
+          from {
+            opacity: 0;
+            transform: translateY(10px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+        @keyframes qslideOut {
+          from {
+            opacity: 1;
+            transform: translateY(0);
+          }
+          to {
+            opacity: 0;
+            transform: translateY(-10px);
+          }
+        }
+        @keyframes qpulse {
+          0% {
+            transform: scale(1);
+            opacity: 1;
+          }
+          50% {
+            transform: scale(1.04);
+            opacity: 0.9;
+          }
+          100% {
+            transform: scale(1);
+            opacity: 1;
+          }
+        }
+      `}</style>
     </section>
   );
 }
 
 // ──────────────────────────────────────────────────────────────────────
-// Per-doubt row.
+// Single question card.
 // ──────────────────────────────────────────────────────────────────────
 
-type ResolutionChoice =
-  | "confirmed"
-  | "not_sub"
-  | "shared"
-  | "work"
-  | "family";
-
-function DoubtRow({
-  item,
+function QuestionCard({
+  doubt,
+  transitionDir,
+  pulsing,
   errored,
-  onResolve,
-  onDismiss,
+  onAnswer,
+  onSkip,
 }: {
-  item: OpenDoubt;
+  doubt: OpenDoubt;
+  transitionDir: "in" | "out";
+  pulsing: boolean;
   errored: boolean;
-  onResolve: (id: string, resolution: ResolutionChoice) => void;
-  onDismiss: (id: string) => void;
+  onAnswer: (r: ResolutionChoice) => void;
+  onSkip: () => void;
 }) {
   const amount = useMemo(
-    () => formatAmount(item.display.amount_cents, item.display.currency),
-    [item.display.amount_cents, item.display.currency]
+    () => formatAmount(doubt.display.amount_cents, doubt.display.currency),
+    [doubt.display.amount_cents, doubt.display.currency]
   );
   const cadence = useMemo(
-    () => prettyCadence(item.display.frequency),
-    [item.display.frequency]
+    () => prettyCadence(doubt.display.frequency),
+    [doubt.display.frequency]
   );
   const lastDate = useMemo(
-    () => formatDate(item.display.last_charged_at),
-    [item.display.last_charged_at]
+    () => formatDate(doubt.display.last_charged_at),
+    [doubt.display.last_charged_at]
   );
 
   return (
-    <li className="rounded-xl border border-hairline/60 bg-canvas/40 px-3.5 py-3 md:px-4 md:py-3.5">
-      <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-        <span className="text-[14.5px] font-medium text-ink">
-          {item.display.merchant_name}
+    <div
+      style={{
+        animation:
+          transitionDir === "in"
+            ? "qslideIn 320ms cubic-bezier(0.16, 1, 0.3, 1) both"
+            : pulsing
+              ? "qpulse 260ms ease-out both"
+              : "qslideOut 260ms ease-in both",
+      }}
+    >
+      <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+        <span className="text-[18px] md:text-[20px] font-display font-semibold tracking-[-0.015em] text-ink">
+          {doubt.display.merchant_name}
         </span>
-        <span className="text-[13px] text-ink-muted tabular-nums">
+        <span className="text-[13.5px] text-ink-body tabular-nums">
           {amount} · {cadence}
         </span>
         {lastDate ? (
-          <span className="text-[12px] text-ink-muted/80 tabular-nums">
+          <span className="text-[12px] text-ink-muted tabular-nums">
             last {lastDate}
           </span>
         ) : null}
-        {item.auto_promoted_at ? (
+        {doubt.auto_promoted_at ? (
           <span
             className="ml-auto inline-flex items-center gap-1 rounded-full bg-ink/[0.04] px-2 py-0.5 text-[10.5px] font-medium uppercase tracking-[0.06em] text-ink-muted"
             title="Auto-promoted after 7 days without an answer."
@@ -248,26 +275,25 @@ function DoubtRow({
         ) : null}
       </div>
 
-      <div className="mt-2.5 flex flex-wrap gap-1.5">
-        <Chip
-          onClick={() => onResolve(item.id, "confirmed")}
+      <p className="mt-2 text-[13.5px] text-ink-muted">
+        Is this a real recurring subscription?
+      </p>
+
+      <div className="mt-4 flex flex-wrap gap-2">
+        <ChipButton
           variant="primary"
-          icon={<Check size={12} strokeWidth={2.5} />}
+          onClick={() => onAnswer("confirmed")}
+          icon={<Check size={13} strokeWidth={2.6} />}
         >
-          Real sub
-        </Chip>
-        <Chip
-          onClick={() => onResolve(item.id, "not_sub")}
-          icon={<X size={12} strokeWidth={2.5} />}
-        >
-          Not a sub
-        </Chip>
-        <Chip onClick={() => onResolve(item.id, "shared")}>Shared</Chip>
-        <Chip onClick={() => onResolve(item.id, "work")}>Work</Chip>
-        <Chip onClick={() => onResolve(item.id, "family")}>Family</Chip>
-        <Chip onClick={() => onDismiss(item.id)} variant="ghost">
+          Yes, it's mine
+        </ChipButton>
+        <ChipButton onClick={() => onAnswer("not_sub")}>Not a sub</ChipButton>
+        <ChipButton onClick={() => onAnswer("shared")}>Shared</ChipButton>
+        <ChipButton onClick={() => onAnswer("work")}>Work</ChipButton>
+        <ChipButton onClick={() => onAnswer("family")}>Family</ChipButton>
+        <ChipButton variant="ghost" onClick={onSkip}>
           Skip
-        </Chip>
+        </ChipButton>
       </div>
 
       {errored ? (
@@ -275,11 +301,21 @@ function DoubtRow({
           Couldn&apos;t save that — try again.
         </p>
       ) : null}
-    </li>
+    </div>
   );
 }
 
-function Chip({
+// ──────────────────────────────────────────────────────────────────────
+// Satisfying chip button. Three intentional micro-interactions:
+//   - hover: subtle background lift
+//   - press (active): scale 0.96 for tactile press feedback
+//   - default vs primary vs ghost: visual hierarchy without screaming
+//
+// Uses Tailwind's active:scale utility; the transition is purely CSS
+// so there's no JS work on the press path → feels instant.
+// ──────────────────────────────────────────────────────────────────────
+
+function ChipButton({
   children,
   onClick,
   variant,
@@ -290,19 +326,23 @@ function Chip({
   variant?: "primary" | "ghost";
   icon?: React.ReactNode;
 }) {
-  const cls =
+  const variantCls =
     variant === "primary"
-      ? "bg-ink text-canvas hover:bg-ink/85 border-ink"
+      ? "bg-ink text-canvas hover:bg-ink/85 border-ink shadow-[0_1px_2px_rgba(10,10,10,0.12)]"
       : variant === "ghost"
         ? "bg-transparent text-ink-muted hover:text-ink hover:bg-ink/[0.04] border-transparent"
-        : "bg-surface text-ink hover:bg-ink/[0.04] border-hairline";
+        : "bg-canvas/60 text-ink hover:bg-canvas border-hairline hover:border-ink/20";
+
   return (
     <button
       type="button"
       onClick={onClick}
       className={
-        "inline-flex items-center gap-1 h-7 px-3 rounded-full text-[12px] font-medium border transition " +
-        cls
+        "inline-flex items-center gap-1.5 h-9 md:h-10 px-3.5 md:px-4 rounded-full text-[13px] md:text-[13.5px] font-medium border " +
+        "transition-all duration-150 ease-out " +
+        "active:scale-[0.96] active:duration-75 " +
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 " +
+        variantCls
       }
     >
       {icon}
@@ -312,7 +352,69 @@ function Chip({
 }
 
 // ──────────────────────────────────────────────────────────────────────
-// Formatters — kept inline to avoid a new lib file for cosmetic work.
+// Progress dots — small visual rhythm above the card. Done dots are
+// filled brand-color; pending are hairline-only.
+// ──────────────────────────────────────────────────────────────────────
+
+function ProgressDots({
+  total,
+  done,
+  className,
+}: {
+  total: number;
+  done: number;
+  className?: string;
+}) {
+  return (
+    <div className={`inline-flex items-center gap-1 ${className ?? ""}`}>
+      {Array.from({ length: total }).map((_, i) => (
+        <span
+          key={i}
+          className={
+            "block h-1.5 w-1.5 rounded-full transition-colors duration-300 " +
+            (i < done
+              ? "bg-brand"
+              : i === done
+                ? "bg-ink/40"
+                : "bg-ink/10")
+          }
+        />
+      ))}
+    </div>
+  );
+}
+
+// ──────────────────────────────────────────────────────────────────────
+// All-done celebration. Brief beat (~1.4s) before the section
+// unmounts via router.refresh. Keeps the user in the same location
+// while the dashboard re-fetches.
+// ──────────────────────────────────────────────────────────────────────
+
+function AllDoneCelebration({ count }: { count: number }) {
+  return (
+    <div
+      className="flex items-center justify-center h-full text-center"
+      style={{
+        animation: "qslideIn 380ms cubic-bezier(0.16, 1, 0.3, 1) both",
+      }}
+    >
+      <div>
+        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-brand/10 text-brand">
+          <Check size={22} strokeWidth={2.6} />
+        </div>
+        <p className="mt-3 text-[14px] text-ink-body">
+          Thanks — {count} {count === 1 ? "answer" : "answers"} recorded.
+        </p>
+        <p className="text-[12px] text-ink-muted mt-0.5">
+          Your dashboard is updating.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// ──────────────────────────────────────────────────────────────────────
+// Formatters
 // ──────────────────────────────────────────────────────────────────────
 
 function formatAmount(cents: number, currency: string): string {
