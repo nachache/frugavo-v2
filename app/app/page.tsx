@@ -264,8 +264,12 @@ export default async function AppHome({
   // worth-a-look candidates. Both calls are cheap server queries and
   // gracefully degrade to empty arrays on failure.
   await autoPromoteStaleDoubts(user.id).catch(() => 0);
+  // Limit raised — the carousel handles one-at-a-time pacing, so
+  // showing more total questions doesn't crowd the UI; it just lets
+  // the user work through the full queue. Surface filter dropped at
+  // the loader level so low-confidence doubts also appear here.
   const openDoubts = await loadOpenDoubts(user.id, {
-    limit: 5,
+    limit: 25,
     surface: "dashboard_module",
   }).catch(() => []);
 

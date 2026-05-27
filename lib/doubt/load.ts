@@ -79,16 +79,20 @@ export async function loadOpenDoubts(
     .is("resolved_at", null)
     .is("silenced_at", null);
 
-  if (opts.surface === "dashboard_module") {
-    // Dashboard module shows confidence ≥ 0.55 OR anything auto-promoted.
-    // The auto-promoted branch surfaces items that started life as
-    // scan-chip but the user never answered — after 7 days they
-    // become Worth a look candidates with a low-confidence badge.
-    query = query.or(`confidence.gte.0.55,auto_promoted_at.not.is.null`);
-  } else if (opts.surface === "scan_chip") {
-    // Scan-chip surface only — strict lower bound.
+  if (opts.surface === "scan_chip") {
+    // Scan-chip surface (used by the live reveal stream only) — strict
+    // lower bound. The dashboard intentionally does NOT mirror this
+    // filter, see below.
     query = query.lt("confidence", 0.55).is("auto_promoted_at", null);
   }
+  // surface === 'dashboard_module' OR undefined: show ALL open
+  // doubts on the dashboard. Earlier versions split by confidence
+  // tier here (dashboard only saw ≥ 0.55) but that produced the
+  // "Phase B works but no doubts visible" bug — every doubt was
+  // <0.55 and therefore invisible until the 7-day auto-promote.
+  // The carousel UX in QuickChecks handles confidence tiers
+  // visually (low-confidence rows get a badge); the loader doesn't
+  // need to gatekeep.
 
   // Ranking: subscription amount desc, then confidence asc, then
   // recency. PostgREST can't ORDER BY a joined column directly, so

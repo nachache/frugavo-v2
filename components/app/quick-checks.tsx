@@ -265,12 +265,16 @@ function QuestionCard({
             last {lastDate}
           </span>
         ) : null}
-        {doubt.auto_promoted_at ? (
+        {doubt.auto_promoted_at || doubt.confidence < 0.55 ? (
           <span
             className="ml-auto inline-flex items-center gap-1 rounded-full bg-ink/[0.04] px-2 py-0.5 text-[10.5px] font-medium uppercase tracking-[0.06em] text-ink-muted"
-            title="Auto-promoted after 7 days without an answer."
+            title={
+              doubt.auto_promoted_at
+                ? "Auto-promoted after 7 days without an answer."
+                : "Engine was less certain about this one."
+            }
           >
-            low confidence
+            unsure
           </span>
         ) : null}
       </div>
