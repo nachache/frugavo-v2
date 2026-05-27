@@ -193,6 +193,13 @@ async function main() {
     reasoning: entry.reasoning,
     confidence_score: 1.0, // safety denylist is high-certainty by definition
     raw_descriptor_samples: [],
+    // source_keys starts empty. As the engine encounters real
+    // descriptors that normalize to these canonical keys (e.g. an
+    // 'atm_withdrawal' source_key shows up), the union-write in
+    // persistClaudeVerdict would add them. For denylist rows that's
+    // expected to be rare since they ARE the canonical the engine
+    // would produce.
+    source_keys: [],
     updated_at: nowIso,
   }));
 

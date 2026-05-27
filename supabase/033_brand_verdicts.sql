@@ -42,6 +42,12 @@
 -- ──────────────────────────────────────────────────────────────────────
 
 create table if not exists public.brand_verdicts (
+  -- CANONICAL identity. This is Claude's canonical merchant key, NOT
+  -- the engine normalizer's noisy output. The whole point of this
+  -- table is to collapse amount-tier fragmentation
+  -- (apple_t1 / apple_t5 / apple_t10 → one canonical apple_icloud
+  -- row). Engine source keys live in source_keys[] below for
+  -- traceability + dual lookup.
   merchant_key            text primary key,
   display_name            text not null,
   category                text not null,
@@ -63,6 +69,13 @@ create table if not exists public.brand_verdicts (
   -- callers should keep the array at ~10 entries via array_remove +
   -- array_append patterns at write time.
   raw_descriptor_samples  text[] not null default '{}',
+  -- Engine normalizer keys that have mapped to this canonical. The
+  -- amount-tier fragmentation collapses here: 'apple_t1' /
+  -- 'apple_t5' / 'apple_t10' all listed under the canonical
+  -- 'apple_icloud' row. The lookup path tries (PK = source_key)
+  -- first, then (source_keys @> ARRAY[source_key]) — the second
+  -- index handles the noisy-normalizer case.
+  source_keys             text[] not null default '{}',
   -- Audit trail. Updated_at tracks any field change (likelihood
   -- correction, category re-tag); decided_at stays pinned to the
   -- original write.
@@ -102,6 +115,14 @@ create index if not exists brand_verdicts_category_idx
 -- rows written by a specific decider.
 create index if not exists brand_verdicts_decided_by_idx
   on public.brand_verdicts(decided_by);
+
+-- GIN index on source_keys for the dual-lookup pattern: when the
+-- engine produces a noisy normalizer key (e.g. 'apple_t10'), we
+-- look it up via source_keys @> ARRAY['apple_t10'] to find the
+-- canonical row ('apple_icloud'). Without this index the fallback
+-- lookup would full-scan brand_verdicts on every cache miss.
+create index if not exists brand_verdicts_source_keys_gin
+  on public.brand_verdicts using gin (source_keys);
 
 -- ──────────────────────────────────────────────────────────────────────
 -- subscriptions.confidence — per-candidate confidence score 0..1.

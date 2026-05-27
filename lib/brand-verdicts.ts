@@ -59,6 +59,9 @@ if (!anthropic) {
 export type SubscriptionLikelihood = "always" | "sometimes" | "never";
 
 export type BrandVerdict = {
+  // CANONICAL merchant key — Claude's output, the durable identity.
+  // This is what subscriptions should be keyed/grouped on long term,
+  // NOT the engine normalizer's noisy source_key.
   merchant_key: string;
   display_name: string;
   category: string;
@@ -74,16 +77,23 @@ export type BrandVerdict = {
   // downstream callers can weight against the engine cadence math.
   reasoning: string | null;
   confidence_score: number | null;
+  // Engine normalizer keys that have mapped to this canonical. The
+  // amount-tier fragmentation collapses here.
+  source_keys: string[];
 };
 
 export type LookupArgs = {
-  merchant_key: string;
+  // ENGINE source key — what lib/merchant-normalize.ts produced. May
+  // carry amount-tier noise (e.g. 'apple_t10'). The lookup resolves
+  // this to a canonical merchant_key by either direct PK hit OR
+  // GIN-indexed source_keys array contains.
+  source_key: string;
   // Descriptor sample used as the Claude input on cache miss. The
-  // verdict is keyed on merchant_key alone (so the cache hits across
-  // descriptor variants), but Claude needs to see at least one
-  // representative descriptor to make the call.
+  // verdict is keyed by canonical merchant_key (so the cache hits
+  // across descriptor variants), but Claude needs to see at least
+  // one representative descriptor to make the call.
   descriptor: string;
-  // Optional Plaid PFC tag — helps Claude when the merchant_key is
+  // Optional Plaid PFC tag — helps Claude when the source_key is
   // ambiguous (e.g. a generic biller wrapper).
   pfc_primary?: string | null;
 };
@@ -92,56 +102,79 @@ export type LookupArgs = {
 // Cache key helpers
 // ──────────────────────────────────────────────────────────────────────
 
-function redisKey(merchant_key: string): string {
-  // Namespace by prompt+model versions so a future prompt change opens
-  // a clean cache namespace without invalidating durable DB rows.
-  return `brand_verdict:v${PROMPT_VERSION}:${MODEL}:${merchant_key}`;
+function redisKey(lookupKey: string): string {
+  // Redis is keyed on whatever key the CALLER passed (typically the
+  // engine source_key, sometimes the canonical). Both work — same
+  // verdict value gets cached under whichever lookup string asked
+  // for it. The DB is the source of truth; Redis is just a warm
+  // shortcut.
+  //
+  // Namespace by prompt+model versions so a future prompt change
+  // opens a clean cache namespace without invalidating durable DB
+  // rows.
+  return `brand_verdict:v${PROMPT_VERSION}:${MODEL}:${lookupKey}`;
 }
 
 // ──────────────────────────────────────────────────────────────────────
 // Public API
 // ──────────────────────────────────────────────────────────────────────
 
-// Primary lookup. Three-tier read path:
-//   1. Redis (warm cache, 30d TTL)
-//   2. brand_verdicts table (durable, forever)
-//   3. Claude (cache miss, writes back to both layers)
+// Primary lookup. Takes an engine source_key and returns the canonical
+// verdict. Four-tier read path:
+//
+//   1. Redis (warm cache, 30d TTL) — keyed on source_key directly so
+//      repeat lookups skip the dual DB lookup.
+//   2. brand_verdicts PK match — fast path when source_key IS the
+//      canonical (e.g. 'netflix' came in clean, hit PK 'netflix').
+//   3. brand_verdicts source_keys @> array contains — collapses the
+//      amount-tier fragmentation case (e.g. 'apple_t10' came in,
+//      we have a row 'apple_icloud' with source_keys including
+//      'apple_t10').
+//   4. Claude (cache miss). Claude returns a canonical merchant_key
+//      which becomes the durable PK; the caller's source_key is
+//      added to that row's source_keys array. Future lookups for
+//      THIS source_key hit tier 3 instead of calling Claude again.
 //
 // If Claude is unavailable or fails, returns null. Callers must
 // handle null — typically by falling back to engine-only cadence
-// logic for this scan and re-trying on the next scan when Claude
-// might be back.
+// logic for this scan and re-trying on the next scan.
 export async function getBrandVerdict(
   args: LookupArgs
 ): Promise<BrandVerdict | null> {
-  const { merchant_key, descriptor, pfc_primary } = args;
-  if (!merchant_key) return null;
+  const { source_key, descriptor, pfc_primary } = args;
+  if (!source_key) return null;
 
-  // Tier 1 — Redis.
+  // Tier 1 — Redis (warm cache, keyed on the source_key the caller
+  // passed; we store the canonical verdict against it).
   if (redis) {
     try {
-      const cached = await redis.get<BrandVerdict>(redisKey(merchant_key));
+      const cached = await redis.get<BrandVerdict>(redisKey(source_key));
       if (cached && isWellFormed(cached)) return cached;
     } catch {
       // fall through
     }
   }
 
-  // Tier 2 — durable DB.
+  // Tier 2 + 3 — durable DB dual lookup. The PK path handles
+  // already-canonical inputs ('netflix', 'spotify'); the source_keys
+  // GIN path handles noisy normalizer outputs ('apple_t10'). We
+  // issue both as one round-trip with OR for free.
   if (supabaseAdmin) {
     const { data } = await supabaseAdmin
       .from("brand_verdicts")
       .select(
-        "merchant_key, display_name, category, subscription_likelihood, domain, decided_by, decided_at, model_version, prompt_version, reasoning, confidence_score"
+        "merchant_key, display_name, category, subscription_likelihood, domain, decided_by, decided_at, model_version, prompt_version, reasoning, confidence_score, source_keys"
       )
-      .eq("merchant_key", merchant_key)
+      .or(`merchant_key.eq.${source_key},source_keys.cs.{${source_key}}`)
+      .limit(1)
       .maybeSingle();
     if (data && isWellFormed(data as unknown as BrandVerdict)) {
       const verdict = data as unknown as BrandVerdict;
-      // Warm Redis for next time. Best-effort.
+      // Warm Redis under the source_key the caller asked with, so
+      // the next identical lookup hits tier 1.
       if (redis) {
         try {
-          await redis.set(redisKey(merchant_key), verdict, {
+          await redis.set(redisKey(source_key), verdict, {
             ex: REDIS_TTL_SECONDS,
           });
         } catch {
@@ -152,89 +185,177 @@ export async function getBrandVerdict(
     }
   }
 
-  // Tier 3 — live Claude call.
+  // Tier 4 — live Claude call.
   if (!anthropic) return null;
-  const fromClaude = await askClaude({ merchant_key, descriptor, pfc_primary });
+  const fromClaude = await askClaude({ source_key, descriptor, pfc_primary });
   if (!fromClaude) return null;
 
-  // Persist to durable layer AND warm Redis.
-  if (supabaseAdmin) {
-    await supabaseAdmin.from("brand_verdicts").upsert(
-      {
-        merchant_key: fromClaude.merchant_key,
-        display_name: fromClaude.display_name,
-        category: fromClaude.category,
-        subscription_likelihood: fromClaude.subscription_likelihood,
-        domain: fromClaude.domain,
-        decided_by: "claude",
-        decided_at: fromClaude.decided_at,
-        model_version: fromClaude.model_version,
-        prompt_version: fromClaude.prompt_version,
-        reasoning: fromClaude.reasoning,
-        confidence_score: fromClaude.confidence_score,
-        raw_descriptor_samples: [descriptor],
-        updated_at: new Date().toISOString(),
-      },
-      { onConflict: "merchant_key" }
-    );
-  }
+  // Persist to durable layer AND warm Redis. Claude's merchant_key
+  // is the canonical PK. The caller's source_key is added to the
+  // source_keys array so future lookups for this engine output hit
+  // the dual-lookup directly. If the canonical row already exists
+  // (different source_key resolved here before), we union the new
+  // source_key into the existing array.
+  const finalVerdict = await persistClaudeVerdict({
+    canonical: fromClaude,
+    source_key,
+    descriptor,
+  });
+
   if (redis) {
     try {
-      await redis.set(redisKey(merchant_key), fromClaude, {
+      await redis.set(redisKey(source_key), finalVerdict, {
         ex: REDIS_TTL_SECONDS,
       });
     } catch {
       // non-fatal
     }
   }
-  return fromClaude;
+  return finalVerdict;
+}
+
+// Upsert Claude's canonical verdict to brand_verdicts, unioning
+// source_keys + raw_descriptor_samples idempotently. Returns the
+// post-write verdict (with source_keys reflecting the union) so the
+// Redis cache stores the latest shape.
+async function persistClaudeVerdict(args: {
+  // Claude's output, BEFORE the source_keys union write. Typed as
+  // Omit<...> so callers can hand off the askClaude return directly
+  // without manufacturing an empty source_keys field upstream.
+  canonical: Omit<BrandVerdict, "source_keys">;
+  source_key: string;
+  descriptor: string;
+}): Promise<BrandVerdict> {
+  const { canonical, source_key, descriptor } = args;
+  if (!supabaseAdmin) {
+    // No durable layer — synthesize source_keys from the input so the
+    // returned BrandVerdict still satisfies the type. The next scan
+    // will retry the persist when supabaseAdmin is available.
+    return { ...canonical, source_keys: [source_key] };
+  }
+
+  // Read existing row to union arrays without overwriting.
+  const { data: existing } = await supabaseAdmin
+    .from("brand_verdicts")
+    .select("source_keys, raw_descriptor_samples")
+    .eq("merchant_key", canonical.merchant_key)
+    .maybeSingle();
+
+  const existingSourceKeys =
+    (existing?.source_keys as string[] | null) ?? [];
+  const existingSamples =
+    (existing?.raw_descriptor_samples as string[] | null) ?? [];
+
+  const unionedSourceKeys = uniqueAppend(existingSourceKeys, source_key);
+  const unionedSamples = uniqueAppend(existingSamples, descriptor, 10);
+
+  await supabaseAdmin.from("brand_verdicts").upsert(
+    {
+      merchant_key: canonical.merchant_key,
+      display_name: canonical.display_name,
+      category: canonical.category,
+      subscription_likelihood: canonical.subscription_likelihood,
+      domain: canonical.domain,
+      decided_by: "claude",
+      decided_at: canonical.decided_at,
+      model_version: canonical.model_version,
+      prompt_version: canonical.prompt_version,
+      reasoning: canonical.reasoning,
+      confidence_score: canonical.confidence_score,
+      raw_descriptor_samples: unionedSamples,
+      source_keys: unionedSourceKeys,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "merchant_key" }
+  );
+
+  return { ...canonical, source_keys: unionedSourceKeys };
+}
+
+// Helper. Append `value` to `existing` if not already present.
+// Bounded at `cap` items (oldest evicted from the front) so unbounded
+// growth doesn't bloat the row.
+function uniqueAppend<T>(existing: T[], value: T, cap = 100): T[] {
+  if (existing.includes(value)) return existing;
+  const next = [...existing, value];
+  if (next.length > cap) next.splice(0, next.length - cap);
+  return next;
 }
 
 // Bulk lookup. Used by the scan orchestrator after detection — looks
-// up every merchant_key in a single round-trip to the DB, then asks
+// up every source_key in a single round-trip to the DB, then asks
 // Claude in parallel for misses (bounded concurrency). Same caching
 // contract as getBrandVerdict.
+//
+// Returns a Map keyed on the INPUT source_key (not the canonical
+// merchant_key) so callers can correlate verdicts back to the
+// engine-grouped streams they came from. Two distinct source_keys
+// that resolve to the same canonical will both appear in the map,
+// pointing to the same BrandVerdict object.
 export async function getBrandVerdictsBulk(
   inputs: LookupArgs[]
 ): Promise<Map<string, BrandVerdict>> {
   const out = new Map<string, BrandVerdict>();
   if (inputs.length === 0) return out;
 
-  // Dedupe by merchant_key before any I/O.
+  // Dedupe by source_key before any I/O.
   const unique = new Map<string, LookupArgs>();
   for (const i of inputs) {
-    if (!unique.has(i.merchant_key)) unique.set(i.merchant_key, i);
+    if (!unique.has(i.source_key)) unique.set(i.source_key, i);
   }
+  const sourceKeys = Array.from(unique.keys());
 
-  // Tier 2 single-trip fetch for the durable layer. Redis micro-cache
-  // we skip for the bulk path — too many round trips for a small win.
-  const keys = Array.from(unique.keys());
-  if (supabaseAdmin && keys.length > 0) {
-    const { data } = await supabaseAdmin
-      .from("brand_verdicts")
-      .select(
-        "merchant_key, display_name, category, subscription_likelihood, domain, decided_by, decided_at, model_version, prompt_version, reasoning, confidence_score"
-      )
-      .in("merchant_key", keys);
-    for (const row of data ?? []) {
+  // Tier 2 single-trip dual fetch — PK match OR source_keys array
+  // contains, against the full set of input source_keys.
+  if (supabaseAdmin && sourceKeys.length > 0) {
+    // Two queries (PK in, source_keys overlap) issued in parallel.
+    // Combined into the output map; an input that's both a canonical
+    // and a listed source_key on the same row hits only once.
+    const [pkRes, arrRes] = await Promise.all([
+      supabaseAdmin
+        .from("brand_verdicts")
+        .select(
+          "merchant_key, display_name, category, subscription_likelihood, domain, decided_by, decided_at, model_version, prompt_version, reasoning, confidence_score, source_keys"
+        )
+        .in("merchant_key", sourceKeys),
+      supabaseAdmin
+        .from("brand_verdicts")
+        .select(
+          "merchant_key, display_name, category, subscription_likelihood, domain, decided_by, decided_at, model_version, prompt_version, reasoning, confidence_score, source_keys"
+        )
+        // source_keys && array overlap — matches any row whose
+        // source_keys array intersects the input set.
+        .overlaps("source_keys", sourceKeys),
+    ]);
+
+    for (const row of [...(pkRes.data ?? []), ...(arrRes.data ?? [])]) {
       const verdict = row as unknown as BrandVerdict;
-      if (isWellFormed(verdict)) {
-        out.set(verdict.merchant_key, verdict);
+      if (!isWellFormed(verdict)) continue;
+      // Map every matching input source_key → this canonical verdict.
+      const matchedSources = [
+        verdict.merchant_key, // PK case
+        ...((verdict.source_keys as string[]) ?? []),
+      ].filter((k) => unique.has(k));
+      for (const k of matchedSources) {
+        if (!out.has(k)) out.set(k, verdict);
       }
     }
   }
 
-  // Misses → Claude with bounded concurrency.
-  const misses = keys.filter((k) => !out.has(k));
+  // Misses → Claude with bounded concurrency. getBrandVerdict handles
+  // the persist + source_keys union write back to the DB.
+  const misses = sourceKeys.filter((k) => !out.has(k));
   const MAX_CONCURRENT = 4;
   for (let i = 0; i < misses.length; i += MAX_CONCURRENT) {
     const chunk = misses.slice(i, i + MAX_CONCURRENT);
     const settled = await Promise.allSettled(
       chunk.map((k) => getBrandVerdict(unique.get(k)!))
     );
-    for (const r of settled) {
+    for (let j = 0; j < settled.length; j++) {
+      const r = settled[j];
+      const sourceKey = chunk[j];
       if (r.status === "fulfilled" && r.value) {
-        out.set(r.value.merchant_key, r.value);
+        out.set(sourceKey, r.value);
       }
     }
   }
@@ -273,7 +394,11 @@ Respond with ONLY the JSON object. No markdown, no commentary, no code fences.`;
 
 async function askClaude(
   args: LookupArgs
-): Promise<BrandVerdict | null> {
+): Promise<Omit<BrandVerdict, "source_keys"> | null> {
+  // Note: askClaude returns the verdict WITHOUT source_keys — that's
+  // filled in by persistClaudeVerdict after the union-write to the
+  // durable layer. Keeps the Claude path focused on the merchant
+  // judgment, not the cache bookkeeping.
   if (!anthropic) return null;
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort("claude_timeout"), CLAUDE_TIMEOUT_MS);
@@ -324,7 +449,13 @@ async function askClaude(
     }
 
     return {
-      merchant_key: parsed.merchant_key.toLowerCase(),
+      // Normalize Claude's canonical key aggressively so two near-
+      // identical outputs ('Apple iCloud' vs 'apple_icloud' vs
+      // 'apple-icloud') don't produce duplicate PKs. lowercase,
+      // collapse whitespace/hyphens → underscores, strip trailing
+      // punctuation. Claude already emits lowercase snake_case per
+      // the prompt, but this is defense-in-depth.
+      merchant_key: normalizeCanonical(parsed.merchant_key),
       display_name: parsed.display_name,
       category: parsed.category,
       subscription_likelihood: parsed.subscription_likelihood,
@@ -355,12 +486,30 @@ async function askClaude(
 
 function buildUserPrompt(args: LookupArgs): string {
   const pfc = args.pfc_primary ? `\nPlaid category: ${args.pfc_primary}` : "";
-  return `Descriptor: ${args.descriptor}${pfc}\nMerchant key (engine-assigned, possibly noisy): ${args.merchant_key}`;
+  // We pass the source_key as a hint, but Claude is told to produce
+  // its own canonical merchant_key — not echo this one back. The
+  // source_key may carry amount-tier noise we explicitly want to
+  // collapse.
+  return `Descriptor: ${args.descriptor}${pfc}\nEngine source key (may be noisy — produce your own canonical): ${args.source_key}`;
 }
 
 // ──────────────────────────────────────────────────────────────────────
 // Validation
 // ──────────────────────────────────────────────────────────────────────
+
+// Normalize Claude's canonical merchant_key output so cosmetic
+// variants don't fragment the brand_verdicts PK. Defensive — the
+// prompt already asks for lowercase snake_case, but this defends
+// against future prompt drift.
+function normalizeCanonical(raw: string): string {
+  return raw
+    .toLowerCase()
+    .trim()
+    .replace(/[\s-]+/g, "_")    // hyphens + whitespace → underscore
+    .replace(/[^a-z0-9_]/g, "") // strip any remaining punctuation
+    .replace(/_+/g, "_")        // collapse runs of underscores
+    .replace(/^_|_$/g, "");     // trim leading/trailing underscores
+}
 
 function isWellFormed(v: BrandVerdict | null | undefined): v is BrandVerdict {
   if (!v) return false;
@@ -374,6 +523,11 @@ function isWellFormed(v: BrandVerdict | null | undefined): v is BrandVerdict {
   ) {
     return false;
   }
+  // source_keys must be an array (may be empty for catalog/manual rows
+  // and brand-new claude rows before persistClaudeVerdict runs the
+  // union). Coerce undefined → [] so DB rows from older migrations
+  // don't trip the check.
+  if (v.source_keys != null && !Array.isArray(v.source_keys)) return false;
   return true;
 }
 
