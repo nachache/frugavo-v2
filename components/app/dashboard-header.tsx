@@ -10,7 +10,7 @@
 //   • Share link
 //   • Protection history
 
-import { useState, useTransition } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ScanRevealOverlay } from "./scan-reveal-overlay";
@@ -50,30 +50,74 @@ export function DashboardHeader({
   isPaid = false,
 }: Props) {
   const router = useRouter();
-  const [rescanning, startRescan] = useTransition();
+  // Two-phase rescan state:
+  //   scanning           true while the POST is in flight
+  //   awaitingRefresh    true after POST resolved; waiting for the server
+  //                      re-render to arrive (signaled by lastScannedAt
+  //                      prop changing)
+  //   showReveal         true ONLY once awaitingRefresh has cleared, so
+  //                      the overlay animates to FRESH post-scan numbers
+  const [scanning, setScanning] = useState(false);
+  const [awaitingRefresh, setAwaitingRefresh] = useState(false);
   const [showReveal, setShowReveal] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const lastScannedRef = useRef(lastScannedAt);
 
-  function onRescan() {
-    // Open the overlay immediately so the user gets a sense of progress.
-    // The actual API call runs in parallel. The overlay's 4.8s hold is
-    // longer than a typical re-scan, so by the time it dismisses the
-    // server has the new numbers ready for router.refresh().
-    setShowReveal(true);
-    startRescan(async () => {
-      try {
-        await fetch("/api/scan/rescan", { method: "POST" });
-      } catch {
-        // best-effort — overlay still plays
+  // Watch for lastScannedAt to change AFTER a scan request. That's our
+  // signal that router.refresh() has propagated and the parent server
+  // component has handed us new reveal numbers. Only THEN do we show
+  // the overlay — so the user never sees a reveal animated to stale
+  // pre-scan totals.
+  useEffect(() => {
+    if (awaitingRefresh && lastScannedAt !== lastScannedRef.current) {
+      lastScannedRef.current = lastScannedAt;
+      setAwaitingRefresh(false);
+      setShowReveal(true);
+    }
+  }, [lastScannedAt, awaitingRefresh]);
+
+  async function onRescan() {
+    if (scanning || awaitingRefresh) return;
+    setErrorMsg(null);
+    setScanning(true);
+    try {
+      const res = await fetch("/api/scan/rescan", { method: "POST" });
+      if (!res.ok) {
+        const body = (await res.json().catch(() => ({}))) as {
+          message?: string;
+          error?: string;
+        };
+        setErrorMsg(
+          body.message ?? body.error ?? "Re-scan failed — try again."
+        );
+        setScanning(false);
+        return;
       }
-    });
+    } catch {
+      setErrorMsg("Network error — try again.");
+      setScanning(false);
+      return;
+    }
+    // Scan is complete on the server. Now wait for the client to see
+    // the new data: trigger a refresh and watch the lastScannedAt
+    // prop for the change signal (handled in the useEffect above).
+    setAwaitingRefresh(true);
+    setScanning(false);
+    router.refresh();
   }
 
   function onRevealDone() {
     setShowReveal(false);
-    // Refresh AFTER the overlay dismisses so the new numbers swap in
-    // behind the curtain, not while the user is still reading.
-    router.refresh();
+    // No additional refresh — the dashboard already has fresh data
+    // since the overlay only opened AFTER router.refresh landed.
   }
+
+  const buttonBusy = scanning || awaitingRefresh;
+  const buttonLabel = scanning
+    ? "Scanning…"
+    : awaitingRefresh
+      ? "Updating…"
+      : "Re-scan";
 
   return (
     <div>
@@ -101,10 +145,10 @@ export function DashboardHeader({
         <button
           type="button"
           onClick={onRescan}
-          disabled={rescanning}
+          disabled={buttonBusy}
           title={`${timeAgo(lastScannedAt)}`}
           aria-label={`Re-scan. ${timeAgo(lastScannedAt)}`}
-          className="inline-flex items-center gap-1.5 h-8 px-3 rounded-full border border-hairline bg-surface text-ink hover:border-ink/30 hover:bg-ink/[0.04] transition disabled:opacity-50 disabled:cursor-not-allowed text-[12.5px] font-medium"
+          className="inline-flex items-center gap-1.5 h-8 px-3 rounded-full border border-hairline bg-surface text-ink hover:border-ink/30 hover:bg-ink/[0.04] transition disabled:opacity-60 disabled:cursor-wait text-[12.5px] font-medium"
         >
           <svg
             width="12"
@@ -115,7 +159,7 @@ export function DashboardHeader({
             strokeWidth="2.2"
             strokeLinecap="round"
             strokeLinejoin="round"
-            className={rescanning ? "animate-spin" : ""}
+            className={buttonBusy ? "animate-spin" : ""}
             aria-hidden="true"
           >
             <polyline points="23 4 23 10 17 10" />
@@ -123,8 +167,13 @@ export function DashboardHeader({
             <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10" />
             <path d="M20.49 15a9 9 0 0 1-14.85 3.36L1 14" />
           </svg>
-          <span>{rescanning ? "Scanning…" : "Re-scan"}</span>
+          <span>{buttonLabel}</span>
         </button>
+        {errorMsg ? (
+          <span className="text-[11.5px] text-danger" role="alert">
+            {errorMsg}
+          </span>
+        ) : null}
         <ScanRevealOverlay
           visible={showReveal}
           monthlyCents={reveal.monthly_cents}
