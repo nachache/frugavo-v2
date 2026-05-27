@@ -123,7 +123,37 @@ export default async function AppHome({
     .select("welcomed_at")
     .eq("id", user.id)
     .maybeSingle();
-  if (!userRow?.welcomed_at) {
+
+  // v8 — Bug #2 fix: entitlement check moved ABOVE the welcomed_at
+  // guard so the guard can use it. Two interlocking failure modes
+  // both produced the "Activate Protection loops back" symptom:
+  //   1. markWelcomed() was fire-and-forget; the welcomed_at write
+  //      could die when window.location.href tore down the page.
+  //   2. Even after that race is closed (await markWelcomed() in
+  //      onboarding-reveal.tsx), a future race could still leave
+  //      welcomed_at null while entitlement is active.
+  // The defensive layer: if the user is PROTECTED (trialing/active/
+  // cancelled_active), they came from billing-success. Treat them
+  // as welcomed regardless of the flag's state. Backfill the flag
+  // so subsequent renders are stable and the entitlement check
+  // never re-runs as a workaround.
+  const entitlement = await getEntitlement(user.id);
+  const isProtected =
+    entitlement.entitlement_state === "active" ||
+    entitlement.entitlement_state === "trialing" ||
+    entitlement.entitlement_state === "cancelled_active";
+
+  if (!userRow?.welcomed_at && isProtected) {
+    // Self-heal: the user is protected (paid through Stripe) but
+    // welcomed_at slipped through one of the race windows. Stamp
+    // it now so the loop never recurs for this user, then continue
+    // rendering the dashboard normally.
+    await supabaseAdmin
+      .from("app_users")
+      .update({ welcomed_at: new Date().toISOString() })
+      .eq("id", user.id)
+      .is("welcomed_at", null);
+  } else if (!userRow?.welcomed_at) {
     // Defensive: if somehow there are no snapshots yet, kick one
     // off synchronously so the reveal has data to render.
     const snapshotRows = await fetchLatestSnapshotRows(user.id);
@@ -145,18 +175,17 @@ export default async function AppHome({
   // Entitlement check — drives the Activate Protection card above
   // IdentityHero when the user isn't currently paying, plus the
   // dunning banner for grace_period / cancelled_active / past_due.
-  const entitlement = await getEntitlement(user.id);
+  // (Fetched earlier in the welcomed-backfill block.)
 
   // Single source of truth for "is this user a paying customer right
   // now?" — drives the row-level Cancel button visibility, the
   // Re-scan icon affordance, and any other paid-only surface area.
   // Treat trialing as paid: they have full access until the trial
   // converts or lapses. cancelled_active = cancelled but still inside
-  // the paid period → also full access until expiry.
-  const isPaid =
-    entitlement.entitlement_state === "active" ||
-    entitlement.entitlement_state === "trialing" ||
-    entitlement.entitlement_state === "cancelled_active";
+  // the paid period → also full access until expiry. Mirrors the
+  // isProtected calculation above; kept as a separate variable so
+  // any future divergence in semantics is explicit.
+  const isPaid = isProtected;
 
   // Auto re-scan on /app open for paid users, capped at once per 24h.
   // Fire-and-forget — we don't await it, so the dashboard renders

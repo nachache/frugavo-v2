@@ -4,17 +4,26 @@ import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import type { ScanPhase } from "@/lib/types/scan";
 
-// Three-state progress arc. Replaces a spinner: the label changes on a
-// real timer so the user feels motion even when the network is flat
-// (spec section 1).
+// Cinematic three-state progress arc.
 //
-// Phase mapping:
-//   0–1500ms      Connecting
-//   1500–5000ms   Reading transactions
-//   5000ms+       Spotting patterns
+// HONESTY CONTRACT (kept from v8):
+//   - `phase` is driven ENTIRELY by SSE `progress` events from the
+//     engine. There is no wall-clock timer that auto-advances stages.
+//   - When SSE hasn't delivered yet, we sit on "connecting" — that
+//     is honest about silence rather than synthesizing fake motion.
 //
-// The parent can also force a phase via `phase` prop (e.g. driven by SSE
-// `progress` events). Forced phase always wins over the timer.
+// MOTION DESIGN:
+//   - Outer ring sweeps continuously (the "engine is working" signal).
+//     Doesn't advance toward 100%; completion is signalled by the
+//     parent unmounting the arc.
+//   - Inner counter-rotating ring + center pulse give a sense of
+//     compound activity without faking progress.
+//   - Three pips below the circle map 1:1 to the SSE phases. They fill
+//     as real events arrive. The current pip pulses; passed pips are
+//     solid; upcoming pips are hollow.
+//   - When the phase prop changes, the label crossfades + slides
+//     subtly. The crossfade is the ONLY thing that hints at progress —
+//     and it only fires on real events.
 
 type Props = {
   phase?: ScanPhase | null;
@@ -27,72 +36,185 @@ const PHASE_LABEL: Record<ScanPhase, string> = {
   spotting: "Spotting patterns",
 };
 
+const PHASE_ORDER: ScanPhase[] = ["connecting", "reading", "spotting"];
+
 export function ProgressArc({ phase, className }: Props) {
-  const [autoPhase, setAutoPhase] = useState<ScanPhase>("connecting");
+  const current: ScanPhase = phase ?? "connecting";
+  const currentIdx = PHASE_ORDER.indexOf(current);
 
+  // Crossfade trigger. When `current` changes we briefly toggle the
+  // `entering` flag so the label re-mounts with its entrance animation.
+  // The animation key forces React to remount the text element.
+  const [animKey, setAnimKey] = useState(0);
   useEffect(() => {
-    const t1 = setTimeout(() => setAutoPhase("reading"), 1_500);
-    const t2 = setTimeout(() => setAutoPhase("spotting"), 5_000);
-    return () => {
-      clearTimeout(t1);
-      clearTimeout(t2);
-    };
-  }, []);
+    setAnimKey((k) => k + 1);
+  }, [current]);
 
-  const current: ScanPhase = phase ?? autoPhase;
-
-  // SVG arc: 0–360 degrees, dasharray animates. We use a long, slow
-  // sweep so it never resolves — completion is signaled by the parent
-  // unmounting the arc, not by hitting 100%.
   return (
     <div
       className={cn(
-        "flex flex-col items-center justify-center gap-6",
+        "flex flex-col items-center justify-center gap-7",
         className
       )}
       role="status"
       aria-live="polite"
       aria-label={PHASE_LABEL[current]}
     >
-      <div className="relative h-24 w-24">
-        <svg viewBox="0 0 100 100" className="h-full w-full -rotate-90">
+      {/* Composition: 3 stacked SVG layers + ambient halo */}
+      <div className="relative h-32 w-32">
+        {/* Ambient halo — soft brand-tinted radial behind the rings */}
+        <div
+          className="absolute inset-0 -m-6 rounded-full opacity-60 blur-2xl animate-[halo-breathe_3.2s_ease-in-out_infinite] pointer-events-none"
+          style={{
+            background:
+              "radial-gradient(50% 50% at 50% 50%, rgba(16, 185, 129, 0.25), transparent 70%)",
+          }}
+          aria-hidden="true"
+        />
+
+        {/* Outer sweep ring — primary work indicator */}
+        <svg
+          viewBox="0 0 100 100"
+          className="absolute inset-0 h-full w-full -rotate-90 will-change-transform"
+          aria-hidden="true"
+        >
+          <defs>
+            <linearGradient id="arc-grad" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stopColor="currentColor" stopOpacity="0.05" />
+              <stop offset="50%" stopColor="currentColor" stopOpacity="0.9" />
+              <stop offset="100%" stopColor="currentColor" stopOpacity="1" />
+            </linearGradient>
+          </defs>
           <circle
             cx="50"
             cy="50"
             r="42"
             stroke="currentColor"
-            strokeWidth="6"
+            strokeWidth="3"
             fill="none"
-            className="text-ink/[0.08]"
+            className="text-ink/[0.06]"
           />
           <circle
             cx="50"
             cy="50"
             r="42"
-            stroke="currentColor"
-            strokeWidth="6"
+            stroke="url(#arc-grad)"
+            strokeWidth="3"
             strokeLinecap="round"
             fill="none"
-            className="text-brand origin-center animate-[arc-sweep_2.4s_linear_infinite]"
-            strokeDasharray="60 600"
+            className="text-brand origin-center animate-[arc-sweep_1.8s_cubic-bezier(0.65,0,0.35,1)_infinite] will-change-transform"
+            strokeDasharray="90 600"
           />
         </svg>
+
+        {/* Inner counter-rotating ring — adds depth + compound motion */}
+        <svg
+          viewBox="0 0 100 100"
+          className="absolute inset-0 h-full w-full rotate-90 will-change-transform"
+          aria-hidden="true"
+        >
+          <circle
+            cx="50"
+            cy="50"
+            r="30"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            fill="none"
+            strokeDasharray="3 15"
+            className="text-brand/40 origin-center animate-[arc-counter_4.2s_linear_infinite] will-change-transform"
+          />
+        </svg>
+
+        {/* Center pulse — quiet heartbeat */}
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+          <span
+            className="block h-2 w-2 rounded-full bg-brand animate-[pulse-dot_1.4s_ease-in-out_infinite]"
+            aria-hidden="true"
+          />
+        </div>
       </div>
 
-      <div className="text-center">
-        <div className="text-[12px] uppercase tracking-[0.18em] font-semibold text-ink-muted">
-          Step {current === "connecting" ? 1 : current === "reading" ? 2 : 3}{" "}
-          of 3
-        </div>
-        <div className="mt-1.5 text-[18px] font-display font-semibold text-ink">
-          {PHASE_LABEL[current]}
+      {/* Step pips — real-event-bound. Pip i is FILLED when phase >= i,
+          PULSING when phase === i, HOLLOW when ahead of current phase.
+          Pure derivation from the phase prop — no timer. */}
+      <div className="flex items-center gap-2.5" aria-hidden="true">
+        {PHASE_ORDER.map((p, i) => {
+          const passed = i < currentIdx;
+          const isCurrent = i === currentIdx;
+          return (
+            <span
+              key={p}
+              className={cn(
+                "block rounded-full transition-all duration-500 ease-out",
+                passed && "h-1.5 w-1.5 bg-brand",
+                isCurrent &&
+                  "h-2 w-2 bg-brand animate-[pulse-dot_1.4s_ease-in-out_infinite]",
+                !passed && !isCurrent && "h-1.5 w-1.5 bg-ink/15"
+              )}
+            />
+          );
+        })}
+      </div>
+
+      {/* Label + step counter. Both crossfade on phase change. The key
+          on the inner div forces React to remount so the entrance
+          animation replays — that's the only motion that fires on a
+          real SSE event, which is what makes it feel earned. */}
+      <div className="text-center min-h-[52px] relative">
+        <div
+          key={animKey}
+          className="absolute inset-0 animate-[label-in_500ms_cubic-bezier(0.16,1,0.3,1)]"
+        >
+          <div className="text-[11px] uppercase tracking-[0.22em] font-semibold text-ink-muted">
+            Step {currentIdx + 1} of 3
+          </div>
+          <div className="mt-1.5 text-[18px] font-display font-semibold text-ink tnum">
+            {PHASE_LABEL[current]}
+          </div>
         </div>
       </div>
 
       <style jsx>{`
         @keyframes arc-sweep {
-          to {
-            stroke-dashoffset: -660;
+          0% { stroke-dashoffset: 0; }
+          100% { stroke-dashoffset: -690; }
+        }
+        @keyframes arc-counter {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(-360deg); }
+        }
+        @keyframes pulse-dot {
+          0%, 100% { transform: scale(1); opacity: 1; }
+          50% { transform: scale(1.5); opacity: 0.6; }
+        }
+        @keyframes halo-breathe {
+          0%, 100% { transform: scale(1); opacity: 0.5; }
+          50% { transform: scale(1.08); opacity: 0.75; }
+        }
+        @keyframes label-in {
+          0% {
+            opacity: 0;
+            transform: translateY(6px);
+            filter: blur(2px);
+          }
+          100% {
+            opacity: 1;
+            transform: translateY(0);
+            filter: blur(0);
+          }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          :global([class*="animate-[arc-sweep"]),
+          :global([class*="animate-[arc-counter"]),
+          :global([class*="animate-[halo-breathe"]) {
+            animation-duration: 8s !important;
+          }
+          :global([class*="animate-[pulse-dot"]) {
+            animation: none !important;
+          }
+          :global([class*="animate-[label-in"]) {
+            animation-duration: 0.01ms !important;
           }
         }
       `}</style>

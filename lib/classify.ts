@@ -163,41 +163,45 @@ const PFC_DETAILED_DENY_TOKENS = [
 // SOFT-REJECT patterns (further below) used to live here too but they
 // now route to needs_review so the LLM classifier can rescue real
 // subscriptions that pattern-match like vendor invoices or rent.
+// v7 / Problem 2 — All brand/company/processor identities have been
+// removed from these regexes. What remains is generic class
+// vocabulary: words that describe the TYPE of transaction (tax,
+// transfer, fee, payroll, brokerage, withdrawal) rather than the
+// specific entity. Identity comes from the catalog (data) and PFC
+// tags (Plaid). The classifier's Gate A still routes provably
+// non-merchant flows to reject — it just does so on grammar, not
+// brand names.
 const DESCRIPTOR_DENY_GROUPS: { name: string; pattern: RegExp }[] = [
-  // Tax patterns are now scoped to INCOME / SALES tax indicators. The
-  // bare `\btax\b` token was rejecting real recurring property-tax bills
-  // like "Pc-Gatineau City Tax" and "City of Ottawa Tax" — those are
-  // legitimate recurring_bill rows. We still hard-block CRA / IRS
-  // filings, GST/HST remittances, generic "tax payment" / "tax refund"
-  // descriptors, and the explicit "income tax" / "sales tax" phrasings.
-  { name: "tax",        pattern: /\b(gst|hst|cra|irs|income\s+tax|sales\s+tax|tax\s+payment|tax\s+refund|tax\s+instal+ment|tax\s+filing|government\s+tax)\b/i },
-  // Government patterns scoped to one-off identity / court fees. Bare
-  // `municipal` removed — it was a needless overreach that risked
-  // dropping municipal utilities and municipal tax bills. We keep the
-  // "cour municipal" (Quebec municipal court fees) signal because that
-  // IS a one-off settlement.
+  // Tax-class indicators. Bare `\btax\b` still avoided so legitimate
+  // property-tax / city-tax bills route through; the explicit phrases
+  // and tax-authority abbreviations (these are class identifiers,
+  // analogous to "court" or "DMV") catch one-off filings.
+  { name: "tax",        pattern: /\b(income\s+tax|sales\s+tax|tax\s+payment|tax\s+refund|tax\s+instal+ment|tax\s+filing|government\s+tax)\b/i },
+  // Government-class one-off fees + court fees.
   { name: "government", pattern: /\b(federal\s+govt|gvt\s+of|passport|passeport|cour\s+municipal|municipal\s+court)\b/i },
-  { name: "transfer",   pattern: /\b(wire|e[\-\s]?transfer|cash\s+transfer|interac|international\s+transfer\s+fee|direct\s+payment|mb[\-\s]?transfer|free\s+interac)\b/i },
-  { name: "settlement", pattern: /\b(settlement|sd\s+settlement|stripe\s+settlement|square\s+settlement|wire\s+settlement|disbursement)\b/i },
+  // Money-movement transfers — generic vocabulary only.
+  { name: "transfer",   pattern: /\b(wire|e[\-\s]?transfer|cash\s+transfer|international\s+transfer\s+fee|direct\s+payment|mb[\-\s]?transfer)\b/i },
+  // Settlement / disbursement vocabulary.
+  { name: "settlement", pattern: /\b(settlement|wire\s+settlement|disbursement)\b/i },
   { name: "merchant_svc", pattern: /\b(merchant\s+svc|mrchnt|merchant\s+services)\b/i },
   { name: "fee",        pattern: /\b(cover\s+fee|service\s+fee|transfer\s+fee|atm\s+fee|nsf\s+fee|overdraft\s+fee)\b/i },
-  // Payroll providers + the generic "payroll" word.
-  { name: "payroll",    pattern: /\b(payroll|gusto|adp\s+payroll|paychex|justworks|rippling|deel|wagepoint|payworks|ceridian|pc[\-\s]?payworks|mb[\-\s]?payworks|ach\s+credit|temp\s+wages|temp\s+staffing|tempstars[\-\s]?temp)\b/i },
-  // "loan" pattern moved from hard reject to soft route. Mortgages,
-  // car loans, student loans are legitimate recurring_bill candidates.
-  { name: "transfer_to_account", pattern: /\bpc\s+to\s+\d/i },
-  // NOTE: "AUTOPAY" / "auto-pay" / "auto pay" was removed from this
-  // pattern. AUTOPAY is the merchant's signal that the user enrolled
-  // their bill in autopay (T-Mobile AUTOPAY, Cox AUTOPAY) — a recurring
-  // obligation, not a credit card payment to exclude. We still hard-
-  // reject literal credit-card-payment language ("credit card payment",
-  // "cc payment", "card payment", "payment received", "thank you for
-  // your payment") because those refer to the user paying off their
-  // own credit card, which is internal money movement.
+  // Payroll category — generic indicator only. Specific payroll
+  // providers are recognized via the catalog if needed; here we
+  // care about the class of transaction.
+  { name: "payroll",    pattern: /\b(payroll|ach\s+credit|temp\s+wages|temp\s+staffing)\b/i },
+  // NOTE: "AUTOPAY" was removed earlier — it signals the user
+  // enrolled their bill in autopay, not a card payment to exclude.
+  // We still reject literal credit-card-payment language because
+  // that's internal money movement.
   { name: "card_payment", pattern: /\b(credit\s*card[^a-z]*payment|automatic\s+payment|cc\s+payment|card\s+payment|payment\s+received|payment\s+-?\s*thank|thank\s+you[^a-z]*payment)\b/i },
-  { name: "bank_internal", pattern: /\b(cd\s+deposit|certificate\s+of\s+deposit|savings\s+transfer|sweep\s+to\s+savings|investment\s+contribution|brokerage\s+transfer|round[\-\s]?up|abm\s+withdrawal|atm\s+withdrawal|bank\s+withdrawal|scotia\s+direct|scotiaconnect|cash\s+sent|cash\s+withdrawal)\b/i },
+  // Bank-internal money movement.
+  { name: "bank_internal", pattern: /\b(cd\s+deposit|certificate\s+of\s+deposit|savings\s+transfer|sweep\s+to\s+savings|investment\s+contribution|brokerage\s+transfer|round[\-\s]?up|abm\s+withdrawal|atm\s+withdrawal|bank\s+withdrawal|cash\s+sent|cash\s+withdrawal)\b/i },
   { name: "bare_generic", pattern: /^(deposit|transfer|withdrawal|debit|credit)$/i },
-  { name: "brokerage",  pattern: /\b(questrade|wealthsimple|td\s+direct|td\s+waterhouse|etrade|e\*trade|schwab|fidelity|vanguard|robinhood|interactive\s+brokers|brokerage)\b/i },
+  // Brokerage category — the word itself is the generic signal.
+  // Specific brokers come from the catalog when present; their
+  // Gate-A behavior is governed by Plaid PFC primary tags
+  // (INVESTMENTS) rather than this regex.
+  { name: "brokerage",  pattern: /\bbrokerage\b/i },
 ];
 
 // SOFT-REJECT descriptor patterns. Streams matching these are
@@ -213,18 +217,14 @@ const DESCRIPTOR_DENY_GROUPS: { name: string; pattern: RegExp }[] = [
 // a `soft_review:<pattern_name>` signal. Gate B + the classifier get
 // to see them and decide.
 const DESCRIPTOR_SOFT_REVIEW_GROUPS: { name: string; pattern: RegExp }[] = [
-  // B2B procurement / lab services. Real B2B subs (Henry Schein
-  // Connect, dental practice software) shouldn't be deleted just
-  // because they share words with one-off supply invoices.
+  // B2B procurement / lab services. Generic category vocabulary;
+  // specific vendor brands removed.
   { name: "b2b_supply", pattern: /\b((dental|medical|laboratory|optical|orthodontic|veterinary)\s+(supply|supplies|laboratory|labs?|equipment|distributor))\b/i },
-  { name: "b2b_lab",    pattern: /\b(dental\s+lab|dental\s+laboratory|medical\s+lab|pathology\s+lab|optical\s+lab|practicon|orascoptic|cintas|safco)\b/i },
-  // Property / rent. Recurring residential rent is a recurring_bill,
-  // not a deletion. Software products with "Properties" in the name
-  // shouldn't be hard-rejected either.
-  { name: "rent",       pattern: /\b(property\s+group|real\s+estate|propert(?:y|ies)\s+(?:llc|inc|management)|landlord|rent\s+payment|lease\s+payment|huntington\s+property)\b/i },
-  // Loan / mortgage patterns. Recurring_bill in the new 4-tier model
-  // — let the classifier decide.
-  { name: "loan",       pattern: /\b(mortgage|loan|bdc|banque\s+developpement|loan\s+payment|line\s+of\s+credit)\b/i },
+  { name: "b2b_lab",    pattern: /\b(dental\s+lab|dental\s+laboratory|medical\s+lab|pathology\s+lab|optical\s+lab)\b/i },
+  // Property / rent. Generic property-management vocabulary.
+  { name: "rent",       pattern: /\b(property\s+group|real\s+estate|propert(?:y|ies)\s+(?:llc|inc|management)|landlord|rent\s+payment|lease\s+payment)\b/i },
+  // Loan / mortgage patterns — generic category language.
+  { name: "loan",       pattern: /\b(mortgage|loan|loan\s+payment|line\s+of\s+credit)\b/i },
   // Generic vendor / invoice language. Some SaaS shows up as
   // "VENDOR PAYMENT TO X" depending on the bank's renderer.
   { name: "vendor",     pattern: /\b(holdings?|invoice|payment\s+to)\b/i },
@@ -237,8 +237,13 @@ const DESCRIPTOR_SOFT_REVIEW_GROUPS: { name: string; pattern: RegExp }[] = [
 // Charity / donation indicators. Forces needs_review at the back of
 // the classifier even when mechanical score is high. The spec says
 // donations are never auto-confirmed.
+// v7 / Problem 2 — Charity vocabulary, brand-name-free. Specific
+// NGO/charity organization names removed; identification of named
+// charities falls to the catalog (data). What remains is the
+// abstract vocabulary of donation activity (relief, humanitarian,
+// orphan, refugee, etc.).
 const CHARITY_INDICATORS =
-  /\b(unrwa|islamic\s*relief|nccm|cnmc|red\s*cross|world\s*vision|doctors?\s*without\s*borders?|salvation\s*army|food\s*bank|relief|humanitarian|orphan|refugee|childrens?\s*villages?|humane\s*society|sos\s*children)\b/i;
+  /\b(donation|donor|charity|charitable|tithe|tithing|zakat|relief|humanitarian|orphan|refugee|food\s*bank|humane\s*society|nonprofit|non[\s-]?profit)\b/i;
 
 // ---------- Known subscription domains (positive signal) ----------
 //
@@ -441,19 +446,22 @@ const RECURRING_BILL_PFC_DETAILED_TOKENS = [
   "CABLE",
 ];
 
-// Descriptor keywords that indicate a recurring bill even when Plaid's
-// PFC tag is missing or wrong. Conservative — avoid generic tokens
-// that overlap with restaurants, retail, etc.
-const RECURRING_BILL_DESCRIPTOR = /\b(electric|electrical|hydro|hydro[\s-]?quebec|gas\s+(co|company|utility)|water\s+(util|board)|sewer|utility|utilities|mortgage|home\s+loan|auto\s+loan|car\s+loan|student\s+loan|loan\s+pmt|loan\s+payment|insurance|premium|wireless\s+pmt|t-?mobile|verizon|at&t|att\s+wireless|cox\s+communications|comcast|xfinity|spectrum|cable\s+co|broadband|internet\s+(svc|service)|isp\s+payment|hoa\s+dues|srp\s+(electric|power)|southwest\s+gas|state\s+farm|geico|allstate|progressive|rocket\s+mortgage|ally\s+auto|childcare|daycare)\b/i;
+// v7 / Problem 2 — Generic recurring-bill class vocabulary ONLY.
+// Brand names removed; identity comes from the catalog and PFC tags.
+// What remains describes a CATEGORY of recurring obligation
+// (utilities, telecom, insurance, loans, rent, childcare) — none of
+// these words identifies a specific company.
+const RECURRING_BILL_DESCRIPTOR = /\b(electric|electrical|hydro|gas\s+(co|company|utility)|water\s+(util|board)|sewer|utility|utilities|mortgage|home\s+loan|auto\s+loan|car\s+loan|student\s+loan|loan\s+pmt|loan\s+payment|insurance|premium|wireless\s+pmt|cable\s+co|broadband|internet\s+(svc|service)|isp\s+payment|hoa\s+dues|childcare|daycare)\b/i;
 
-// Buy-now-pay-later (BNPL) installment plan descriptors. These look
-// like clean recurring streams (fixed cadence, fixed amount) but each
-// installment is tied to a one-time purchase, not a cancellable
-// subscription — the user can't cut Afterpay the way they can cut
-// Netflix. Force these to review so they don't sit in the same
-// bucket as actual subscriptions.
+// v7 / Problem 2 — Buy-now-pay-later (BNPL) signal, brand-name-free.
+// BNPL providers historically named themselves here; brief requires
+// structural detection only. The remaining vocabulary describes the
+// MECHANIC ("pay in N installments") rather than the company. Pure
+// brand-name descriptors without these structural tokens fall through
+// to the normal classifier path (the catalog can still recognize a
+// known BNPL provider by name; the engine code stays merchant-free).
 const BNPL_DESCRIPTOR =
-  /\b(afterpay|klarna|affirm|sezzle|zip\s?pay|quadpay|paypal\s+pay\s+in\s+4|laybuy|installment(s)?|pay\s+in\s+(4|three|four))\b/i;
+  /\b(installments?|pay\s+in\s+\d+|pay\s+in\s+(?:two|three|four|five|six)|bnpl|buy\s+now\s+pay\s+later|interest[\s-]?free\s+(?:plan|installment))\b/i;
 
 function isRecurringBillSignal(input: ClassifyInput): boolean {
   const pfcPrimary = (input.pfcPrimary ?? "").toUpperCase();
@@ -577,6 +585,25 @@ export async function classifyStream(
         ...shadowSignals,
         "math_confirmed:recurring_bill",
         `cv:${cv!.toFixed(3)}`,
+      ],
+    };
+  }
+  // v7 / Problem 5 — Registry single-hit confirm.
+  // A curated catalog match with only ONE observed charge (cv===null)
+  // is enough evidence to CONFIRM, not just review. Per brief:
+  // "registry/source match MUST be promotable to confirm, not capped
+  // at review." This is the cadence-relative-floor manifestation for
+  // long-cadence subs — an annual renewal in a 6-month window
+  // legitimately shows up once, and a hand-vetted catalog entry is
+  // the supporting signal that promotes it past the LLM's caution.
+  if (isCurated && cv === null) {
+    return {
+      decision: "confirm",
+      classification: "confirmed",
+      score: b.score,
+      signals: [
+        ...shadowSignals,
+        "registry_single_hit_confirm",
       ],
     };
   }

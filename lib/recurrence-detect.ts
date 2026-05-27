@@ -98,11 +98,14 @@ const DISCRETIONARY_CATEGORIES = new Set<string>([
 // below.
 const FIXED_COMMITMENT_CATEGORIES = new Set<string>(["insurance", "telecom"]);
 
-// Descriptor patterns for streams that aren't in the catalog but
-// look like fixed commitments. Conservative — overlap with
-// discretionary categories must be impossible.
+// v7 / Problem 2 — Generic fixed-commitment vocabulary ONLY. Auto-
+// loan lender brands, telecom carrier brands, and rent management
+// brands have been removed; merchant identity comes from the catalog
+// (data) or PFC tags. The remaining words describe a CATEGORY
+// (mortgage, insurance, rent, utility, telecom-service-type) — none
+// is a specific company name.
 const FIXED_COMMITMENT_DESCRIPTOR =
-  /\b(mortgage|home\s+loan|auto\s+loan|car\s+loan|student\s+loan|loan\s+pmt|loan\s+payment|line\s+of\s+credit|insurance|premium|rent\s+pmt|rent\s+payment|lease\s+payment|property\s+mgmt|property\s+management|hoa\s+dues|toyota\s+fin|honda\s+fin|gm\s+financial|ford\s+credit|nissan\s+motor\s+accept|riverstone|equity\s+residential|childcare|daycare|electric|hydro|gas\s+(co|company|utility)|water\s+(util|board)|sewer|utility|utilities|wireless\s+pmt|t-?mobile|verizon|at&t|cox\s+communications|comcast|xfinity|spectrum)\b/i;
+  /\b(mortgage|home\s+loan|auto\s+loan|car\s+loan|student\s+loan|loan\s+pmt|loan\s+payment|line\s+of\s+credit|insurance|premium|rent\s+pmt|rent\s+payment|lease\s+payment|property\s+mgmt|property\s+management|hoa\s+dues|childcare|daycare|electric|hydro|gas\s+(co|company|utility)|water\s+(util|board)|sewer|utility|utilities|wireless\s+pmt|cable\s+co|broadband|internet\s+(svc|service)|isp\s+payment)\b/i;
 
 // Descriptor keywords that rescue a single-hit non-catalog stream
 // to the "review" tier. Conservative — these are strong recurring-
@@ -302,23 +305,28 @@ function median(nums: number[]): number {
   return sorted[Math.floor(sorted.length / 2)];
 }
 
-// Collapse same-day same-merchant_key transactions into one synthetic
-// charge. WHY: utility / property-tax / insurance billers commonly
-// post multiple line items on a single day — e.g. PC-Gatineau debits
-// seven separate property-tax parcels on the same day, Hydro-Quebec
-// posts a 3-charge electricity batch, Gazifere posts gas in sets of
-// three monthly. The raw transaction stream has zero-day gaps inside
-// each batch; the detector's median-gap math then resolves to 0 days,
-// which falls into no cadence band (smallest band starts at 4 days),
-// and the entire merchant gets dropped with `no_cadence_band`.
+// v7 / Problem 8 — Two different same-day patterns need different
+// handling:
 //
-// After collapse: each same-day cluster becomes one event with the
-// summed amount. The detector sees monthly cadence between batches
-// (~30 days) and accepts the stream. The merchant's reported
-// monthly equivalent is correct because we summed within the day.
+//   (a) DUPLICATE: same merchant, same day, IDENTICAL amount. This is
+//       either a bank-replay artifact (e.g. an authorization that
+//       posts twice) or a true duplicate the user got charged once
+//       for. Collapse to ONE occurrence — never inflate counts or
+//       spawn a second stream.
 //
-// Single-charge days are passed through unchanged. Stable sort by
-// date so downstream gap computation stays deterministic.
+//   (b) BATCH BILLER: same merchant, same day, DIFFERENT amounts. This
+//       is the utility / property-tax / insurance pattern where the
+//       biller posts multiple line items (e.g. property-tax parcels,
+//       multi-utility electricity batch). Sum the amounts so the
+//       median-gap math doesn't see zero-day gaps and the monthly
+//       equivalent is correct.
+//
+// Distinguishing them by amount equality is structural (no merchant
+// knowledge, no thresholds). For (a) we keep one representative item
+// unchanged; for (b) we still sum.
+//
+// Single-charge days pass through unchanged. Output is sorted by date
+// so downstream gap computation stays deterministic.
 function collapseSameDayCharges(items: TxnInput[]): TxnInput[] {
   if (items.length <= 1) return items;
   const byDate = new Map<string, TxnInput[]>();
@@ -333,11 +341,28 @@ function collapseSameDayCharges(items: TxnInput[]): TxnInput[] {
       collapsed.push(group[0]);
       continue;
     }
-    // Sum signed amounts (all outflows here, so all negative).
+    // v7 / Problem 8 — bucket the group by amount equality. If every
+    // item has the same amount, that's a DUPLICATE pattern: keep one
+    // representative, drop the rest. If amounts differ, that's a
+    // BATCH biller: sum them (the legacy behavior).
+    const amounts = group.map((t) => Math.abs(t.amount_dollars));
+    const allEqual = amounts.every((a) => a === amounts[0]);
+    if (allEqual) {
+      // Keep one representative; the others were silent duplicates.
+      // Tag the txn_id so audits can see this was deduped (the
+      // possible_duplicate signal lives in the txn_id prefix —
+      // adding a new field on TxnInput would force every fixture +
+      // caller to set it).
+      const template = group[Math.floor(group.length / 2)];
+      collapsed.push({
+        ...template,
+        txn_id: `dedup:${template.merchant_key}:${date}:x${group.length}`,
+      });
+      continue;
+    }
+    // Sum signed amounts (all outflows here, so all negative). This
+    // is the utility / property-tax batch case.
     const sumAmount = group.reduce((s, t) => s + t.amount_dollars, 0);
-    // Use the middle item as template — preserves currency, descriptor,
-    // PFC, and canonical_name. Override amount + txn_id so the synthetic
-    // event is identifiable in audits.
     const template = group[Math.floor(group.length / 2)];
     collapsed.push({
       ...template,
@@ -355,26 +380,12 @@ function daysBetween(a: string, b: string): number {
   );
 }
 
-// v6 / Change 3 — Multi-stream keys.
-//
-// Sub-bucket items inside one merchant_key by amount band so concurrent
-// recurring lines at different price tiers stay as distinct streams
-// instead of collapsing into one ambiguous bucket. Example: a merchant
-// billing $2.99 iCloud AND $10.99 Music under one identity used to
-// produce one stream whose median lived between the two amounts and
-// whose drift filter rejected both halves; now they're two streams.
-//
-// Algorithm: greedy single-link clustering on the sorted amounts. A
-// new band opens when the next amount exceeds AMOUNT_BAND_RATIO ×
-// the current band's running median. The ratio is 1.5 — half-again
-// the median — which is wider than the per-charge drift tolerance
-// (drift_usd = 0.25 = 25%) so usage-based billing within one plan
-// stays in one band, but a clear tier difference (2× or more) splits.
-//
-// Principle (brief): a merchant can have N concurrent recurring lines.
-// Amount banding tolerates small drift but keeps distinct price tiers
-// separate.
-const AMOUNT_BAND_RATIO = 1.5;
+// v6 / Change 3 — Multi-stream keys (banding implementation moved
+// below to use distribution-shape splitting per v7 / Problem 3).
+// Principle (brief): a merchant can have N concurrent recurring
+// lines; split only when amounts form distinct internally-tight
+// clusters separated by a gap large relative to within-cluster
+// spacing.
 
 // v6 / Change 4 — Level-shift + pause detection inside a kept item
 // series. Detects regime changes that a single global dispersion
@@ -540,35 +551,150 @@ function cadenceFromDates(
   return band;
 }
 
+// v7 / Problem 3 — replaces ratio-based banding with distribution-
+// shape natural-breaks. Single threshold (SHAPE_SPLIT_THRESHOLD = 4)
+// captures the principle: a real tier separation has a within-cluster
+// gap structure of one big break and many small ones; a continuous
+// variable-spend distribution has roughly-uniform gaps with no
+// dominant break. The 4× ratio between the largest gap and the median
+// of the others triggers split only in the former case.
+const SHAPE_SPLIT_THRESHOLD = 4;
+
 function bandsForMerchantItems(items: TxnInput[]): TxnInput[][] {
-  if (items.length <= 1) return [items];
+  if (items.length <= 2) return [items];
   const sorted = [...items].sort(
     (a, b) => Math.abs(a.amount_dollars) - Math.abs(b.amount_dollars)
   );
-  const bands: TxnInput[][] = [];
-  let currentBand: TxnInput[] = [sorted[0]];
-  let currentMedian = Math.abs(sorted[0].amount_dollars);
-  for (let i = 1; i < sorted.length; i++) {
-    const amt = Math.abs(sorted[i].amount_dollars);
-    // Guard against div-by-zero on degenerate zero-amount sequences.
-    const ratio = currentMedian > 0 ? amt / currentMedian : 1;
-    if (ratio <= AMOUNT_BAND_RATIO) {
-      currentBand.push(sorted[i]);
-      const amts = currentBand
-        .map((t) => Math.abs(t.amount_dollars))
-        .sort((a, b) => a - b);
-      currentMedian = amts[Math.floor(amts.length / 2)];
-    } else {
-      bands.push(currentBand);
-      currentBand = [sorted[i]];
-      currentMedian = amt;
-    }
+  const result = shapeSplit(sorted);
+  for (const b of result) b.sort((a, b) => a.date.localeCompare(b.date));
+  return result;
+}
+
+// v7 / Problem 6 — Price-change linking.
+//
+// When amount banding splits a merchant into multiple bands AND their
+// date ranges are sequential (non-overlapping in time), they describe
+// a single continuing stream that changed price. The OLD level
+// stopped existing when the NEW level started. Emitting both as
+// parallel streams was wrong on three counts: it overcounts active
+// commitments, it shows a stale "current" amount for the old level,
+// and it loses the price-change information that's the user-facing
+// value here.
+//
+// This pass runs AFTER the band loop produces candidates for one
+// merchant. Same-cadence bands whose date ranges don't overlap merge
+// into one stream. The latest band's median/average defines the
+// CURRENT amount; a price_change event is appended for each transition
+// (combinedItems become one chronological series). Concurrent bands
+// (overlapping date ranges) stay separate streams — they're real
+// parallel plans, not sequential price changes.
+//
+// Principle (brief): one merchant, sequential price levels, same
+// cadence → one continuing stream + price_change event. Never emit
+// the old level as a stream while dropping the new one.
+function mergeSequentialPriceLevels(
+  candidates: DetectedStream[]
+): DetectedStream[] {
+  if (candidates.length <= 1) return candidates;
+
+  // Group by cadence — only same-cadence sequential bands can merge.
+  const byCadence = new Map<Cadence, DetectedStream[]>();
+  for (const s of candidates) {
+    const arr = byCadence.get(s.frequency) ?? [];
+    arr.push(s);
+    byCadence.set(s.frequency, arr);
   }
-  bands.push(currentBand);
-  // Restore date ordering inside each band so downstream gap math
-  // stays correct.
-  for (const b of bands) b.sort((a, b) => a.date.localeCompare(b.date));
-  return bands;
+
+  const out: DetectedStream[] = [];
+  for (const group of byCadence.values()) {
+    if (group.length === 1) {
+      out.push(group[0]);
+      continue;
+    }
+    // Sort by first transaction date so we walk earliest-to-latest.
+    const sorted = [...group].sort((a, b) => {
+      const aFirst = a.transactions[0]?.date ?? "";
+      const bFirst = b.transactions[0]?.date ?? "";
+      return aFirst.localeCompare(bFirst);
+    });
+    let current = sorted[0];
+    const merged: DetectedStream[] = [];
+    for (let i = 1; i < sorted.length; i++) {
+      const next = sorted[i];
+      const currentLast = current.last_date;
+      const nextFirst = next.transactions[0]?.date ?? "";
+      const overlapping = nextFirst <= currentLast;
+      if (overlapping) {
+        // Concurrent plans — emit current, switch to next.
+        merged.push(current);
+        current = next;
+        continue;
+      }
+      // Sequential: merge next into current. Latest level wins on
+      // amount; the transition becomes a price_change event.
+      const combined = [...current.transactions, ...next.transactions].sort(
+        (a, b) => a.date.localeCompare(b.date)
+      );
+      const priceChange: StreamEvent = {
+        type: "price_change",
+        from_amount_dollars: Number(current.median_amount_dollars.toFixed(2)),
+        to_amount_dollars: Number(next.median_amount_dollars.toFixed(2)),
+        at_date: nextFirst,
+      };
+      current = {
+        // Use next's stats as the current level (latest is current).
+        ...next,
+        // Drop the band suffix on merchant_key so the merged stream
+        // carries the canonical merchant identity.
+        merchant_key: stripBandSuffix(current.merchant_key),
+        transactions: combined,
+        occurrences: combined.length,
+        events: [...current.events, ...next.events, priceChange],
+        // Preserve rescued flag if either side was rescued — the user
+        // should still see that the data was thin somewhere.
+        rescued: current.rescued || next.rescued,
+        rescue_reason: current.rescue_reason ?? next.rescue_reason,
+      };
+    }
+    merged.push(current);
+    out.push(...merged);
+  }
+  return out;
+}
+
+function stripBandSuffix(key: string): string {
+  const m = key.match(/^(.+?)__b\d+$/);
+  return m ? m[1] : key;
+}
+
+function shapeSplit(amountSorted: TxnInput[]): TxnInput[][] {
+  if (amountSorted.length <= 2) return [amountSorted];
+  const amts = amountSorted.map((t) => Math.abs(t.amount_dollars));
+  const gaps: number[] = [];
+  for (let i = 1; i < amts.length; i++) gaps.push(amts[i] - amts[i - 1]);
+  let maxIdx = 0;
+  for (let i = 1; i < gaps.length; i++) {
+    if (gaps[i] > gaps[maxIdx]) maxIdx = i;
+  }
+  const otherGaps = gaps.filter((_, i) => i !== maxIdx);
+  if (otherGaps.length === 0) return [amountSorted];
+  const otherMedian = median(otherGaps);
+  // Avoid div-by-zero when within-cluster amounts are identical.
+  const denom =
+    otherMedian > 0
+      ? otherMedian
+      : otherGaps.reduce((s, g) => s + g, 0) / otherGaps.length;
+  if (denom <= 0) {
+    // Internal gaps all zero. Only split when the break gap is
+    // meaningfully non-zero — anything > $1 is a clear tier change
+    // here (since amounts were identical otherwise).
+    if (gaps[maxIdx] < 1) return [amountSorted];
+  } else if (gaps[maxIdx] / denom < SHAPE_SPLIT_THRESHOLD) {
+    return [amountSorted];
+  }
+  const left = amountSorted.slice(0, maxIdx + 1);
+  const right = amountSorted.slice(maxIdx + 1);
+  return [...shapeSplit(left), ...shapeSplit(right)];
 }
 
 function addDays(dateStr: string, days: number): string {
@@ -585,6 +711,86 @@ function bandFor(
     if (gap >= b.min && gap <= b.max) return b.name;
   }
   return null;
+}
+
+// v7 / Problem 7 — Modal cadence inference with multi-period pauses.
+//
+// Median gap absorbs single outliers but breaks when a stream has
+// regular skips (every-other-month pause, vacation gap, mid-window
+// suspension). A 30-day stream with a few 90-day skips has median 30
+// when skips are minority but median 60+ when skips approach majority,
+// which puts the stream into the wrong cadence band or no band.
+//
+// Modal approach: for each distinct gap value, count how many other
+// gaps are direct matches (k=1 within ±20%) vs integer-multiple matches
+// (k=2,3,... within ±20% of k×candidate). The candidate that explains
+// the most gaps wins; ties go to the SMALLER cadence because skips are
+// "pauses on a faster heartbeat" — never the other way around.
+//
+// Output: chosen cadence + indices of gaps that are integer-multiple
+// pauses. Pause-resume events are emitted later from these indices.
+//
+// Principle: a skipped period is a pause on the modal cadence, not
+// evidence against it. The engine MUST never reject a stream solely
+// because one period was skipped.
+const MODAL_GAP_TOLERANCE = 0.2;
+const MODAL_MAX_K = 12;
+
+function inferModalCadence(
+  gaps: number[]
+): { cadence: number; pauseIndices: number[] } | null {
+  if (gaps.length === 0) return null;
+  if (gaps.length === 1) return { cadence: gaps[0], pauseIndices: [] };
+
+  // Candidates: every distinct gap value seen.
+  const distinct = Array.from(new Set(gaps)).sort((a, b) => a - b);
+  let bestCadence = -1;
+  let bestScore = -1;
+  for (const candidate of distinct) {
+    if (candidate <= 0) continue;
+    let directHits = 0;
+    let multipleHits = 0;
+    for (const g of gaps) {
+      const k = Math.round(g / candidate);
+      if (k < 1 || k > MODAL_MAX_K) continue;
+      const expected = k * candidate;
+      if (
+        Math.abs(g - expected) / Math.max(expected, 1) >
+        MODAL_GAP_TOLERANCE
+      ) {
+        continue;
+      }
+      if (k === 1) directHits++;
+      else multipleHits++;
+    }
+    if (directHits < 1) continue; // need at least one direct gap
+    // Direct hits weighted 1.0, multiples weighted 0.5 (they're
+    // explanations but weaker evidence of the cadence itself).
+    const score = directHits + multipleHits * 0.5;
+    if (
+      score > bestScore ||
+      (score === bestScore && candidate < bestCadence)
+    ) {
+      bestScore = score;
+      bestCadence = candidate;
+    }
+  }
+  if (bestCadence < 0) return null;
+
+  const pauseIndices: number[] = [];
+  for (let i = 0; i < gaps.length; i++) {
+    const k = Math.round(gaps[i] / bestCadence);
+    if (k >= 2 && k <= MODAL_MAX_K) {
+      const expected = k * bestCadence;
+      if (
+        Math.abs(gaps[i] - expected) / Math.max(expected, 1) <=
+        MODAL_GAP_TOLERANCE
+      ) {
+        pauseIndices.push(i);
+      }
+    }
+  }
+  return { cadence: bestCadence, pauseIndices };
 }
 
 export type DetectorResult = {
@@ -629,6 +835,10 @@ export function detectRecurringStreams(
     // v6 / Change 3 — split the merchant's items into amount bands so
     // distinct price tiers from the same merchant stay separate.
     const bands = bandsForMerchantItems(collapsedItems);
+    // v7 / Problem 6 — buffer the bands' streams so the post-band
+    // merge pass can link sequential price levels into one continuing
+    // stream instead of emitting parallel old + new bands.
+    const merchantPendingStreams: DetectedStream[] = [];
     for (let bandIdx = 0; bandIdx < bands.length; bandIdx++) {
       const items = bands[bandIdx];
       // Band-suffixed key for audit uniqueness when one merchant has
@@ -692,9 +902,14 @@ export function detectRecurringStreams(
     for (let i = 1; i < kept.length; i++) {
       gaps.push(daysBetween(kept[i - 1].date, kept[i].date));
     }
-    const medianGap = gaps.length === 0 ? 0 : median(gaps);
-    const band =
-      gaps.length === 0 ? null : bandFor(medianGap, params.cadence_bands);
+    // v7 / Problem 7 — modal cadence with skip-as-pause tolerance.
+    // Replaces median-gap. A stream with regular spacing plus a few
+    // skipped periods now lands on the right cadence band; the
+    // skipped periods become pause_resume events instead of "no
+    // cadence" rejections.
+    const modal = gaps.length === 0 ? null : inferModalCadence(gaps);
+    const medianGap = modal ? modal.cadence : 0;
+    const band = modal ? bandFor(modal.cadence, params.cadence_bands) : null;
 
     // Step 3: min occurrences — band-dependent. Groups with no cadence
     // yet fall back to `default`.
@@ -732,15 +947,18 @@ export function detectRecurringStreams(
           t.installment_total !== null &&
           t.installment_total >= 2
       );
-      // v6 / Change 5 — low-confidence rescue. A multi-charge group
-      // that found a cadence band but didn't quite hit the band's
-      // minimum occurrence count looks recurring, just thinly. Per
-      // brief: "Everything else that looks recurring exits as
-      // low-confidence review — NEVER silently dropped." This is
-      // the structural net for evidence-light recurrence; the
-      // classifier still adjudicates the verdict (Gate A drops
-      // provable non-merchant flows like transfers, fees, brokerage).
-      const lowConfidenceHit = failsMinOcc && band !== null && kept.length >= 2;
+      // v7 / Problem 4 — reject-asymmetry invariant.
+      // Brief: "Any group that recurs with regular-or-paused spacing,
+      // or matches a generic non-merchant class, MUST exit as confirm
+      // or low-confidence review — NEVER a silent reject." The
+      // widened rule: ANY group with ≥ 2 kept items rescues as
+      // low-confidence review, regardless of cadence band. The
+      // classifier then decides — Gate A rejects provable non-
+      // merchant (transfers, fees, brokerage); the rest lands on
+      // review for the user. Reject is reserved for true isolated
+      // one-offs (kept.length < 2) and bottom-up data problems
+      // (median_amount_zero, all_drifted).
+      const lowConfidenceHit = kept.length >= 2;
       if (registryHit || keywordHit || scheduleHit || lowConfidenceHit) {
         const lastDate = kept[kept.length - 1].date;
         const avg =
@@ -748,7 +966,7 @@ export function detectRecurringStreams(
           kept.length;
         const rescuedFrequency: Cadence = band ?? "MONTHLY";
         const rescuedGap = medianGap || 30;
-        streams.push({
+        merchantPendingStreams.push({
           merchant_key: auditKey,
           canonical_name: rep.canonical_name,
           representative_descriptor: rep.raw_descriptor,
@@ -818,7 +1036,7 @@ export function detectRecurringStreams(
     const avg =
       kept.reduce((s, t) => s + Math.abs(t.amount_dollars), 0) / kept.length;
 
-    streams.push({
+    merchantPendingStreams.push({
       merchant_key: auditKey,
       canonical_name: rep.canonical_name,
       representative_descriptor: rep.raw_descriptor,
@@ -853,6 +1071,13 @@ export function detectRecurringStreams(
       cadence: band,
     });
     } // end band loop
+
+    // v7 / Problem 6 — link sequential price levels into one
+    // continuing stream with a price_change event. Concurrent bands
+    // (overlapping date ranges) stay as parallel streams. The merged
+    // stream's amount = latest level.
+    const finalized = mergeSequentialPriceLevels(merchantPendingStreams);
+    for (const s of finalized) streams.push(s);
   }
 
   // ─── v6 / Change 2: Reconciliation pass ─────────────────────────

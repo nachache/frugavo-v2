@@ -103,12 +103,23 @@ export function OnboardingReveal(props: Props) {
   const [excludedIds, setExcludedIds] = useState<Set<string>>(new Set());
   const [submittingFeedback, setSubmittingFeedback] = useState(false);
 
-  // Fire-and-forget. Marks the onboarding flow as completed so
-  // the dashboard's "redirect to /app/welcome if welcomed_at IS NULL"
-  // guard doesn't bounce the user back into the upsell after they
-  // decline. Idempotent on the server; safe to call multiple times.
-  function markWelcomed() {
-    fetch("/api/user/welcomed", { method: "POST" }).catch(() => {
+  // v8 — Promise-returning so callers can AWAIT the write before
+  // performing a hard navigation. Previous fire-and-forget pattern
+  // had this race: activate() called markWelcomed() then immediately
+  // window.location.href = stripe_url, which tore down the page
+  // before the welcomed_at POST hit the server. The user came back
+  // from Stripe with welcomed_at still null and the dashboard guard
+  // redirected them back to /app/welcome — the loop reported as
+  // "Activate Protection loops back to the same page."
+  //
+  // Returns void on success or failure; errors are logged but never
+  // throw so a missing welcomed_at write doesn't block the redirect
+  // (the dashboard guard now also backfills on entitlement-active,
+  // as a second layer of defense).
+  function markWelcomed(): Promise<void> {
+    return fetch("/api/user/welcomed", { method: "POST" })
+      .then(() => {})
+      .catch(() => {
       // Best-effort. If the call fails the worst case is the user
       // sees the welcome flow once more — not catastrophic.
     });
@@ -117,10 +128,12 @@ export function OnboardingReveal(props: Props) {
   async function activate() {
     setActivating(true);
     setError(null);
-    // Stamp BEFORE the redirect so when Stripe sends them back to
-    // /app/billing/success → /app, the dashboard never bounces them
-    // into the welcome flow again.
-    markWelcomed();
+    // v8 — AWAIT the welcomed_at write before opening checkout.
+    // Without the await, the browser tears down this page when
+    // window.location.href fires below, cancelling the in-flight
+    // POST. The welcomed_at flag never gets persisted and the user
+    // loops back to /app/welcome after returning from Stripe.
+    await markWelcomed();
     try {
       const res = await fetch("/api/billing/checkout", { method: "POST" });
       const data = (await res.json()) as { url?: string; error?: string };
@@ -136,11 +149,11 @@ export function OnboardingReveal(props: Props) {
     }
   }
 
-  function declineProtection() {
-    // Stamp synchronously-ish before the ProtectionActivated overlay
-    // runs its 2.4s timeout + router.push("/app"). The dashboard
-    // server render will see welcomed_at set and skip the redirect.
-    markWelcomed();
+  async function declineProtection() {
+    // v8 — await so the write is persisted before the
+    // ProtectionActivated overlay router.push fires. The 2.4s
+    // overlay timeout is plenty of headroom for a single POST.
+    await markWelcomed();
     setStage("preview");
   }
 

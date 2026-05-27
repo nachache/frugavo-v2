@@ -104,26 +104,39 @@ export function DeleteAccountCard() {
 
       setDone(true);
 
-      // Kill the Clerk session so future /app visits can't upsert a
-      // fresh app_users row and silently reverse the delete.
+      // v8 — Bug #3 fix.
       //
-      // We do TWO things in sequence and don't rely on Clerk's own
-      // redirectUrl option — in v6 of the SDK the redirect occasionally
-      // drops if the component unmounts mid-call, which would leave the
-      // user signed in on a stale /app/settings tab. Belt + braces:
-      //   1. await signOut() to clear cookies + session
-      //   2. force a hard navigation via window.location.replace so the
-      //      browser actually leaves /app — no router cache, no chance
-      //      of a React state hiccup keeping us on the same page.
-      try {
-        await signOut();
-      } catch {
-        // best-effort — even if signOut throws, we still navigate away
-      }
+      // The previous version awaited signOut() before window.location.
+      // replace(). In Clerk v5.7.5 with App Router, signOut() can hang
+      // indefinitely AFTER /api/account/delete has already invalidated
+      // the server-side session — the client call races against its
+      // own deleted session and neither resolves nor rejects, so the
+      // redirect never fires. The user sees "Redirecting…" forever.
+      //
+      // New sequence:
+      //   1. Fire signOut() WITHOUT awaiting. If it resolves, great;
+      //      if it hangs, we don't care — the hard navigation tears
+      //      down the page anyway. The .catch swallows errors so an
+      //      unhandled rejection doesn't leak into the console after
+      //      the page is already navigating.
+      //   2. Hard navigate to "/" (a PUBLIC route) via
+      //      window.location.replace. replace() over href so the back
+      //      button can't return to /app/settings as a logged-out
+      //      user. The navigation happens immediately — the
+      //      "Redirecting…" copy is briefly visible during the
+      //      one-tick paint before the browser starts loading "/".
+      //
+      // No await, no useEffect, no router.push — the brief's exact
+      // recipe: hard redirect to a public route, never rely on a
+      // client-side router push into a guarded route after the
+      // session is gone.
+      void signOut().catch(() => {
+        // best-effort — destination route doesn't depend on Clerk
+        // session being clean; the next protected request would 401
+        // and reconcile.
+      });
 
       if (typeof window !== "undefined") {
-        // replace() over href= so the back button can't return to
-        // /app/settings as a logged-out user.
         window.location.replace("/");
       }
     });

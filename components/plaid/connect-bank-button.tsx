@@ -125,16 +125,30 @@ export function ConnectBankButton() {
           setErrorMessage("Could not save the connection.");
           return;
         }
-        // Bank is connected. Clear the cached OAuth link_token; a future
-        // re-connect should get a fresh one.
+        // v8 — exchange now kicks the first scan async and returns the
+        // new scan_runs.id. Forward that to /app/scanning so the page
+        // subscribes to SSE BEFORE the scan emits its progress events.
+        // Without scan_id the scanning page falls back to running the
+        // scan synchronously (legacy path) and the user sees events
+        // replayed in bulk after the fact.
+        let scanId: string | null = null;
+        try {
+          const data = (await res.json()) as {
+            ok?: boolean;
+            scan_id?: string | null;
+          };
+          scanId = data.scan_id ?? null;
+        } catch {
+          // Response body parse failure is non-fatal; fall through
+          // to the scan_id-less navigation path.
+        }
         if (typeof window !== "undefined") {
           window.sessionStorage.removeItem(OAUTH_TOKEN_KEY);
         }
-        // Route to /app/scanning so the user watches
-        // subscriptions stream in via the progress arc + reveal list
-        // instead of landing on a blank dashboard while the scan runs.
-        // The scanning page auto-forwards to /app once the scan completes.
-        router.push("/app/scanning");
+        const target = scanId
+          ? `/app/scanning?scan_id=${encodeURIComponent(scanId)}`
+          : "/app/scanning";
+        router.push(target);
         router.refresh();
       } catch {
         setStatus("error");
