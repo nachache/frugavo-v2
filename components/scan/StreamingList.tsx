@@ -418,35 +418,50 @@ function TrustReceipt({
 
 function StreamRow({ row, index }: { row: ScanRow; index: number }) {
   const delay = Math.min(index, 9) * 120;
+  // Phase D — the engine attaches doubt_item_id ONLY to rows in the
+  // scan-chip surface zone (confidence < 0.55). Rows above that
+  // confidence threshold render without chips; their doubt (if any)
+  // surfaces later in the dashboard Quick Checks module instead.
+  const hasInlineDoubt = Boolean(row.doubt_item_id);
+
   return (
     <li
       style={{ transitionDelay: `${delay}ms` }}
       className={cn(
-        "rounded-2xl bg-white border border-hairline/60 p-4 flex items-center gap-4",
+        "rounded-2xl bg-white border border-hairline/60 p-4 flex flex-col gap-3",
         "opacity-100 translate-y-0 transition-all duration-500 ease-out",
         "animate-[fadeUp_320ms_ease-out]"
       )}
     >
-      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-ink/[0.06] text-[14px] font-semibold text-ink uppercase">
-        {row.merchant_name.charAt(0)}
-      </div>
-      <div className="flex-1 min-w-0">
-        <div className="text-[14.5px] font-medium text-ink truncate">
-          {row.merchant_name}
+      <div className="flex items-center gap-4">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-ink/[0.06] text-[14px] font-semibold text-ink uppercase">
+          {row.merchant_name.charAt(0)}
         </div>
-        <div className="text-[12px] text-ink-muted tnum">
-          {row.frequency.replace("_", " ")}
-          {row.last_charged_at &&
-            ` · last charged ${new Date(
-              row.last_charged_at
-            ).toLocaleDateString()}`}
+        <div className="flex-1 min-w-0">
+          <div className="text-[14.5px] font-medium text-ink truncate">
+            {row.merchant_name}
+          </div>
+          <div className="text-[12px] text-ink-muted tnum">
+            {row.frequency.replace("_", " ")}
+            {row.last_charged_at &&
+              ` · last charged ${new Date(
+                row.last_charged_at
+              ).toLocaleDateString()}`}
+          </div>
+        </div>
+        <div className="text-right tnum">
+          <div className="text-[16px] font-display font-semibold text-ink">
+            {formatCurrency(row.amount_cents / 100)}
+          </div>
         </div>
       </div>
-      <div className="text-right tnum">
-        <div className="text-[16px] font-display font-semibold text-ink">
-          {formatCurrency(row.amount_cents / 100)}
-        </div>
-      </div>
+
+      {hasInlineDoubt && row.doubt_item_id ? (
+        <InlineDoubtChips
+          doubtId={row.doubt_item_id}
+          brandLikelihood={row.brand_likelihood ?? null}
+        />
+      ) : null}
 
       <style jsx>{`
         @keyframes fadeUp {
@@ -461,6 +476,150 @@ function StreamRow({ row, index }: { row: ScanRow; index: number }) {
         }
       `}</style>
     </li>
+  );
+}
+
+// ──────────────────────────────────────────────────────────────────────
+// Inline doubt chips. Lightweight 4-chip strip rendered below a scan
+// row when the engine flagged it for active confirmation
+// (confidence < 0.55). Posts to the same /api/doubt/:id endpoints
+// the Quick Checks module uses — only difference is surface='scan_chip'.
+//
+// UX contract:
+//   - Scan never blocks. The strip is render-and-go; the streaming
+//     list continues regardless of whether the user answers.
+//   - Optimistic. Tap collapses the strip immediately into a tiny
+//     "thanks" line; on error, the strip restores with a small
+//     "try again" hint.
+//   - 4 chips only — Real / Not a sub / Shared / Skip. The fuller
+//     6-chip set (work / family / temporary) lives in Quick Checks
+//     where there's room. During the reveal we keep it tight.
+// ──────────────────────────────────────────────────────────────────────
+
+function InlineDoubtChips({
+  doubtId,
+  brandLikelihood,
+}: {
+  doubtId: string;
+  brandLikelihood: "always" | "sometimes" | "never" | null;
+}) {
+  const [done, setDone] = useState<{
+    label: string;
+  } | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  // 'sometimes' brands genuinely could go either way → frame the
+  // question as a choice. 'always' brands are rare in this surface
+  // (most always-brand candidates auto-confirm); when they appear,
+  // keep the prompt minimal so it doesn't feel adversarial.
+  const prompt =
+    brandLikelihood === "sometimes"
+      ? "Subscription or one-off?"
+      : "Looks right?";
+
+  async function send(
+    endpoint: "resolve" | "dismiss",
+    resolution: ResolutionChoice | null,
+    successLabel: string
+  ) {
+    if (busy) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const body: Record<string, string> = { surface: "scan_chip" };
+      if (resolution) body.resolution = resolution;
+      const res = await fetch(`/api/doubt/${doubtId}/${endpoint}`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) throw new Error(`http_${res.status}`);
+      setDone({ label: successLabel });
+    } catch {
+      setError("Couldn't save — tap again");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (done) {
+    return (
+      <div className="text-[11.5px] text-ink-muted">
+        ✓ {done.label}
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <div className="text-[11.5px] text-ink-muted mb-1.5">{prompt}</div>
+      <div className="flex flex-wrap gap-1.5">
+        <ScanChip
+          variant="primary"
+          onClick={() => send("resolve", "confirmed", "Confirmed")}
+          disabled={busy}
+        >
+          Real sub
+        </ScanChip>
+        <ScanChip
+          onClick={() => send("resolve", "not_sub", "Marked not a sub")}
+          disabled={busy}
+        >
+          Not a sub
+        </ScanChip>
+        <ScanChip
+          onClick={() => send("resolve", "shared", "Marked shared")}
+          disabled={busy}
+        >
+          Shared
+        </ScanChip>
+        <ScanChip
+          variant="ghost"
+          onClick={() => send("dismiss", null, "Skipped")}
+          disabled={busy}
+        >
+          Skip
+        </ScanChip>
+      </div>
+      {error ? (
+        <p className="mt-1.5 text-[11px] text-danger">{error}</p>
+      ) : null}
+    </div>
+  );
+}
+
+type ResolutionChoice = "confirmed" | "not_sub" | "shared";
+
+function ScanChip({
+  children,
+  onClick,
+  variant,
+  disabled,
+}: {
+  children: React.ReactNode;
+  onClick: () => void;
+  variant?: "primary" | "ghost";
+  disabled?: boolean;
+}) {
+  const cls =
+    variant === "primary"
+      ? "bg-ink text-canvas hover:bg-ink/85 border-ink"
+      : variant === "ghost"
+        ? "bg-transparent text-ink-muted hover:text-ink hover:bg-ink/[0.04] border-transparent"
+        : "bg-canvas/60 text-ink hover:bg-ink/[0.04] border-hairline";
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className={
+        "inline-flex items-center h-7 px-3 rounded-full text-[12px] font-medium border transition disabled:opacity-50 disabled:cursor-wait " +
+        cls
+      }
+    >
+      {children}
+    </button>
   );
 }
 

@@ -31,6 +31,20 @@ export type ScanRow = {
   regret_score: number; // 0..100
   category: string | null;
   ai_source: AiSource;
+  // Phase D — when present, the scan-reveal UI renders inline doubt
+  // chips below the row (Real / Not a sub / Shared / Skip). The id
+  // is the doubt_items.id the chips post their answer to. Absent
+  // when the candidate auto-confirmed (confidence ≥ 0.85) or fell
+  // outside the scan-chip surface zone (≥ 0.55 → dashboard module).
+  doubt_item_id?: string | null;
+  // Engine confidence 0..1. Surfaced so the UI can visually weight
+  // low-confidence rows even before the chip is answered.
+  confidence?: number | null;
+  // Plaid-style hint for chip copy variants. 'sometimes' is the
+  // case where the prompt reads best as "Real subscription or
+  // one-off?"; 'always' (rare in the doubt surface) reads as
+  // "Confirm this charge". Optional, used by Phase D copy.
+  brand_likelihood?: "always" | "sometimes" | "never" | null;
 };
 
 // v9 — 5-beat narrative phases. Each maps to a real engine stage so

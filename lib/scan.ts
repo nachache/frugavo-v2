@@ -923,18 +923,18 @@ async function processDetectedStream(args: {
     return null;
   }
 
-  // ---- Phase B shadow doubt write ----
+  // ---- Phase B/D doubt write ----
   //
-  // If the brand verdict + confidence put this candidate in a prompt
-  // zone, write a doubt_items row + a 'created' event to
-  // doubt_prompts_log. Idempotent on
-  // (user_id, subscription_id, prompt_kind) — re-scans don't
-  // duplicate rows but DO record fresh events when confidence shifts.
+  // Writes a doubt_items row when the candidate falls in the prompt
+  // zone. Returns the doubt id so Phase D can attach it to the
+  // emitted scanRow — that's what lets the scan-reveal UI render
+  // inline chips on the right rows. Phase C uses the same rows via
+  // the dashboard module.
   //
-  // SHADOW: no UI reads these tables today. Phase C wires both
-  // surfaces. Failure here is non-fatal — the subscription row is
-  // already persisted; missing doubt rows just mean Phase C's UI
-  // would surface fewer prompts.
+  // Failure here is non-fatal: the subscription is already persisted;
+  // a missing doubt id just means no chip appears for this stream.
+  let doubtId: string | null = null;
+  let doubtSurface: "scan_chip" | "dashboard_module" | null = null;
   if (brandVerdict) {
     const doubtDecision = shouldCreateDoubt({
       stream: {
@@ -945,7 +945,8 @@ async function processDetectedStream(args: {
       confidence: engineConfidence,
     });
     if (doubtDecision) {
-      await writeShadowDoubt({
+      doubtSurface = doubtDecision.surface;
+      doubtId = await writeShadowDoubt({
         userId,
         subscriptionId: upserted.id as string,
         merchantKey: brandVerdict.merchant_key,
@@ -957,6 +958,7 @@ async function processDetectedStream(args: {
           "[scan] shadow doubt write failed",
           e instanceof Error ? e.message : e
         );
+        return null;
       });
     }
   }
@@ -990,6 +992,14 @@ async function processDetectedStream(args: {
     regret_score: regret,
     category,
     ai_source: aiSource,
+    // Phase D inline chips — emit doubt_item_id ONLY for scan_chip
+    // surface; dashboard_module rows surface in the Quick Checks
+    // module instead of inline. The client gates render on presence
+    // of this id, so dashboard-zone doubts never get a chip during
+    // the reveal.
+    doubt_item_id: doubtSurface === "scan_chip" ? doubtId : null,
+    confidence: engineConfidence,
+    brand_likelihood: brandVerdict?.subscription_likelihood ?? null,
   };
 
   const snapshotRow: SnapshotRow = {
@@ -1808,8 +1818,8 @@ async function writeShadowDoubt(args: {
   merchantKey: string;
   promptKind: "is_real_sub";
   confidence: number;
-}): Promise<void> {
-  if (!supabaseAdmin) return;
+}): Promise<string | null> {
+  if (!supabaseAdmin) return null;
   const { userId, subscriptionId, merchantKey, promptKind, confidence } = args;
 
   // Read existing row to know whether we're creating or updating —
@@ -1827,7 +1837,7 @@ async function writeShadowDoubt(args: {
   if (existing && (existing.resolved_at || existing.silenced_at)) {
     // User has answered or silenced this — do not re-prompt during
     // shadow mode. Re-evaluation logic lands in Phase C.
-    return;
+    return null;
   }
 
   const nowIso = new Date().toISOString();
@@ -1850,20 +1860,23 @@ async function writeShadowDoubt(args: {
   if (error || !upserted) {
     // eslint-disable-next-line no-console
     console.error("[scan] doubt_items upsert failed", error);
-    return;
+    return null;
   }
+
+  const doubtId = upserted.id as string;
 
   // Append a 'created' log event only on first insert. We detect
   // first-insert by absence of `existing` above.
   if (!existing) {
     await supabaseAdmin.from("doubt_prompts_log").insert({
       user_id: userId,
-      doubt_item_id: upserted.id as string,
+      doubt_item_id: doubtId,
       event: "created",
       surface: null, // engine-side event, no UI surface yet
       confidence_at_event: confidence,
     });
   }
+  return doubtId;
 }
 
 // ---------------------------------------------------------------------------
