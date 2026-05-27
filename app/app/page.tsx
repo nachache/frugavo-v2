@@ -189,11 +189,21 @@ export default async function AppHome({
   // an honest empty state, not a loading one.
   const readiness = await getDashboardReadiness(user.id);
   if (readiness.state === "awaiting") {
+    // Fold diagnostics into a flat shape for the client. classicLikely
+    // aggregates across items — "any of your banks is classic" is the
+    // honest framing when multi-bank users hit this state.
+    const diag = readiness.plaidDiagnostics;
     return (
       <DashboardWaiting
         bankName={readiness.bankName}
         scanStatus={readiness.scanStatus}
         awaitingBankData={readiness.awaitingBankData}
+        diagnostics={{
+          anyNeedsReauth: diag.anyNeedsReauth,
+          noSuccessfulUpdateYet: diag.noSuccessfulUpdateYet,
+          classicLikely: diag.items.some((i) => i.classicLikely),
+          bankNames: diag.bankNames,
+        }}
       />
     );
   }

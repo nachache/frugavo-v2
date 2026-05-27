@@ -1,4 +1,8 @@
 import { supabaseAdmin } from "./supabase";
+import {
+  getPlaidItemDiagnostics,
+  type PlaidDiagnosticSummary,
+} from "./plaid-diagnostics";
 
 // Dashboard readiness gate.
 //
@@ -62,6 +66,14 @@ export type DashboardReadiness =
       // is genuinely still running" (false) so the card can show
       // accurate copy.
       awaitingBankData: boolean;
+      // Plaid item-level diagnostics. Used ONLY to improve the
+      // awaiting copy ("your bank uses Plaid Classic" / "please
+      // re-link"). NEVER consulted by the readiness decision —
+      // even if Plaid says "last_successful_update was 2 seconds
+      // ago, all good", we still hold the dashboard until our
+      // own scan_runs row says otherwise. Plaid's view of
+      // completeness is necessary but not sufficient.
+      plaidDiagnostics: PlaidDiagnosticSummary;
     };
 
 export async function getDashboardReadiness(
@@ -73,6 +85,12 @@ export async function getDashboardReadiness(
       bankName: null,
       scanStatus: null,
       awaitingBankData: false,
+      plaidDiagnostics: {
+        items: [],
+        anyNeedsReauth: false,
+        noSuccessfulUpdateYet: true,
+        bankNames: "",
+      },
     };
   }
 
@@ -92,12 +110,13 @@ export async function getDashboardReadiness(
   // synchronously before redirecting back, but defensively we still
   // refuse to show the dashboard.
   if (!scan) {
-    const bankName = await firstActiveBankName(userId);
+    const diag = await getPlaidItemDiagnostics(userId);
     return {
       state: "awaiting",
-      bankName,
+      bankName: diag.bankNames || null,
       scanStatus: null,
       awaitingBankData: false,
+      plaidDiagnostics: diag,
     };
   }
 
@@ -110,12 +129,13 @@ export async function getDashboardReadiness(
 
   // Non-terminal statuses → still in flight. Hold the dashboard.
   if (status === "running" || status === "finalizing") {
-    const bankName = await firstActiveBankName(userId);
+    const diag = await getPlaidItemDiagnostics(userId);
     return {
       state: "awaiting",
-      bankName,
+      bankName: diag.bankNames || null,
       scanStatus: status,
       awaitingBankData: false,
+      plaidDiagnostics: diag,
     };
   }
 
@@ -124,12 +144,13 @@ export async function getDashboardReadiness(
   // wrong. The waiting card has a "Go to dashboard anyway" recovery
   // path for users who explicitly want to inspect.
   if (status === "error" || status === "timeout") {
-    const bankName = await firstActiveBankName(userId);
+    const diag = await getPlaidItemDiagnostics(userId);
     return {
       state: "awaiting",
-      bankName,
+      bankName: diag.bankNames || null,
       scanStatus: status,
       awaitingBankData: false,
+      plaidDiagnostics: diag,
     };
   }
 
@@ -146,12 +167,13 @@ export async function getDashboardReadiness(
     // when the engine ran. detected_count is 0 here as a side
     // effect of having no input data — it does NOT mean the user
     // has no subscriptions, it means we haven't checked yet.
-    const bankName = await firstActiveBankName(userId);
+    const diag = await getPlaidItemDiagnostics(userId);
     return {
       state: "awaiting",
-      bankName,
+      bankName: diag.bankNames || null,
       scanStatus: status,
       awaitingBankData: true,
+      plaidDiagnostics: diag,
     };
   }
 
@@ -179,18 +201,6 @@ export async function getDashboardReadiness(
   };
 }
 
-async function firstActiveBankName(userId: string): Promise<string | null> {
-  if (!supabaseAdmin) return null;
-  try {
-    const { data } = await supabaseAdmin
-      .from("plaid_items")
-      .select("institution_name")
-      .eq("user_id", userId)
-      .eq("status", "active")
-      .limit(1)
-      .maybeSingle();
-    return (data?.institution_name as string | null | undefined) ?? null;
-  } catch {
-    return null;
-  }
-}
+// (firstActiveBankName removed — superseded by getPlaidItemDiagnostics,
+// which returns the bank name as part of the richer diagnostic
+// summary used to explain WHY we're awaiting.)

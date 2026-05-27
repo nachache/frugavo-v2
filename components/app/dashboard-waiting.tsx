@@ -20,11 +20,26 @@ import { WaitingForBankCard } from "@/components/scan/WaitingForBankCard";
 // state==="ready_with_results" or "complete_empty_after_history_
 // ready", the server render returns the actual dashboard and this
 // component unmounts.
+//
+// Diagnostics: optional Plaid item state used ONLY to improve copy.
+// It never decides readiness — scan_runs is authoritative. If
+// diagnostics say "your bank disconnected" we surface a "please
+// re-link" CTA. If they say "classic integration" we surface the
+// 15-30 minute caveat. If they say nothing, generic copy.
 
 type Props = {
   bankName: string | null;
   scanStatus: string | null;
   awaitingBankData: boolean;
+  // Optional. Drives the explanatory subtitle + CTA. Absent on
+  // legacy renders or when Plaid is unreachable; the component
+  // degrades to generic copy in that case.
+  diagnostics?: {
+    anyNeedsReauth: boolean;
+    noSuccessfulUpdateYet: boolean;
+    classicLikely: boolean;
+    bankNames: string;
+  };
 };
 
 const POLL_INTERVAL_MS = 8_000;
@@ -33,6 +48,7 @@ export function DashboardWaiting({
   bankName,
   scanStatus,
   awaitingBankData,
+  diagnostics,
 }: Props) {
   const router = useRouter();
   const [tick, setTick] = useState(0);
@@ -50,11 +66,29 @@ export function DashboardWaiting({
     return () => clearInterval(id);
   }, [router]);
 
-  // Subtitle copy adapts to the underlying reason. awaiting_bank_data
-  // means we KNOW Plaid is the bottleneck. running/finalizing means
-  // the engine is still working. null/error means the kickoff is
-  // pending or fell over.
-  const subtitleNote = awaitingBankData
+  // Subtitle copy. Order of preference (most specific first):
+  //   1. Plaid diagnostics say the user must re-link → tell them.
+  //   2. Plaid says "we've never seen a successful update" → first-
+  //      pull copy (the most common slow-bank case).
+  //   3. Plaid heuristic says Classic integration → 15-30min caveat.
+  //   4. scan_runs.metrics.awaiting_bank_data=true → generic Plaid
+  //      bottleneck.
+  //   5. scan still running/finalizing → engine-side copy.
+  //   6. scan errored → retry copy.
+  //   7. Fallback.
+  //
+  // CRITICAL: every branch above only changes WHAT WE SAY. The
+  // decision to be on this screen at all was made in
+  // getDashboardReadiness from scan_runs alone. Plaid metadata can
+  // never advance us past this screen — only a fresh, trustworthy
+  // scan_runs row can.
+  const subtitleNote = diagnostics?.anyNeedsReauth
+    ? `${diagnostics.bankNames || "Your bank"} needs you to re-authorize the connection. Until you re-link, transactions will be stale.`
+    : diagnostics?.noSuccessfulUpdateYet
+    ? "Plaid hasn't delivered any transactions yet. This is normal on first connect — the initial pull can take a few minutes."
+    : diagnostics?.classicLikely
+    ? `${diagnostics.bankNames || "Your bank"} uses Plaid's older integration, which can take 15-30 minutes on first connect. We'll refresh automatically.`
+    : awaitingBankData
     ? "Plaid is fetching your transactions on their side. Could take a few minutes."
     : scanStatus === "running" || scanStatus === "finalizing"
     ? "Your first scan is finishing up."
@@ -63,10 +97,15 @@ export function DashboardWaiting({
     : "Getting your data ready.";
 
   function onContinue() {
-    // Recovery path. The dashboard is genuinely empty right now; we
-    // route to /app/connect so the user can re-trigger or re-link.
-    // Cleaner than dumping them on a zero dashboard.
-    router.push("/app/connect");
+    // Recovery path. If Plaid says the item needs re-auth, route to
+    // /app/connect (which handles re-linking). Otherwise just refresh
+    // the same screen — there's nowhere honest to send them since the
+    // dashboard isn't ready.
+    if (diagnostics?.anyNeedsReauth) {
+      router.push("/app/connect");
+      return;
+    }
+    router.refresh();
   }
 
   return (
