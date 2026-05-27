@@ -207,8 +207,16 @@ export function shouldCreateDoubt(
   // 1. Materiality. $2/mo equivalent is the floor — nothing below
   //    that is worth interrupting the user for, even if Claude is
   //    uncertain about it.
+  //
+  // CRITICAL: subscriptions.amount_cents is stored as a SIGNED value
+  // (negative = outflow, our convention from plaid_transactions).
+  // monthlyEquivalentCents passes the sign through, so an active
+  // sub will arrive here as a negative number. Compare on the
+  // absolute value or the materiality filter strips every real
+  // subscription (the bug that produced 0 doubts in production
+  // even though shadow writes were populating correctly).
   if (
-    stream.monthly_equivalent_cents <
+    Math.abs(stream.monthly_equivalent_cents) <
     DOUBT_CONSTANTS.MATERIALITY_THRESHOLD_CENTS
   ) {
     return null;
@@ -260,8 +268,10 @@ export function canReEvaluateSilencedDoubt(
   args: CanReEvaluateArgs
 ): boolean {
   if (!args.silenced) return true;
+  // Same signed-amount caveat as shouldCreateDoubt — compare on
+  // absolute value so negative outflows don't bypass the floor.
   if (
-    args.currentMonthlyEquivalentCents <
+    Math.abs(args.currentMonthlyEquivalentCents) <
     DOUBT_CONSTANTS.MATERIALITY_THRESHOLD_CENTS
   ) {
     return false;
