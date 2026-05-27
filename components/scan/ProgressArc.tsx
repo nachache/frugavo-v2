@@ -1,16 +1,16 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import type { ScanPhase } from "@/lib/types/scan";
 
 // Cinematic three-state progress arc.
 //
-// HONESTY CONTRACT (kept from v8):
+// HONESTY CONTRACT:
 //   - `phase` is driven ENTIRELY by SSE `progress` events from the
 //     engine. There is no wall-clock timer that auto-advances stages.
-//   - When SSE hasn't delivered yet, we sit on "connecting" — that
-//     is honest about silence rather than synthesizing fake motion.
+//   - When SSE hasn't delivered yet, we sit on "connecting" — honest
+//     about silence rather than synthesizing fake motion.
 //
 // MOTION DESIGN:
 //   - Outer ring sweeps continuously (the "engine is working" signal).
@@ -21,9 +21,10 @@ import type { ScanPhase } from "@/lib/types/scan";
 //   - Three pips below the circle map 1:1 to the SSE phases. They fill
 //     as real events arrive. The current pip pulses; passed pips are
 //     solid; upcoming pips are hollow.
-//   - When the phase prop changes, the label crossfades + slides
-//     subtly. The crossfade is the ONLY thing that hints at progress —
-//     and it only fires on real events.
+//   - When the phase prop changes, the label briefly fades out, the
+//     text swaps, and the label fades back in. Single mounted node
+//     for the label — no absolute positioning, no overlap risk
+//     during the crossfade.
 
 type Props = {
   phase?: ScanPhase | null;
@@ -37,18 +38,35 @@ const PHASE_LABEL: Record<ScanPhase, string> = {
 };
 
 const PHASE_ORDER: ScanPhase[] = ["connecting", "reading", "spotting"];
+const CROSSFADE_MS = 220;
 
 export function ProgressArc({ phase, className }: Props) {
   const current: ScanPhase = phase ?? "connecting";
   const currentIdx = PHASE_ORDER.indexOf(current);
 
-  // Crossfade trigger. When `current` changes we briefly toggle the
-  // `entering` flag so the label re-mounts with its entrance animation.
-  // The animation key forces React to remount the text element.
-  const [animKey, setAnimKey] = useState(0);
+  // Single mounted label node. When `current` changes we fade it
+  // out, swap the text, and fade it back in — using ONE node so
+  // there's no chance of the entering and exiting labels stacking
+  // on top of each other during the transition.
+  const [displayPhase, setDisplayPhase] = useState<ScanPhase>(current);
+  const [visible, setVisible] = useState(true);
+  const lastPhaseRef = useRef<ScanPhase>(current);
+
   useEffect(() => {
-    setAnimKey((k) => k + 1);
+    if (current === lastPhaseRef.current) return;
+    lastPhaseRef.current = current;
+    // Fade out, swap, fade in.
+    setVisible(false);
+    const swapT = window.setTimeout(() => {
+      setDisplayPhase(current);
+      // Force a frame between text swap and fade-in so the browser
+      // applies the new text BEFORE re-revealing.
+      requestAnimationFrame(() => setVisible(true));
+    }, CROSSFADE_MS);
+    return () => window.clearTimeout(swapT);
   }, [current]);
+
+  const displayIdx = PHASE_ORDER.indexOf(displayPhase);
 
   return (
     <div
@@ -157,20 +175,24 @@ export function ProgressArc({ phase, className }: Props) {
         })}
       </div>
 
-      {/* Label + step counter. Both crossfade on phase change. The key
-          on the inner div forces React to remount so the entrance
-          animation replays — that's the only motion that fires on a
-          real SSE event, which is what makes it feel earned. */}
-      <div className="text-center min-h-[52px] relative">
+      {/* Label + step counter. Single mounted node; opacity + small
+          translate transitions on phase change. Fixed min-h reserves
+          space so layout doesn't shift during the crossfade. */}
+      <div className="text-center min-h-[56px]">
         <div
-          key={animKey}
-          className="absolute inset-0 animate-[label-in_500ms_cubic-bezier(0.16,1,0.3,1)]"
+          className="transition-all ease-out"
+          style={{
+            transitionDuration: `${CROSSFADE_MS}ms`,
+            opacity: visible ? 1 : 0,
+            transform: visible ? "translateY(0)" : "translateY(4px)",
+            filter: visible ? "blur(0)" : "blur(1.5px)",
+          }}
         >
           <div className="text-[11px] uppercase tracking-[0.22em] font-semibold text-ink-muted">
-            Step {currentIdx + 1} of 3
+            Step {displayIdx + 1} of 3
           </div>
-          <div className="mt-1.5 text-[18px] font-display font-semibold text-ink tnum">
-            {PHASE_LABEL[current]}
+          <div className="mt-1.5 text-[18px] font-display font-semibold text-ink">
+            {PHASE_LABEL[displayPhase]}
           </div>
         </div>
       </div>
@@ -192,18 +214,6 @@ export function ProgressArc({ phase, className }: Props) {
           0%, 100% { transform: scale(1); opacity: 0.5; }
           50% { transform: scale(1.08); opacity: 0.75; }
         }
-        @keyframes label-in {
-          0% {
-            opacity: 0;
-            transform: translateY(6px);
-            filter: blur(2px);
-          }
-          100% {
-            opacity: 1;
-            transform: translateY(0);
-            filter: blur(0);
-          }
-        }
         @media (prefers-reduced-motion: reduce) {
           :global([class*="animate-[arc-sweep"]),
           :global([class*="animate-[arc-counter"]),
@@ -212,9 +222,6 @@ export function ProgressArc({ phase, className }: Props) {
           }
           :global([class*="animate-[pulse-dot"]) {
             animation: none !important;
-          }
-          :global([class*="animate-[label-in"]) {
-            animation-duration: 0.01ms !important;
           }
         }
       `}</style>

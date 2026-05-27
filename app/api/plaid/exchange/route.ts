@@ -3,7 +3,6 @@ import { currentUser } from "@clerk/nextjs/server";
 import { plaidClient } from "@/lib/plaid";
 import { supabaseAdmin } from "@/lib/supabase";
 import { encryptToken } from "@/lib/crypto";
-import { runScanForUser } from "@/lib/scan";
 
 // POST /api/plaid/exchange
 // Body: { public_token: string, institution?: { name, institution_id } }
@@ -18,12 +17,6 @@ import { runScanForUser } from "@/lib/scan";
 // pass will land before production access is requested from Plaid.
 
 export const runtime = "nodejs";
-// v8 — maxDuration extended to 60s so the background runScanForUser
-// promise can complete inside the same lambda lifetime after this
-// route's HTTP response is sent. Without this, Netlify's default 10s
-// cap kills the in-flight scan promise and the user lands on a
-// scan_runs row that never finalizes.
-export const maxDuration = 60;
 
 export async function POST(req: Request) {
   const user = await currentUser();
@@ -89,65 +82,7 @@ export async function POST(req: Request) {
       );
     }
 
-    // v8 — Bug #1 fix: kick the first-scan pipeline asynchronously so
-    // the /app/scanning page can subscribe to live SSE events as the
-    // engine emits them. Without this kick-here-async pattern, the
-    // scan would run synchronously inside the scanning page's render
-    // (the previous behavior) and the progress bar would only see
-    // events replayed in bulk AFTER the scan was already complete.
-    //
-    // We poll scan_runs briefly for the new row's id so the client
-    // can navigate to /app/scanning?scan_id=<id> with a valid id.
-    // The runScanForUser promise is intentionally NOT awaited; it
-    // continues running for the remainder of this lambda's lifetime
-    // (maxDuration=60). Errors are logged, not propagated — the user
-    // is already on the scanning page by then and will see SSE
-    // events deliver the failure if it happens.
-    const scanPromise = runScanForUser(user.id, "first_connect").catch(
-      (e: unknown) => {
-        // eslint-disable-next-line no-console
-        console.error("[plaid/exchange] background scan failed:", e);
-        return null;
-      }
-    );
-    // Keep a reference so the runtime doesn't garbage-collect the
-    // promise before it completes. Stored on globalThis so multiple
-    // concurrent exchanges don't trample each other.
-    const globalAny = globalThis as { __bgScanPromises?: Promise<unknown>[] };
-    globalAny.__bgScanPromises = (globalAny.__bgScanPromises ?? []).concat(
-      scanPromise
-    );
-
-    // Poll briefly for the scan_runs row runScanForUser inserts at
-    // start. The row appears within ~50ms once the lock is acquired;
-    // we cap the wait at 2s so a slow Redis lock doesn't block the
-    // exchange response indefinitely.
-    let scanId: string | null = null;
-    for (let i = 0; i < 20; i++) {
-      const { data } = await supabaseAdmin
-        .from("scan_runs")
-        .select("id, started_at")
-        .eq("user_id", user.id)
-        .eq("status", "running")
-        .order("started_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      if (data?.id) {
-        scanId = data.id;
-        break;
-      }
-      await new Promise((r) => setTimeout(r, 100));
-    }
-
-    return NextResponse.json({
-      ok: true,
-      item_id: itemId,
-      // scan_id may be null if the scan_runs insert hasn't landed in
-      // 2s (e.g. Redis lock contention). The client falls back to
-      // navigating /app/scanning without a scan_id, where the page
-      // does its own discovery (existing branch).
-      scan_id: scanId,
-    });
+    return NextResponse.json({ ok: true, item_id: itemId });
   } catch (e) {
     // eslint-disable-next-line no-console
     console.error("[plaid/exchange] error:", e);

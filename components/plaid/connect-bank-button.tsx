@@ -125,30 +125,26 @@ export function ConnectBankButton() {
           setErrorMessage("Could not save the connection.");
           return;
         }
-        // v8 — exchange now kicks the first scan async and returns the
-        // new scan_runs.id. Forward that to /app/scanning so the page
-        // subscribes to SSE BEFORE the scan emits its progress events.
-        // Without scan_id the scanning page falls back to running the
-        // scan synchronously (legacy path) and the user sees events
-        // replayed in bulk after the fact.
-        let scanId: string | null = null;
-        try {
-          const data = (await res.json()) as {
-            ok?: boolean;
-            scan_id?: string | null;
-          };
-          scanId = data.scan_id ?? null;
-        } catch {
-          // Response body parse failure is non-fatal; fall through
-          // to the scan_id-less navigation path.
-        }
+        // Bank is connected. Clear the cached OAuth link_token; a
+        // future re-connect should get a fresh one.
         if (typeof window !== "undefined") {
           window.sessionStorage.removeItem(OAUTH_TOKEN_KEY);
         }
-        const target = scanId
-          ? `/app/scanning?scan_id=${encodeURIComponent(scanId)}`
-          : "/app/scanning";
-        router.push(target);
+        // Route to /app/scanning so the user watches subscriptions
+        // stream in via the progress arc + reveal list. The scanning
+        // page kicks runScanForUser server-side inside its render; the
+        // page only renders once the scan finishes (10-30s) and SSE
+        // then replays the engine events from Redis Stream — phase
+        // transitions, row events, and complete. The new ProgressArc
+        // animates honestly off those real SSE phases (no timer).
+        //
+        // The earlier attempt to kick the scan async from
+        // /api/plaid/exchange was abandoned because Netlify
+        // terminates the lambda after response, killing the in-flight
+        // scan promise mid-Plaid-sync. Synchronous server-render is
+        // the reliable shape on this platform until we add a real
+        // job queue.
+        router.push("/app/scanning");
         router.refresh();
       } catch {
         setStatus("error");
