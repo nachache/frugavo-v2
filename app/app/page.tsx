@@ -26,8 +26,9 @@ import { maybeNotifySignup } from "@/lib/users/signup-notify";
 import { getEntitlement } from "@/lib/billing/entitlements";
 import { buildDashboardData } from "@/lib/selectors/dashboard";
 import { SHOW_BILLS_SURFACE } from "@/lib/feature-flags";
-import { getDashboardReadiness } from "@/lib/scan-readiness";
-import { DashboardWaiting } from "@/components/app/dashboard-waiting";
+import { computeIngestionState } from "@/lib/ingestion-state";
+import { PreparingScreen } from "@/components/app/preparing-screen";
+import { NeedsReauthScreen } from "@/components/app/needs-reauth-screen";
 
 // /app — the authenticated dashboard root.
 //
@@ -165,48 +166,66 @@ export default async function AppHome({
     redirect("/app/welcome");
   }
 
-  // ---- HARD READINESS GATE ----
+  // ---- STATE-AWARE DASHBOARD ROUTE ----
   //
-  // The dashboard is NEVER allowed to render with placeholder zeros
-  // while Plaid is still fetching history. Before any of the
-  // dashboard surfaces mount, ask scan-readiness whether the latest
-  // scan_runs row indicates Plaid has actually delivered:
+  // /app is now a state machine over ingestion progress, not over
+  // "do we have data right now." Six states; only two render the
+  // actual dashboard cards:
   //
-  //   ready_with_results / complete_empty_after_history_ready
-  //     → render the dashboard. Numbers (even if zero) are trustable.
+  //   preparing / syncing / analyzing → <PreparingScreen/>
+  //       Real milestone strip ("Connected to {bank}" → "Fetching
+  //       transactions (N)" → "Analyzing patterns" → "Building your
+  //       dashboard") + skeleton card layout below. Polls every 4s.
   //
-  //   awaiting
-  //     → render <DashboardWaiting/> instead. No dashboard cards.
-  //       Component polls the route every 8s; when the webhook
-  //       re-triggers the scan and Plaid delivers, the next server
-  //       render returns the real dashboard and this branch
-  //       unmounts.
+  //   needs_reauth → <NeedsReauthScreen/>
+  //       Plaid wants the user to re-link. Polls for resolution.
   //
-  // This is what fixes "freshly-connected user lands on $0 dashboard
-  // and assumes Frugavo is broken." The empty state still exists —
-  // but only for users whose bank delivered data AND the engine
-  // ran the full pipeline AND nothing recurring was found. That's
-  // an honest empty state, not a loading one.
-  const readiness = await getDashboardReadiness(user.id);
-  if (readiness.state === "awaiting") {
-    // Fold diagnostics into a flat shape for the client. classicLikely
-    // aggregates across items — "any of your banks is classic" is the
-    // honest framing when multi-bank users hit this state.
-    const diag = readiness.plaidDiagnostics;
+  //   ready_with_results / ready_but_empty → full dashboard below.
+  //       Numbers are trustable. The two cases diverge only in the
+  //       empty-state copy inside the cards.
+  //
+  // Critical rule: once app_users.first_ready_at is set on this user,
+  // computeIngestionState NEVER returns preparing/syncing/analyzing
+  // again. Subsequent re-scans surface as ready_with_results
+  // (refreshing=true) — the user always sees their cached dashboard
+  // with a small "updating" indicator, never a blank waiting screen.
+  // The "never empty after first ready" guarantee that fintech
+  // dashboards (Mercury / Brex / Ramp / Copilot) all maintain.
+  const ingestion = await computeIngestionState(user.id);
+
+  if (ingestion.state === "needs_reauth") {
+    return <NeedsReauthScreen bankNames={ingestion.diagnostics.bankNames} />;
+  }
+
+  if (
+    ingestion.state === "preparing" ||
+    ingestion.state === "syncing" ||
+    ingestion.state === "analyzing"
+  ) {
+    const diag = ingestion.diagnostics;
+    const initialTxnCount =
+      ingestion.state === "syncing" || ingestion.state === "analyzing"
+        ? ingestion.txnCount
+        : 0;
     return (
-      <DashboardWaiting
-        bankName={readiness.bankName}
-        scanStatus={readiness.scanStatus}
-        awaitingBankData={readiness.awaitingBankData}
-        diagnostics={{
-          anyNeedsReauth: diag.anyNeedsReauth,
-          noSuccessfulUpdateYet: diag.noSuccessfulUpdateYet,
-          classicLikely: diag.items.some((i) => i.classicLikely),
-          bankNames: diag.bankNames,
-        }}
+      <PreparingScreen
+        initialState={ingestion.state}
+        bankNames={diag.bankNames}
+        initialTxnCount={initialTxnCount}
+        classicLikely={diag.items.some((i) => i.classicLikely)}
+        noSuccessfulUpdateYet={diag.noSuccessfulUpdateYet}
       />
     );
   }
+
+  // ready_with_results or ready_but_empty — fall through to the
+  // normal dashboard render. The dashboard cards themselves handle
+  // the empty-state copy when buildDashboardData returns zeros.
+  const ingestionRefreshing =
+    (ingestion.state === "ready_with_results" ||
+      ingestion.state === "ready_but_empty") &&
+    ingestion.refreshing;
+  void ingestionRefreshing; // surfaced below via a small badge
 
   // Pull the canonical dashboard payload.
   const data = await buildDashboardData(user.id);

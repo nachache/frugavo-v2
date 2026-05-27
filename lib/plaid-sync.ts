@@ -125,13 +125,38 @@ export async function syncPlaidItemTransactions(
     totalModified += modified.length;
     totalRemoved += removed.length;
 
-    // Advance the cursor in DB ONLY after writes succeeded. This is
-    // the durability contract — a crash here means the next call
-    // re-pulls the same page, which is safe because upserts are
-    // idempotent.
+    // Advance the cursor + bump ingestion progress in DB ONLY after
+    // writes succeeded. This is the durability contract — a crash
+    // here means the next call re-pulls the same page, which is safe
+    // because upserts are idempotent.
+    //
+    // v11: also stamp sync_state='syncing' / 'ready' and bump
+    // txn_count so the IngestionState selector can advance the user
+    // out of preparing → syncing as soon as the first page lands,
+    // and into ready once the drain finishes (caller decides — we
+    // just write 'syncing' here and let syncAllItemsForUser or
+    // runScanForUser flip to 'ready'/'awaiting_bank').
+    const nowIso = new Date().toISOString();
+    const cursorUpdate: Record<string, unknown> = {
+      cursor: next_cursor,
+      last_synced_at: nowIso,
+    };
+    const newRows = added.length + modified.length;
+    if (newRows > 0) {
+      cursorUpdate.sync_state = "syncing";
+      // Read-modify-write txn_count + first_synced_at. Race-tolerant.
+      const { data: cur } = await supabaseAdmin
+        .from("plaid_items")
+        .select("txn_count, first_synced_at")
+        .eq("id", plaidItemRowId)
+        .maybeSingle();
+      cursorUpdate.txn_count =
+        ((cur?.txn_count as number | null) ?? 0) + newRows;
+      if (!cur?.first_synced_at) cursorUpdate.first_synced_at = nowIso;
+    }
     await supabaseAdmin
       .from("plaid_items")
-      .update({ cursor: next_cursor, last_synced_at: new Date().toISOString() })
+      .update(cursorUpdate)
       .eq("id", plaidItemRowId);
 
     cursor = next_cursor;

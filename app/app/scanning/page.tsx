@@ -1,15 +1,29 @@
 import { redirect } from "next/navigation";
 import { currentUser } from "@clerk/nextjs/server";
 import { supabaseAdmin } from "@/lib/supabase";
-import { runScanForUser } from "@/lib/scan";
 import { StreamingList } from "@/components/scan/StreamingList";
 
-// /app/scanning — the live reveal screen. Mounted from:
-//   - the post-connect redirect after Plaid Link exchange
+// /app/scanning — the live reveal screen.
+//
+// Mounted from:
+//   - the post-connect redirect after Plaid Link exchange (with the
+//     scan_id appended by the /api/plaid/exchange handler)
 //   - the dashboard "Re-scan" button (with ?scan_id=<id>)
 //
-// If no scan_id is provided, we kick a manual scan and forward the user
-// to the same page with the resulting scan_id appended.
+// IMPORTANT BEHAVIORAL CONTRACT (v11):
+//   This page NEVER kicks off a new scan. Two paths arrive here:
+//     1. With ?scan_id=… → render the stream
+//     2. Without scan_id → check for an in-flight scan; pick it up if
+//        present, otherwise redirect to /app and let the state-aware
+//        dashboard route handle it (PreparingScreen / dashboard / etc).
+//
+//   Earlier versions ran runScanForUser inline on this page, which
+//   produced the redirect loop the user reported: any stray nav back
+//   to /app/scanning would kick a fresh scan AND replay the loading
+//   animation, even when the dashboard was already ready. Now the
+//   only place that initiates first-connect scans is the exchange
+//   handler (after Plaid Link); subsequent re-scans are initiated by
+//   the webhook or the dashboard "Re-scan" button.
 
 type SearchParams = { scan_id?: string };
 
@@ -32,37 +46,32 @@ export default async function ScanningPage({
     );
   }
 
-  // Resolve or create the scan_id. We don't block render on the scan
-  // body — runScanForUser kicks an async pipeline that publishes events
-  // to Redis Stream; the StreamingList component subscribes via SSE.
   let scanId = searchParams.scan_id;
 
+  // No scan_id? Look for an in-flight scan that this page could attach
+  // to. If there isn't one, send the user to /app — that route owns
+  // the IngestionState machine and will render PreparingScreen,
+  // NeedsReauthScreen, or the real dashboard as appropriate. We do
+  // NOT kick off a scan here; that's what created the redirect loop.
   if (!scanId) {
-    const result = await runScanForUser(user.id, "first_connect");
-    if (result.error === "scan_in_progress") {
-      // A concurrent scan owns the lock; pick up its scan_id.
-      const { data: row } = await supabaseAdmin
-        .from("scan_runs")
-        .select("id")
-        .eq("user_id", user.id)
-        .eq("status", "running")
-        .order("started_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      scanId = row?.id ?? undefined;
+    const { data: live } = await supabaseAdmin
+      .from("scan_runs")
+      .select("id")
+      .eq("user_id", user.id)
+      .in("status", ["running", "finalizing"])
+      .order("started_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (live?.id) {
+      scanId = live.id as string;
     } else {
-      scanId = result.scan_id;
+      redirect("/app");
     }
   }
 
   if (!scanId) {
-    return (
-      <section className="container-page py-16 md:py-24 max-w-[720px]">
-        <p className="text-[15px] text-danger">
-          Could not start the scan. Try again from the dashboard.
-        </p>
-      </section>
-    );
+    // Defensive — typescript can't narrow through the redirect above.
+    redirect("/app");
   }
 
   return (

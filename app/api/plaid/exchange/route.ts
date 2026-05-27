@@ -3,6 +3,8 @@ import { currentUser } from "@clerk/nextjs/server";
 import { plaidClient } from "@/lib/plaid";
 import { supabaseAdmin } from "@/lib/supabase";
 import { encryptToken } from "@/lib/crypto";
+import { runScanForUser } from "@/lib/scan";
+import { observeError } from "@/lib/observe";
 
 // POST /api/plaid/exchange
 // Body: { public_token: string, institution?: { name, institution_id } }
@@ -81,6 +83,24 @@ export async function POST(req: Request) {
         { status: 500 }
       );
     }
+
+    // v11 — fire-and-forget the first scan as a background job so
+    // the browser is free to navigate to /app immediately. The
+    // IngestionState selector on /app reads plaid_items.sync_state
+    // (pending → syncing → ready) and surfaces PreparingScreen with
+    // real milestones. The user can close the tab after this point
+    // and the webhook (SYNC_UPDATES_AVAILABLE / INITIAL_UPDATE) will
+    // re-trigger the scan whenever Plaid delivers.
+    //
+    // We do NOT redirect to /app/scanning anymore. That page exists
+    // only for the live SSE reveal — the dashboard route's
+    // PreparingScreen is the production-grade waiting state.
+    void runScanForUser(user.id, "first_connect").catch((e) => {
+      observeError(e, {
+        route: "plaid.exchange.scan",
+        tags: { itemId, userId: user.id },
+      });
+    });
 
     return NextResponse.json({ ok: true, item_id: itemId });
   } catch (e) {

@@ -108,14 +108,36 @@ export async function POST(req: Request) {
       body.webhook_code === "INITIAL_UPDATE" ||
       body.webhook_code === "RECURRING_TRANSACTIONS_UPDATE");
 
+  const nowIso = new Date().toISOString();
+
+  // Always stamp webhook telemetry. The IngestionState diagnostics
+  // read last_webhook_at to confirm Plaid is alive for this item.
+  await supabaseAdmin
+    .from("plaid_items")
+    .update({
+      last_webhook_at: nowIso,
+      last_webhook_code: body.webhook_code,
+    })
+    .eq("plaid_item_id", body.item_id);
+
   if (transactionDataReady) {
+    // Plaid has fresh transactions. Mark the item as syncing (the scan
+    // we kick off below will flip it to ready / awaiting_bank when it
+    // terminates). needs_refresh stays for back-compat.
     await supabaseAdmin
       .from("plaid_items")
-      .update({ needs_refresh: true })
+      .update({
+        needs_refresh: true,
+        sync_state: "syncing",
+        updated_at: nowIso,
+      })
       .eq("plaid_item_id", body.item_id);
 
     if (item?.user_id) {
       // Fire-and-forget. We must 200 before the 10s retry window.
+      // This is what makes ingestion browser-independent — the user
+      // can close the tab right after Plaid Link completes and the
+      // scan still runs whenever Plaid delivers.
       void runScanForUser(item.user_id, "webhook").catch((e) => {
         observeError(e, {
           route: "webhook.scan",
@@ -127,14 +149,46 @@ export async function POST(req: Request) {
       });
     }
   } else if (body.webhook_code === "ITEM_LOGIN_REQUIRED") {
+    // User-action-required state. The dashboard router reads
+    // sync_state and surfaces NeedsReauthScreen. status is also
+    // updated so the legacy item-listing surfaces still tag the row.
     await supabaseAdmin
       .from("plaid_items")
-      .update({ status: "login_required" })
+      .update({
+        status: "login_required",
+        sync_state: "needs_reauth",
+        last_error_code: "ITEM_LOGIN_REQUIRED",
+        last_error_at: nowIso,
+        updated_at: nowIso,
+      })
       .eq("plaid_item_id", body.item_id);
   } else if (body.webhook_code === "PENDING_EXPIRATION") {
     await supabaseAdmin
       .from("plaid_items")
-      .update({ status: "pending_expiration" })
+      .update({
+        status: "pending_expiration",
+        sync_state: "needs_reauth",
+        last_error_code: "PENDING_EXPIRATION",
+        last_error_at: nowIso,
+        updated_at: nowIso,
+      })
+      .eq("plaid_item_id", body.item_id);
+  } else if (body.webhook_code === "ERROR" && body.error?.error_code) {
+    // Plaid raised an item-level error. Flag the row so the
+    // IngestionState selector / NeedsReauthScreen can surface it.
+    const code = body.error.error_code;
+    const isReauth =
+      code === "INVALID_CREDENTIALS" ||
+      code === "USER_PERMISSION_REVOKED" ||
+      code === "ITEM_LOGIN_REQUIRED";
+    await supabaseAdmin
+      .from("plaid_items")
+      .update({
+        sync_state: isReauth ? "needs_reauth" : "error",
+        last_error_code: code,
+        last_error_at: nowIso,
+        updated_at: nowIso,
+      })
       .eq("plaid_item_id", body.item_id);
   }
 

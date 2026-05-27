@@ -130,21 +130,19 @@ export function ConnectBankButton() {
         if (typeof window !== "undefined") {
           window.sessionStorage.removeItem(OAUTH_TOKEN_KEY);
         }
-        // Route to /app/scanning so the user watches subscriptions
-        // stream in via the progress arc + reveal list. The scanning
-        // page kicks runScanForUser server-side inside its render; the
-        // page only renders once the scan finishes (10-30s) and SSE
-        // then replays the engine events from Redis Stream — phase
-        // transitions, row events, and complete. The new ProgressArc
-        // animates honestly off those real SSE phases (no timer).
+        // v11 — route to /app, NOT /app/scanning. The dashboard route
+        // is now state-aware (IngestionState machine: preparing /
+        // syncing / analyzing / ready_with_results / ready_but_empty
+        // / needs_reauth). PreparingScreen renders a real milestone
+        // strip + skeleton dashboard while the webhook-driven scan
+        // runs in the background. The user can close this tab and
+        // ingestion continues; they'll get an email when ready.
         //
-        // The earlier attempt to kick the scan async from
-        // /api/plaid/exchange was abandoned because Netlify
-        // terminates the lambda after response, killing the in-flight
-        // scan promise mid-Plaid-sync. Synchronous server-render is
-        // the reliable shape on this platform until we add a real
-        // job queue.
-        router.push("/app/scanning");
+        // /app/scanning still exists for the live SSE reveal, but is
+        // only reached via explicit Re-scan button — not as the
+        // first-connect destination. That separation is what fixes
+        // the "Subscriptions top-right loops back to scan" bug.
+        router.push("/app");
         router.refresh();
       } catch {
         setStatus("error");

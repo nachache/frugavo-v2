@@ -30,6 +30,7 @@ import type { SnapshotRow } from "./types/snapshot";
 import { SCANNER_VERSION, ENGINE_SIGNATURE } from "./scanner-version";
 import { subscriptionKey } from "./subscription-key";
 import { syncAllItemsForUser, nudgePlaidItemsForUser } from "./plaid-sync";
+import { markFirstReadyIfNeeded } from "./ingestion-state";
 import {
   scoreCandidate,
   featuresFromCharges,
@@ -1809,6 +1810,38 @@ async function finalizeScan(
       .from("scan_runs")
       .update({ status })
       .eq("id", scanId);
+
+    // v11 — flip per-item sync_state to reflect the post-scan reality.
+    // The IngestionState selector reads this column to decide whether
+    // the user has graduated past 'preparing'.
+    //   awaiting_bank_data=true  → 'awaiting_bank' (Plaid Classic queue)
+    //   otherwise on 'done'      → 'ready' (drain completed)
+    const awaitingBankData = Boolean(
+      (snapshot.metrics as { awaiting_bank_data?: boolean }).awaiting_bank_data
+    );
+    if (status === "done") {
+      const nextItemState: "awaiting_bank" | "ready" = awaitingBankData
+        ? "awaiting_bank"
+        : "ready";
+      await supabaseAdmin
+        .from("plaid_items")
+        .update({
+          sync_state: nextItemState,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("user_id", userId)
+        .eq("status", "active");
+    }
+
+    // v11 — mark first_ready_at + send completion email exactly once
+    // per user. markFirstReadyIfNeeded is idempotent (only writes
+    // when first_ready_at is null) so this is safe across concurrent
+    // scans / replays / cron.
+    if (status === "done" && !awaitingBankData) {
+      const reached: "ready_with_results" | "ready_but_empty" =
+        detected > 0 ? "ready_with_results" : "ready_but_empty";
+      void markFirstReadyIfNeeded(userId, reached);
+    }
   }
 
   await emit(scanId, {
