@@ -102,10 +102,19 @@ export async function POST(req: Request) {
   //
   // All three fire a fire-and-forget scan; we must 200 inside Plaid's
   // 10s retry window.
+  // All transaction-data-ready webhook codes that should trigger a
+  // scan. Includes both the modern /transactions/sync code and the
+  // legacy /transactions/get codes — many institutions (Scotiabank
+  // ins_38, others) still emit the legacy codes even when we use the
+  // /sync endpoint to pull. Ignoring HISTORICAL_UPDATE / DEFAULT_UPDATE
+  // is why Scotiabank users sit at txn_count=0 forever — Plaid told
+  // us the data was ready and we didn't listen.
   const transactionDataReady =
     body.webhook_type === "TRANSACTIONS" &&
     (body.webhook_code === "SYNC_UPDATES_AVAILABLE" ||
       body.webhook_code === "INITIAL_UPDATE" ||
+      body.webhook_code === "HISTORICAL_UPDATE" ||
+      body.webhook_code === "DEFAULT_UPDATE" ||
       body.webhook_code === "RECURRING_TRANSACTIONS_UPDATE");
 
   const nowIso = new Date().toISOString();
