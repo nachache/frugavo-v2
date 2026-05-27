@@ -283,29 +283,59 @@ function LineChart({ data }: { data: MonthBucket[] }) {
         )}
       </svg>
 
-      {/* Month labels. Grid columns track the actual series length
-          (computeMonthlySpendSeries now trims leading zero months,
-          so this can be anywhere from 1 to 12). Mobile-skip kicks in
-          only when there's enough density to need it. */}
-      <div
-        className="mt-1.5 grid text-[10px] md:text-[11px] text-ink-muted tabular-nums"
-        style={{ gridTemplateColumns: `repeat(${Math.max(1, data.length)}, minmax(0, 1fr))` }}
-      >
+      {/* Month labels.
+          Positioned by EXACT % of chart width matching the SVG x of
+          each data point. Earlier versions used CSS grid columns,
+          which drifted out of sync whenever data.length didn't match
+          a hardcoded class — that's why production was showing
+          three labels clustered on the left while the line spanned
+          the full width. Absolute positioning by xPct guarantees
+          labels and data points always align.
+
+          Density thinning:
+            - data.length ≤ 6:  show every label
+            - 6 < n ≤ 12:       every other label (still readable)
+            - n > 12 (unused today, future-proof): show ~6 evenly
+              spaced labels
+
+          End labels (i===0 and i===last) use translate to keep them
+          from clipping past the chart's left/right edges.
+      */}
+      <div className="relative mt-1.5 h-4 text-[10px] md:text-[11px] text-ink-muted tabular-nums">
         {data.map((d, i) => {
           const abbr = new Date(d.month + "-01").toLocaleDateString("en-US", {
             month: "short",
           });
-          // Only thin labels on mobile if the series is dense enough
-          // that all-on-mobile would crowd them.
-          const crowded = data.length > 6;
-          const showOnMobile = !crowded || i % 2 === 0;
+          const n = data.length;
+          // Decide whether to render this index. Always show first and
+          // last; in between, thin based on density.
+          let show: boolean;
+          if (n <= 6) show = true;
+          else if (n <= 12) show = i === 0 || i === n - 1 || i % 2 === 1;
+          else show = i === 0 || i === n - 1 || i % Math.ceil(n / 6) === 0;
+          if (!show) return null;
+
+          const xPct =
+            n === 1
+              ? 50
+              : ((PAD + (i * (W - 2 * PAD)) / (n - 1)) / W) * 100;
+
+          // Anchor end labels to their edges so they don't clip.
+          const transform =
+            i === 0
+              ? "translateX(0)"
+              : i === n - 1
+              ? "translateX(-100%)"
+              : "translateX(-50%)";
+
           return (
-            <div
+            <span
               key={d.month}
-              className={`text-center ${showOnMobile ? "" : "hidden md:block"}`}
+              className="absolute top-0 whitespace-nowrap"
+              style={{ left: `${xPct}%`, transform }}
             >
               {abbr}
-            </div>
+            </span>
           );
         })}
       </div>
