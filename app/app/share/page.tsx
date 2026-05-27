@@ -53,10 +53,22 @@ export default async function SharePage() {
               ? data.yearly.ledger_actual_cents
               : data.yearly.sub_only_cents
           }
-          totalActiveCount={data.monthly.total_count}
+          // Use sub_only_count, not total_count — the SVG also renders
+          // off subscriptions-only (bills are excluded from the share
+          // identity). Passing total_count here while the SVG used
+          // sub_only_count was one of the visible-mismatch axes.
+          totalActiveCount={data.monthly.sub_only_count}
           aiMonthlyCents={data.ai_spend.monthly_cents}
           aiCount={data.ai_spend.subscription_count}
           personality={data.personality}
+          // Hard guard against "fake $0 card next to a real dashboard".
+          // When the dashboard payload has zero confirmed subscriptions
+          // the SVG route returns 204; SharePanel reads this flag and
+          // shows a skeleton/await state instead of the empty card.
+          hasData={
+            data.monthly.sub_only_count > 0 &&
+            data.monthly.sub_only_cents > 0
+          }
         />
       </div>
     </section>

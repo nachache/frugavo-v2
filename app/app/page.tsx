@@ -363,6 +363,17 @@ export default async function AppHome({
                   personality={data.personality}
                   publicSlug={publicSlug}
                   firstName={user.firstName ?? null}
+                  // Hard guard against the share card disagreeing
+                  // with the dashboard. When the payload has zero
+                  // confirmed subs the /api/share-card/identity SVG
+                  // returns 204; without this flag the <img> would
+                  // break and the personality copy would still
+                  // show "Quietly Watching $0/mo". With it,
+                  // IdentityHero renders its own skeleton.
+                  hasData={
+                    data.monthly.sub_only_count > 0 &&
+                    data.monthly.sub_only_cents > 0
+                  }
                 />
               </div>
             )}

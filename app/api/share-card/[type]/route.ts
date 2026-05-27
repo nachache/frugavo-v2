@@ -1,15 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { currentUser } from "@clerk/nextjs/server";
 import { supabaseAdmin } from "@/lib/supabase";
-import {
-  computeBurnRate,
-  computeAiSpend,
-  computeCategoryTotals,
-  computeTopSubscriptions,
-  type LedgerCharge,
-  type LedgerSubscription,
-} from "@/lib/insights";
-import { computePersonality } from "@/lib/personality";
+import { buildDashboardData } from "@/lib/selectors/dashboard";
 
 // GET /api/share-card/:type[.svg]
 //
@@ -328,51 +320,51 @@ export async function GET(
     return NextResponse.json({ error: "unknown_type" }, { status: 400 });
   }
 
-  // ---- Pull subscriptions + charges ----
-  // recurring_type + confidence_score are REQUIRED here. Without them
-  // the surface-rules selectors default everything to uncertain and
-  // the card renders $0/mo / "Quietly Watching" no matter how many
-  // confirmed subs the user actually has. (See commit history — this
-  // was the bug that made the share card show 0 while the dashboard
-  // showed $782.)
-  const { data: subsData } = await supabaseAdmin
-    .from("subscriptions")
-    .select(
-      "id, merchant_name, merchant_key, category, amount_cents, currency, frequency, status, classification, last_charged_at, recurring_type, confidence_score"
-    )
-    .eq("user_id", user.id);
-  const subs: LedgerSubscription[] = (subsData ?? []) as LedgerSubscription[];
-
-  const charges: LedgerCharge[] = [];
-  let offset = 0;
-  const PAGE = 1000;
-  while (offset < 100_000) {
-    const { data, error } = await supabaseAdmin
-      .from("subscription_charges")
-      .select(
-        "subscription_id, posted_date, amount_cents, detector_status, cadence_cycle_id"
-      )
-      .eq("user_id", user.id)
-      .order("posted_date", { ascending: true })
-      .range(offset, offset + PAGE - 1);
-    if (error) break;
-    const page = (data ?? []) as LedgerCharge[];
-    charges.push(...page);
-    if (page.length < PAGE) break;
-    offset += PAGE;
+  // ---- SINGLE SOURCE OF TRUTH ----
+  // The share card MUST render off the same normalized payload the
+  // dashboard renders off. Previously this route did its own ad-hoc
+  // queries + selector composition (computeBurnRate / computeAiSpend /
+  // computePersonality with `categories` instead of `subscriptionCats`,
+  // no dedupe of duplicate merchant rows). The drift produced cards
+  // that said "Quietly Watching $0/mo" while the dashboard next to it
+  // showed real numbers — an immediate trust break.
+  //
+  // Fix: call buildDashboardData and read every value the SVG needs
+  // off the same payload object. If it ever drifts, both surfaces
+  // drift together — they can never disagree.
+  const data = await buildDashboardData(user.id);
+  if (!data) {
+    return NextResponse.json({ error: "no_data" }, { status: 503 });
   }
 
-  const asOf = new Date();
-  const burn = computeBurnRate(subs, charges, asOf);
-  const ai = computeAiSpend(subs, charges, asOf);
-  const categories = computeCategoryTotals(subs);
-  const topSubs = computeTopSubscriptions(subs, 3);
-  const personality = computePersonality({
-    categories,
-    aiMonthlyCents: ai.monthly_cents,
-    totalMonthlyCents: burn.monthly_cents,
-    totalSubCount: burn.active_subscription_count,
-  });
+  // Honest empty-state contract. When the dashboard has zero
+  // confirmed subscriptions (fresh signup, Plaid still pulling,
+  // user just rejected everything), we don't render the misleading
+  // "Quietly Watching · $0/mo" SVG — the client interprets 204 as
+  // "hide the share preview entirely" and shows a skeleton instead.
+  if (data.monthly.sub_only_count === 0 || data.monthly.sub_only_cents === 0) {
+    return new NextResponse(null, {
+      status: 204,
+      headers: { "Cache-Control": "no-store" },
+    });
+  }
+
+  // Pull every share-card field off the normalized payload. Names
+  // mirror what the dashboard uses so future audits can grep for
+  // drift in one place.
+  const burn = {
+    monthly_cents: data.monthly.sub_only_cents,
+    yearly_cents: data.yearly.sub_only_cents,
+    ledger_yearly_cents: data.yearly.ledger_actual_cents,
+    active_subscription_count: data.monthly.sub_only_count,
+  };
+  const ai = {
+    monthly_cents: data.ai_spend.monthly_cents,
+    subscription_count: data.ai_spend.subscription_count,
+  };
+  const categories = data.subscription_categories;
+  const topSubs = data.top_subscriptions.slice(0, 3);
+  const personality = data.personality;
 
   // Wrapped — vertical 1080x1920 (Instagram Story / TikTok format)
   // multi-stat recap. Renders its own layout.

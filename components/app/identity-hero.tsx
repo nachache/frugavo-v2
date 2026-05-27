@@ -25,6 +25,12 @@ type Props = {
   // you're the Wellness Devotee."). Falls back to a generic
   // greeting when null.
   firstName?: string | null;
+  // True when the dashboard payload has confirmed subscriptions. The
+  // /api/share-card/identity SVG returns 204 when this is false so
+  // the <img> below would render a broken icon. We render a
+  // skeleton instead — single rule across SharePanel + IdentityHero
+  // so the two surfaces can never disagree.
+  hasData: boolean;
 };
 
 function fmt(c: number): string {
@@ -36,9 +42,21 @@ export function IdentityHero({
   personality,
   publicSlug,
   firstName,
+  hasData,
 }: Props) {
   const greeting = firstName ? `Hey ${firstName} —` : "Here's your card —";
   const [shareOpen, setShareOpen] = useState(false);
+
+  // Hard guard. If the dashboard payload has zero confirmed
+  // subscriptions, /api/share-card/identity will respond 204 and the
+  // <img> below would render as a broken icon. The personality
+  // selector also returns "Quietly Watching · $0/mo" in that state,
+  // which directly contradicts the rest of the page. Show a
+  // skeleton instead — only path where this surface renders numbers
+  // is when there ARE numbers to render.
+  if (!hasData) {
+    return <IdentityHeroSkeleton greeting={greeting} firstName={firstName} />;
+  }
 
   return (
     // Reduced outer padding (was p-4 md:p-6 → p-3 md:p-4) and removed
@@ -123,6 +141,50 @@ export function IdentityHero({
               Share your card
             </button>
           )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Skeleton — rendered when the dashboard payload has zero confirmed
+// subscriptions. Honest copy ("we'll generate your card once your
+// first scan finishes") instead of a $0 / Quietly Watching card that
+// would contradict the rest of the page. Same outer rhythm as the
+// populated hero so the layout doesn't jump when data arrives.
+function IdentityHeroSkeleton({
+  greeting,
+  firstName,
+}: {
+  greeting: string;
+  firstName?: string | null;
+}) {
+  return (
+    <div className="rounded-2xl border border-hairline bg-surface p-3 md:p-4 animate-fadeUp overflow-hidden h-full flex flex-col">
+      <div className="rounded-2xl overflow-hidden border border-hairline bg-ink/[0.04] aspect-[1080/1350] flex items-center justify-center">
+        <div className="text-[13px] text-ink-muted px-6 text-center max-w-[280px]">
+          Your card will be ready once your first scan finishes.
+        </div>
+      </div>
+
+      <div className="mt-5 md:mt-7 text-center md:text-left px-1 md:px-2">
+        <div className="text-[13px] md:text-[14px] font-medium text-ink-muted">
+          {greeting}
+        </div>
+        <div className="mt-1.5 font-display text-[28px] sm:text-[32px] md:text-[38px] font-bold tracking-[-0.02em] text-ink leading-[1.08]">
+          {firstName ? "We’re still" : "Still"}
+          <br />
+          <span className="text-brand">waiting on your bank</span>.
+        </div>
+        <div className="mt-3 text-[15px] md:text-[16.5px] text-ink-body leading-relaxed">
+          The moment your transactions arrive we&apos;ll build your
+          subscription identity. No fake numbers until then.
+        </div>
+      </div>
+
+      <div className="mt-5 md:mt-6">
+        <div className="rounded-2xl bg-canvas/50 border border-hairline/60 px-4 py-3 md:px-5 md:py-4">
+          <div className="h-10 rounded-full bg-ink/[0.05] animate-pulse" />
         </div>
       </div>
     </div>
