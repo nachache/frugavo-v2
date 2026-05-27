@@ -21,7 +21,6 @@
 //   - /app/billing/success (post-payment, before dashboard)
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 
 type Variant = "activated" | "preview";
 
@@ -34,12 +33,23 @@ type Props = {
   redirectTo?: string;
 };
 
+// v9 — hard navigation helper. router.push() into /app from this
+// overlay could serve a stale Next.js Router Cache entry for /app,
+// causing the dashboard's welcomed_at check to read an old userRow
+// snapshot and redirect back to /app/welcome. window.location.assign
+// forces a full server re-render and always sees the freshly-committed
+// welcomed_at row. The few-hundred-ms perceived hesitation matches
+// the existing exit animation and the navigation is reliable.
+function hardGo(href: string): void {
+  if (typeof window === "undefined") return;
+  window.location.assign(href);
+}
+
 export function ProtectionActivated({
   variant,
   pollUrl = null,
   redirectTo = "/app",
 }: Props) {
-  const router = useRouter();
   const [phase, setPhase] = useState<"drawing" | "settled" | "exiting">(
     "drawing"
   );
@@ -61,7 +71,7 @@ export function ProtectionActivated({
     if (variant === "preview") {
       exitTimer = window.setTimeout(() => {
         setPhase("exiting");
-        window.setTimeout(() => router.push(redirectTo), 350);
+        window.setTimeout(() => hardGo(redirectTo), 350);
       }, 2400);
     } else if (pollUrl) {
       // Paid path — poll the check endpoint until projection lands.
@@ -75,7 +85,7 @@ export function ProtectionActivated({
             const s = data.entitlement_state;
             if (s === "trialing" || s === "active") {
               setPhase("exiting");
-              window.setTimeout(() => router.push(redirectTo), 600);
+              window.setTimeout(() => hardGo(redirectTo), 600);
               return;
             }
           }
@@ -99,7 +109,7 @@ export function ProtectionActivated({
       // a polling screen if the webhook never lands.
       safetyTimer = window.setTimeout(() => {
         setPhase("exiting");
-        window.setTimeout(() => router.push(redirectTo), 400);
+        window.setTimeout(() => hardGo(redirectTo), 400);
       }, 30000);
 
       return () => {
@@ -112,7 +122,7 @@ export function ProtectionActivated({
     } else {
       exitTimer = window.setTimeout(() => {
         setPhase("exiting");
-        window.setTimeout(() => router.push(redirectTo), 600);
+        window.setTimeout(() => hardGo(redirectTo), 600);
       }, 2400);
     }
 
@@ -123,7 +133,7 @@ export function ProtectionActivated({
       if (escapeTimer) window.clearTimeout(escapeTimer);
       if (safetyTimer) window.clearTimeout(safetyTimer);
     };
-  }, [variant, pollUrl, redirectTo, router]);
+  }, [variant, pollUrl, redirectTo]);
 
   const headline =
     variant === "activated"
@@ -230,7 +240,7 @@ export function ProtectionActivated({
               type="button"
               onClick={() => {
                 setPhase("exiting");
-                window.setTimeout(() => router.push(redirectTo), 250);
+                window.setTimeout(() => hardGo(redirectTo), 250);
               }}
               className="mt-6 inline-flex items-center gap-1.5 text-[13px] text-canvas/70 hover:text-canvas underline-offset-4 hover:underline transition animate-fadeIn"
             >
