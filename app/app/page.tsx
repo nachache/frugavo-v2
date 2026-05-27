@@ -159,15 +159,14 @@ export default async function AppHome({
       .update({ welcomed_at: new Date().toISOString() })
       .eq("id", user.id)
       .is("welcomed_at", null);
-  } else if (!userRow?.welcomed_at) {
-    // Defensive: if somehow there are no snapshots yet, kick one
-    // off synchronously so the reveal has data to render.
-    const snapshotRows = await fetchLatestSnapshotRows(user.id);
-    if (snapshotRows.length === 0) {
-      await runScanForUser(user.id);
-    }
-    redirect("/app/welcome");
   }
+  // NOTE: the "redirect to /app/welcome when welcomed_at is null"
+  // branch USED to live here. It fired BEFORE the ingestion-state
+  // check, which produced the bug where fresh users saw the
+  // welcome reveal with "$0 / 0 subs / Quietly Watching" because
+  // Plaid hadn't delivered transactions yet. The welcome redirect
+  // now happens AFTER computeIngestionState confirms the scan is
+  // truly ready_with_results / ready_but_empty (see below).
 
   // ---- STATE-AWARE DASHBOARD ROUTE ----
   //
@@ -229,6 +228,31 @@ export default async function AppHome({
       ingestion.state === "ready_but_empty") &&
     ingestion.refreshing;
   void ingestionRefreshing; // surfaced below via a small badge
+
+  // First-scan welcome reveal — moved here from above so it fires
+  // ONLY after the ingestion state machine has confirmed the scan
+  // is truly done. Old position (before the ingestion check) sent
+  // fresh users to /app/welcome while Plaid was still pulling,
+  // producing the "$0 / Quietly Watching" empty welcome screen.
+  //
+  // Special case: ready_but_empty users have a verified empty
+  // result (Plaid delivered, engine ran, nothing recurring). The
+  // welcome reveal would still show $0 honestly — but that's a
+  // confusing first impression. Skip the reveal entirely for empty
+  // users and stamp welcomed_at so they land on the dashboard's
+  // empty state instead.
+  if (!userRow?.welcomed_at && ingestion.state === "ready_but_empty") {
+    await supabaseAdmin
+      .from("app_users")
+      .update({ welcomed_at: new Date().toISOString() })
+      .eq("id", user.id)
+      .is("welcomed_at", null);
+  } else if (
+    !userRow?.welcomed_at &&
+    ingestion.state === "ready_with_results"
+  ) {
+    redirect("/app/welcome");
+  }
 
   // Pull the canonical dashboard payload.
   const data = await buildDashboardData(user.id);
@@ -656,17 +680,7 @@ export default async function AppHome({
   );
 }
 
-// Snapshot existence check — used only by the first-scan redirect
-// branch to know whether to run the inline scan and bounce to
-// /app/welcome.
-async function fetchLatestSnapshotRows(userId: string): Promise<unknown[]> {
-  if (!supabaseAdmin) return [];
-  const { data } = await supabaseAdmin
-    .from("scan_snapshots")
-    .select("id")
-    .eq("user_id", userId)
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  return data ? [data] : [];
-}
+// (fetchLatestSnapshotRows removed — its only caller was the old
+// pre-ingestion welcome redirect, which produced the "Quietly
+// Watching $0" bug. Welcome routing now lives below
+// computeIngestionState and uses ingestion.state directly.)
