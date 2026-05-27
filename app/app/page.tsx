@@ -26,6 +26,8 @@ import { maybeNotifySignup } from "@/lib/users/signup-notify";
 import { getEntitlement } from "@/lib/billing/entitlements";
 import { buildDashboardData } from "@/lib/selectors/dashboard";
 import { SHOW_BILLS_SURFACE } from "@/lib/feature-flags";
+import { getDashboardReadiness } from "@/lib/scan-readiness";
+import { DashboardWaiting } from "@/components/app/dashboard-waiting";
 
 // /app — the authenticated dashboard root.
 //
@@ -161,6 +163,39 @@ export default async function AppHome({
       await runScanForUser(user.id);
     }
     redirect("/app/welcome");
+  }
+
+  // ---- HARD READINESS GATE ----
+  //
+  // The dashboard is NEVER allowed to render with placeholder zeros
+  // while Plaid is still fetching history. Before any of the
+  // dashboard surfaces mount, ask scan-readiness whether the latest
+  // scan_runs row indicates Plaid has actually delivered:
+  //
+  //   ready_with_results / complete_empty_after_history_ready
+  //     → render the dashboard. Numbers (even if zero) are trustable.
+  //
+  //   awaiting
+  //     → render <DashboardWaiting/> instead. No dashboard cards.
+  //       Component polls the route every 8s; when the webhook
+  //       re-triggers the scan and Plaid delivers, the next server
+  //       render returns the real dashboard and this branch
+  //       unmounts.
+  //
+  // This is what fixes "freshly-connected user lands on $0 dashboard
+  // and assumes Frugavo is broken." The empty state still exists —
+  // but only for users whose bank delivered data AND the engine
+  // ran the full pipeline AND nothing recurring was found. That's
+  // an honest empty state, not a loading one.
+  const readiness = await getDashboardReadiness(user.id);
+  if (readiness.state === "awaiting") {
+    return (
+      <DashboardWaiting
+        bankName={readiness.bankName}
+        scanStatus={readiness.scanStatus}
+        awaitingBankData={readiness.awaitingBankData}
+      />
+    );
   }
 
   // Pull the canonical dashboard payload.
