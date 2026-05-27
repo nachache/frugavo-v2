@@ -534,8 +534,18 @@ export async function buildDashboardData(
   // user_decision. Anything explicitly marked as not_subscription or
   // not_recurring goes to Hidden; the user has told us this isn't a
   // subscription so we shouldn't keep nagging them about it.
+  //
+  // NOTE: override_type='confirmed' is NOT in inWatching anymore.
+  // The QuickChecks "Real sub" chip writes override_type='confirmed'
+  // — that means "yes this is a real subscription" but NOT "I've
+  // decided to keep it." Conflating those routed every confirmed
+  // sub into the Watching tab, hiding them from the user's
+  // primary Worth a look view. Watching now means "I've explicitly
+  // marked this as kept" via the dashboard's keep button OR the
+  // legacy user_decision='kept' field. Confirmed-only subs flow
+  // into worth_a_look like any other detected sub, so users
+  // actually see what they confirmed.
   const inWatching = (a: ActionItem) =>
-    a.override_type === "confirmed" ||
     a.override_type === "wrong_amount" ||
     a.override_type === "wrong_cadence" ||
     decisionByMerchant.get(a.subscription_id) === "kept" ||

@@ -106,6 +106,13 @@ export function QuickChecks({ items: initialItems }: Props) {
       });
       if (!res.ok) throw new Error(`http_${res.status}`);
       advanceTo(activeIndex, doubt.id);
+      // Refresh the dashboard server data AFTER each answer so the
+      // monthly total + ActionCenter buckets reflect this resolution
+      // before the user finishes the whole carousel. Wrapped in
+      // startTransition so the refresh is non-blocking — our local
+      // queue state stays put because useState only initializes from
+      // the prop on first mount.
+      startTransition(() => router.refresh());
     } catch {
       setErrorIds((prev) => {
         const next = new Set(prev);
