@@ -187,18 +187,36 @@ export function OverviewCard({
         </div>
       </div>
 
-      {/* Soft divider + 12-month sparkline gets its own visual
-          chunk. Extra top margin + a hairline rule makes it feel
-          like a separate "and here's the trend" section rather
-          than another row of the same wall. */}
+      {/* Soft divider + sparkline gets its own visual chunk. Extra
+          top margin + a hairline rule makes it feel like a separate
+          "and here's the trend" section rather than another row of
+          the same wall. Eyebrow span is dynamic (chartEyebrow) so
+          users with 1-11 months of Plaid history see "Since {Mon}"
+          instead of a 12-month label that contradicts the chart. */}
       <div className="mt-8 md:mt-10 pt-6 md:pt-8 border-t border-hairline/70">
         <div className="text-[10px] md:text-[11px] font-medium uppercase tracking-[0.12em] text-ink-muted mb-2">
-          Last 12 months
+          {chartEyebrow(chart12mo)}
         </div>
         <Sparkline data={chart12mo} />
       </div>
     </div>
   );
+}
+
+// Dynamic eyebrow that reflects the chart's actual span. Matches the
+// helper in monthly-upkeep-card.tsx — kept duplicated rather than
+// shared because the rest of these chart components are intentionally
+// self-contained.
+function chartEyebrow(series: MonthBucket[]): string {
+  if (series.length >= 12) return "Last 12 months";
+  if (series.length <= 1) return "This month";
+  const first = series[0]?.month;
+  if (!first) return `Last ${series.length} months`;
+  const label = new Date(first + "-01").toLocaleDateString("en-US", {
+    month: "short",
+    year: "numeric",
+  });
+  return `Since ${label}`;
 }
 
 // ─── Count-up ──────────────────────────────────────────────────────
@@ -405,14 +423,45 @@ function Sparkline({ data: dataRaw }: { data: MonthBucket[] }) {
           @keyframes sparkDraw { to { stroke-dashoffset: 0; } }
         `}</style>
       </svg>
-      <div className="mt-1.5 grid grid-cols-12 text-[10px] text-ink-muted tabular-nums">
+      {/* Month labels — absolute-positioned at the same x-percentage
+          the SVG path uses, so labels and data points always align
+          regardless of series length. Previous grid-cols-12 baked in
+          a 12-column assumption that drifted out of sync when
+          computeMonthlySpendSeries trimmed leading zero months,
+          producing the "Mar / Apr / May clustered on the left while
+          the line spans full width" bug. End labels translate to
+          their edges to avoid clipping. */}
+      <div className="relative mt-1.5 h-4 text-[10px] text-ink-muted tabular-nums">
         {data.map((d, i) => {
           const abbr = new Date(d.month + "-01").toLocaleDateString("en-US", { month: "short" });
-          const show = i % 3 === 0;
+          const n = data.length;
+          // Density thinning: ≤6 show all, 7-12 every other (plus
+          // first and last), >12 ~6 evenly spaced.
+          let show: boolean;
+          if (n <= 6) show = true;
+          else if (n <= 12) show = i === 0 || i === n - 1 || i % 2 === 1;
+          else show = i === 0 || i === n - 1 || i % Math.ceil(n / 6) === 0;
+          if (!show) return null;
+
+          const xPct =
+            n === 1
+              ? 50
+              : ((PAD + (i * (W - 2 * PAD)) / (n - 1)) / W) * 100;
+          const transform =
+            i === 0
+              ? "translateX(0)"
+              : i === n - 1
+              ? "translateX(-100%)"
+              : "translateX(-50%)";
+
           return (
-            <div key={d.month} className={`text-center ${show ? "" : "hidden md:block"}`}>
+            <span
+              key={d.month}
+              className="absolute top-0 whitespace-nowrap"
+              style={{ left: `${xPct}%`, transform }}
+            >
               {abbr}
-            </div>
+            </span>
           );
         })}
       </div>
