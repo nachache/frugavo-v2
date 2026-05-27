@@ -96,6 +96,22 @@ export async function POST(
     return NextResponse.json({ ok: true, already_resolved: true });
   }
 
+  // CRITICAL: user_overrides must be keyed on the SUBSCRIPTION's
+  // merchant_key (engine source_key like 'apple_t10'), not the
+  // doubt's merchant_key (Claude's canonical like 'apple_icloud').
+  // The dashboard filter reads overrides via the subscription row's
+  // merchant_key — mismatching the two keys makes overrides
+  // invisible and is the bug that has been preventing confirms
+  // from updating the dashboard in real time.
+  const { data: sub } = await supabaseAdmin
+    .from("subscriptions")
+    .select("merchant_key")
+    .eq("id", doubt.subscription_id)
+    .eq("user_id", user.id)
+    .maybeSingle();
+  const overrideMerchantKey =
+    (sub?.merchant_key as string | null) ?? doubt.merchant_key;
+
   const nowIso = new Date().toISOString();
 
   // 1. Mark doubt as resolved.
@@ -124,9 +140,19 @@ export async function POST(
         {
           user_id: user.id,
           subscription_id: doubt.subscription_id,
-          merchant_key: doubt.merchant_key,
+          // Engine source_key — see the lookup above. Reading +
+          // writing on the same key shape is the contract the
+          // dashboard filter relies on.
+          merchant_key: overrideMerchantKey,
           override_type: overrideType,
-          override_value: { resolution, source: "doubt_resolve" },
+          override_value: {
+            resolution,
+            source: "doubt_resolve",
+            // Audit: stash Claude's canonical here so we can later
+            // migrate to canonical-everywhere without losing the
+            // provenance.
+            canonical_merchant_key: doubt.merchant_key,
+          },
           updated_at: nowIso,
         },
         { onConflict: "user_id,merchant_key" }
