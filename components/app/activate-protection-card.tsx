@@ -19,26 +19,32 @@ type Copy = {
   subline: string;
 };
 
+// v12 IA shift — the activate card has been demoted from "Layer 3
+// content in Layer 1 position" to "Layer 3 monitoring section at the
+// bottom of the page." Copy reframed from insurance-style alarm
+// ("You're not protected yet") to operator-style invitation ("Turn
+// on background monitoring"). The detection IS the product; this
+// card adds continuous watching on top.
 const COPY: Record<Variant, Copy> = {
   none: {
-    label: "Not protected",
-    headline: "You're not protected yet.",
-    body: "Right now nothing is watching your accounts. Activate protection and Frugavo will catch new charges, price hikes, trial conversions, and unusual recurring activity before they hit — plus unlock cancel-assist and daily re-scans.",
-    cta: "Activate Protection",
+    label: "Background monitoring",
+    headline: "Turn on background monitoring.",
+    body: "Frugavo will watch your connected accounts for new charges, price increases, trial conversions, and unusual recurring activity — plus unlock cancel-assist and daily re-scans.",
+    cta: "Turn on monitoring",
     subline: "7 days free. Cancel anytime.",
   },
   expired: {
-    label: "Protection paused",
-    headline: "Re-activate your protection.",
-    body: "Your monitoring is currently inactive. Restart in one click and Frugavo will pick up watching your accounts immediately.",
-    cta: "Restart Protection",
-    subline: "Resumes monitoring as soon as you activate.",
+    label: "Monitoring paused",
+    headline: "Resume background monitoring.",
+    body: "Your watching is currently inactive. Restart in one click and Frugavo picks up where it left off.",
+    cta: "Resume monitoring",
+    subline: "Resumes the moment you turn it back on.",
   },
   past_due: {
-    label: "Action needed",
-    headline: "Your protection has paused.",
-    body: "We couldn't process your last payment. Restart with an updated card and Frugavo will resume monitoring your accounts.",
-    cta: "Restart Protection",
+    label: "Payment needs attention",
+    headline: "Your monitoring is paused.",
+    body: "We couldn't process the last payment. Restart with an updated card and monitoring resumes immediately.",
+    cta: "Update payment",
     subline: "Takes 30 seconds.",
   },
 };
@@ -67,16 +73,16 @@ export function ActivateProtectionCard({ variant }: { variant: Variant }) {
   }
 
   return (
-    <div className="rounded-2xl border border-hairline bg-surface p-5 md:p-7 animate-fadeUp">
+    <div className="rounded-2xl border border-hairline bg-surface p-5 md:p-6 animate-fadeUp">
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div className="min-w-0 flex-1 max-w-[640px]">
-          <span className="text-[12px] md:text-[13px] font-medium text-brand">
+          <span className="text-[11.5px] md:text-[12px] font-medium uppercase tracking-[0.1em] text-ink-muted">
             {copy.label}
           </span>
-          <h2 className="mt-1.5 font-display text-[22px] md:text-[28px] font-bold tracking-[-0.02em] leading-[1.15] text-ink">
+          <h2 className="mt-2 font-display text-[18px] md:text-[22px] font-semibold tracking-[-0.015em] leading-[1.2] text-ink">
             {copy.headline}
           </h2>
-          <p className="mt-2 text-[14px] md:text-[15px] leading-relaxed text-ink-body">
+          <p className="mt-2 text-[14px] leading-relaxed text-ink-body">
             {copy.body}
           </p>
         </div>
@@ -85,11 +91,11 @@ export function ActivateProtectionCard({ variant }: { variant: Variant }) {
             type="button"
             onClick={activate}
             disabled={loading}
-            className="inline-flex h-11 md:h-12 items-center gap-2 rounded-full bg-brand px-5 md:px-6 text-[14px] md:text-[15px] font-medium text-white hover:bg-brand-hover transition disabled:opacity-60 disabled:cursor-wait"
+            className="inline-flex h-10 md:h-11 items-center gap-2 rounded-full bg-ink px-4 md:px-5 text-[13.5px] md:text-[14px] font-medium text-canvas hover:bg-ink/85 transition disabled:opacity-60 disabled:cursor-wait"
           >
             {loading ? "Opening…" : copy.cta}
           </button>
-          <span className="text-[11.5px] md:text-[12px] text-ink-muted">
+          <span className="text-[11.5px] text-ink-muted">
             {copy.subline}
           </span>
         </div>

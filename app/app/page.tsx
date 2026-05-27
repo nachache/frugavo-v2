@@ -29,6 +29,7 @@ import { SHOW_BILLS_SURFACE } from "@/lib/feature-flags";
 import { computeIngestionState } from "@/lib/ingestion-state";
 import { PreparingScreen } from "@/components/app/preparing-screen";
 import { NeedsReauthScreen } from "@/components/app/needs-reauth-screen";
+import { DecisionStrip } from "@/components/app/decision-strip";
 
 // /app — the authenticated dashboard root.
 //
@@ -362,45 +363,17 @@ export default async function AppHome({
         }}
       />
 
-      {/* Inline status — visible signal that protection is active.
-          Renders for trialing / active / cancelled_active; silent
-          for grace/past_due (banner above already shouts), and for
-          'none' (activate card below does the talking). */}
-      <div className="-mt-2">
-        <ProtectionStatusPill
-          state={entitlement.entitlement_state}
-          trialEndsAt={entitlement.trial_ends_at}
-          expiresAt={entitlement.expires_at}
-          // Sign-up date powers the "Protected since [date]" pill.
-          // Clerk createdAt is a number (ms) — convert to ISO so the
-          // pill can render a consistent short date.
-          protectionStartedAt={
-            user.createdAt
-              ? new Date(user.createdAt).toISOString()
-              : null
-          }
-        />
-      </div>
+      {/* ProtectionStatusPill (Protected since…) moved to Layer 3
+          per the IA restructure. Not allowed to compete with the
+          value content at the top of the page. */}
 
+      {/* BillingStatusBanner stays at the top — dunning notice that
+          requires user action; can't be demoted. */}
       {bannerVariant && <BillingStatusBanner variant={bannerVariant} />}
-      {showActivateCard && <ActivateProtectionCard variant={activateVariant} />}
 
       {data && (
         <>
-          {/*
-            Desktop layout: IdentityHero on the LEFT (5 cols),
-            Protection rail on the RIGHT (7 cols). Mobile stacks
-            normally — IdentityHero first, Protection block below.
-
-            For paid users the Protection rail holds Coverage +
-            monitoring/changes/learn cards. For free users it holds
-            the locked preview card.
-          */}
-          {/* Tab strip — Subscriptions / Bills. URL-driven. Sits
-              above the hero grid so the user always sees which lens
-              they're in. Hidden when SHOW_BILLS_SURFACE=false; with
-              the Bills lens gone there's only one view, so the
-              switcher would be a stub. */}
+          {/* Tabs (Subscriptions/Bills) when bill surface is enabled. */}
           {SHOW_BILLS_SURFACE && (
             <div className="flex items-center justify-between gap-3 flex-wrap">
               <DashboardTabs
@@ -416,85 +389,36 @@ export default async function AppHome({
             </div>
           )}
 
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 md:gap-6 items-start">
-            {/* IdentityHero only renders on the Subscriptions tab —
-                personality archetypes derive from subscriptions and
-                shouldn't appear when the user is looking at bills. */}
-            {activeTab === "subscriptions" && (
-              <div className="lg:col-span-5">
-                <IdentityHero
-                  monthlySubCents={data.monthly.sub_only_cents}
-                  personality={data.personality}
-                  publicSlug={publicSlug}
-                  firstName={user.firstName ?? null}
-                  // Hard guard against the share card disagreeing
-                  // with the dashboard. When the payload has zero
-                  // confirmed subs the /api/share-card/identity SVG
-                  // returns 204; without this flag the <img> would
-                  // break and the personality copy would still
-                  // show "Quietly Watching $0/mo". With it,
-                  // IdentityHero renders its own skeleton.
-                  hasData={
-                    data.monthly.sub_only_count > 0 &&
-                    data.monthly.sub_only_cents > 0
-                  }
-                />
-              </div>
-            )}
+          {/* ═══════════════════════════════════════════════════════
+              LAYER 1 — DISCOVERY
+              ═══════════════════════════════════════════════════════
+              First thing the user sees: what Frugavo discovered, what
+              changed, what's worth their attention. The decision strip
+              frames the dashboard as a decision engine — answers to
+              the questions the user actually has. Then the canonical
+              numbers (OverviewCard), then the heart of the product
+              (ActionCenter with worth-a-look / watching / pruned).
+              No protection, no identity yet. */}
 
-            <div
-              className={
-                activeTab === "subscriptions"
-                  ? "lg:col-span-7 space-y-5 md:space-y-6"
-                  : "lg:col-span-12 space-y-5 md:space-y-6"
+          {activeTab === "subscriptions" && (
+            <DecisionStrip
+              worthALookCount={data.actions.worth_a_look.length}
+              worthALookYearlyCents={
+                data.actions.potential_yearly_savings_cents
               }
-            >
-              {!showActivateCard ? (
-                <>
-                  <div className="flex items-center gap-2">
-                    <span className="text-[12px] md:text-[13px] font-medium text-brand">
-                      Your protection
-                    </span>
-                    <span className="text-[12px] md:text-[12.5px] text-ink-muted">
-                      · Peace of Mind plan
-                    </span>
-                  </div>
-                  <ProtectionPanel
-                    data={protectionPanelData}
-                    state="active"
-                  />
-                  {/* MonitoringAlertsCard removed — its data is now
-                      fused into the ProtectionPanel's 'What we're
-                      watching' subsection. The full alerts inbox
-                      still lives at /app/alerts via the panel CTA. */}
-                  <WhatChangedCard />
-                  <UncertainPromptCards />
-                </>
-              ) : (
-                <ProtectionLockedCard
-                  title="Continuous monitoring"
-                  body="Daily checks across every connected account — new charges, price hikes, trial conversions, and unusual recurring activity."
-                  sampleRows={[
-                    {
-                      dot: "#10b981",
-                      title: "New subscription detected",
-                      sub: "Notion AI started billing $10/mo on May 12.",
-                    },
-                    {
-                      dot: "#f59e0b",
-                      title: "Price increase caught",
-                      sub: "Netflix went from $15.49 → $17.99/mo.",
-                    },
-                    {
-                      dot: "#dc2626",
-                      title: "Trial converting in 2 days",
-                      sub: "Apple Music will charge $10.99/mo on May 28.",
-                    },
-                  ]}
-                />
-              )}
-            </div>
-          </div>
+              priceIncreaseCount={
+                data.shock_insights.filter(
+                  (s) => s.kind === "growth_over_time"
+                ).length
+              }
+              // Overlap + new-this-week aren't first-class fields in
+              // the payload yet. Pass 0 so the cells render their
+              // honest "No overlaps found / Nothing new" empty state.
+              // Plumb real signals through here as the detectors land.
+              overlapCount={0}
+              newSinceLastWeekCount={0}
+            />
+          )}
 
           {activeTab === "subscriptions" ? (
             <OverviewCard
@@ -572,41 +496,137 @@ export default async function AppHome({
             />
           )}
 
-          {activeTab === "subscriptions" ? (
-            <ActionCenter
-              worth_a_look={data.actions.worth_a_look}
-              watching={data.actions.watching}
-              pruned={data.actions.pruned}
-              hidden={data.actions.hidden}
-              potential_yearly_savings_cents={
-                data.actions.potential_yearly_savings_cents
-              }
-              isPaid={isPaid}
-            />
-          ) : (
-            <ActionCenter
-              mode="bills"
-              worth_a_look={data.bill_actions.worth_a_look}
-              watching={data.bill_actions.watching}
-              pruned={data.bill_actions.pruned}
-              hidden={data.bill_actions.hidden}
-              potential_yearly_savings_cents={0}
-              isPaid={isPaid}
-            />
+          <div id="action-center">
+            {activeTab === "subscriptions" ? (
+              <ActionCenter
+                worth_a_look={data.actions.worth_a_look}
+                watching={data.actions.watching}
+                pruned={data.actions.pruned}
+                hidden={data.actions.hidden}
+                potential_yearly_savings_cents={
+                  data.actions.potential_yearly_savings_cents
+                }
+                isPaid={isPaid}
+              />
+            ) : (
+              <ActionCenter
+                mode="bills"
+                worth_a_look={data.bill_actions.worth_a_look}
+                watching={data.bill_actions.watching}
+                pruned={data.bill_actions.pruned}
+                hidden={data.bill_actions.hidden}
+                potential_yearly_savings_cents={0}
+                isPaid={isPaid}
+              />
+            )}
+          </div>
+
+          {/* ═══════════════════════════════════════════════════════
+              LAYER 2 — IDENTITY
+              ═══════════════════════════════════════════════════════
+              After the user has seen value (Layer 1), now the
+              personality / share / category-deep-dive surfaces. Full
+              width — no protection rail sitting next to it stealing
+              attention. */}
+          {activeTab === "subscriptions" && (
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 md:gap-6 items-start">
+              <div className="lg:col-span-7">
+                <IdentityHero
+                  monthlySubCents={data.monthly.sub_only_cents}
+                  personality={data.personality}
+                  publicSlug={publicSlug}
+                  firstName={user.firstName ?? null}
+                  hasData={
+                    data.monthly.sub_only_count > 0 &&
+                    data.monthly.sub_only_cents > 0
+                  }
+                />
+              </div>
+              <div className="lg:col-span-5">
+                <SpendingPatternsAccordion
+                  items={data.recurring_commerce.map((c) => ({
+                    id: c.id,
+                    merchant_name: c.merchant_name,
+                    monthly_cents: c.monthly_cents,
+                  }))}
+                />
+              </div>
+            </div>
           )}
 
-          {/* Recurring spending patterns — collapsed accordion.
-              Only shown on the Subscriptions tab. Commerce isn't
-              relevant when the user is reviewing bills. */}
-          {activeTab === "subscriptions" && (
-            <SpendingPatternsAccordion
-              items={data.recurring_commerce.map((c) => ({
-                id: c.id,
-                merchant_name: c.merchant_name,
-                monthly_cents: c.monthly_cents,
-              }))}
-            />
-          )}
+          {/* ═══════════════════════════════════════════════════════
+              LAYER 3 — MONITORING / PROTECTION
+              ═══════════════════════════════════════════════════════
+              Bottom of the page. One header, one rhythm. Paid users
+              see the active protection panel + what-changed + uncertain
+              prompts. Non-paid users see the locked preview + the
+              quieter activate card. Either way, this layer never
+              competes for the eye on first load — Layer 1 has already
+              done the trust work. */}
+          <section className="pt-4 md:pt-6 border-t border-hairline/60">
+            <div className="mb-4 md:mb-5 flex items-baseline justify-between gap-3 flex-wrap">
+              <h2 className="text-[14px] md:text-[15px] font-medium text-ink">
+                Background protection
+              </h2>
+              <span className="text-[12px] text-ink-muted">
+                What we&apos;re watching for you
+              </span>
+            </div>
+
+            {/* ProtectionStatusPill (small "Protected since…" chip)
+                belongs in this section now. Hidden when state is
+                'none' so it doesn't compete with the activate card. */}
+            {!showActivateCard && (
+              <div className="mb-4">
+                <ProtectionStatusPill
+                  state={entitlement.entitlement_state}
+                  trialEndsAt={entitlement.trial_ends_at}
+                  expiresAt={entitlement.expires_at}
+                  protectionStartedAt={
+                    user.createdAt
+                      ? new Date(user.createdAt).toISOString()
+                      : null
+                  }
+                />
+              </div>
+            )}
+
+            {!showActivateCard ? (
+              <div className="space-y-5 md:space-y-6">
+                <ProtectionPanel
+                  data={protectionPanelData}
+                  state="active"
+                />
+                <WhatChangedCard />
+                <UncertainPromptCards />
+              </div>
+            ) : (
+              <div className="space-y-5 md:space-y-6">
+                <ActivateProtectionCard variant={activateVariant} />
+                <ProtectionLockedCard
+                  title="Continuous monitoring"
+                  body="Daily checks across every connected account — new charges, price hikes, trial conversions, and unusual recurring activity."
+                  sampleRows={[
+                    {
+                      dot: "#10b981",
+                      title: "New subscription detected",
+                      sub: "Notion AI started billing $10/mo on May 12.",
+                    },
+                    {
+                      dot: "#f59e0b",
+                      title: "Price increase caught",
+                      sub: "Netflix went from $15.49 → $17.99/mo.",
+                    },
+                    {
+                      dot: "#dc2626",
+                      title: "Trial converting in 2 days",
+                      sub: "Apple Music will charge $10.99/mo on May 28.",
+                    },
+                  ]}
+                />
+              </div>
+            )}
+          </section>
         </>
       )}
     </section>
