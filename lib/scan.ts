@@ -29,7 +29,7 @@ import { normalizeDescriptor, isSubscriptionGradeCategory } from "./merchant-nor
 import type { SnapshotRow } from "./types/snapshot";
 import { SCANNER_VERSION, ENGINE_SIGNATURE } from "./scanner-version";
 import { subscriptionKey } from "./subscription-key";
-import { syncAllItemsForUser } from "./plaid-sync";
+import { syncAllItemsForUser, nudgePlaidItemsForUser } from "./plaid-sync";
 import {
   scoreCandidate,
   featuresFromCharges,
@@ -216,12 +216,50 @@ export async function runScanForUser(
   const SYNC_DELAY_MS = 5_000;
   const ZERO_STREAK_TOLERANCE = 2;
   let syncMetrics = { items: 0, added: 0, modified: 0, removed: 0, pages: 0 };
+  // v11 — captured below so the awaiting_bank_data detection uses the
+  // same broadened "first-connect-grade" definition as the sync retry
+  // loop (any scan where the user has zero stored transactions, not
+  // just source==="first_connect").
+  let effectiveFirstConnect = false;
   if (!plaidClient) {
     // eslint-disable-next-line no-console
     console.warn("[scan] plaidClient unavailable — skipping sync, will re-classify existing transactions");
   } else {
-    const isFirstConnect = source === "first_connect";
+    // v11 — "first_connect-grade" sync isn't just about first_connect
+    // anymore. A user with NO stored transactions yet (because Plaid
+    // Classic hasn't delivered after their initial connect) will hit
+    // re-scan and we need to give Plaid time + nudge it again. Check
+    // pre-sync: if plaid_transactions is empty for this user, treat
+    // any scan source as needing the long retry loop.
+    let userHasStoredTxns = false;
+    try {
+      const { count } = await supabaseAdmin!
+        .from("plaid_transactions")
+        .select("plaid_transaction_id", { count: "exact", head: true })
+        .eq("user_id", userId)
+        .eq("pending", false);
+      userHasStoredTxns = (count ?? 0) > 0;
+    } catch {
+      // best-effort; default to "no stored txns" so we err toward the
+      // long retry loop on uncertainty
+    }
+    const isFirstConnect = source === "first_connect" || !userHasStoredTxns;
+    effectiveFirstConnect = isFirstConnect;
     const maxAttempts = isFirstConnect ? FIRST_CONNECT_MAX_ATTEMPTS : 1;
+
+    // v11 — nudge Plaid Classic to prioritize transaction pull.
+    // Plaid Classic integrations (Wealthsimple, smaller banks, many
+    // credit unions) queue the initial transaction pull and the first
+    // /sync call returns 0 rows for 30+ minutes by default. Calling
+    // /transactions/refresh signals priority; fire-and-forget so the
+    // ~5s round-trip doesn't block the first sync attempt.
+    if (isFirstConnect) {
+      nudgePlaidItemsForUser(userId).catch(() => {
+        // already logged by nudgePlaidItemsForUser; intentionally
+        // silent here so a 429 doesn't add a second error line.
+      });
+    }
+
     let zeroStreak = 0;
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       try {
@@ -456,6 +494,52 @@ export async function runScanForUser(
   // advances to "Adding up what you didn't know" on this signal.
   await emit(scanId, { type: "progress", scan_id: scanId, phase: "counting" });
 
+  // v11 — Plaid Classic / slow-bank detection.
+  //
+  // First-connect scans that exhaust the sync retry budget with zero
+  // rows mean Plaid hasn't released the user's transaction history
+  // yet. Classic integrations (Wealthsimple, many credit unions) can
+  // take 30+ minutes for the initial pull. Landing on an empty
+  // dashboard makes us look broken; we'd rather surface honest UX
+  // that says "your bank is slow, we'll email you when it's ready."
+  // The webhook handler already triggers a new scan on
+  // SYNC_UPDATES_AVAILABLE / INITIAL_UPDATE, so eventual delivery is
+  // wired — we just need the UI to wait gracefully.
+  const noSyncRows =
+    syncMetrics.added === 0 &&
+    syncMetrics.modified === 0;
+  const noStoredTxns = txns.length === 0;
+  const isFirstConnectAwaiting =
+    effectiveFirstConnect && noSyncRows && noStoredTxns;
+  if (isFirstConnectAwaiting) {
+    // Pull the bank name (institution_name) off the user's first
+    // active item so the UI can say "Wealthsimple is slow" rather
+    // than "your bank is slow."
+    let bankName: string | null = null;
+    try {
+      const { data: itemRow } = await supabaseAdmin
+        .from("plaid_items")
+        .select("institution_name")
+        .eq("user_id", userId)
+        .eq("status", "active")
+        .limit(1)
+        .maybeSingle();
+      bankName =
+        (itemRow?.institution_name as string | null | undefined) ?? null;
+    } catch {
+      // best-effort
+    }
+    await emit(scanId, {
+      type: "awaiting_bank_data",
+      scan_id: scanId,
+      bank_name: bankName,
+      // Plaid Classic typical: 15min - several hours. Anchor on the
+      // optimistic end so users don't bail; the webhook fires the
+      // moment data arrives anyway.
+      estimated_wait_minutes: 15,
+    });
+  }
+
   await emit(scanId, {
     type: "total",
     scan_id: scanId,
@@ -480,6 +564,12 @@ export async function runScanForUser(
         llm_calls: llmCalls,
         detected_total: detected.length,
         confirmed: detectedConfirmed,
+        // v11 — durable signal that this scan ended because Plaid
+        // hadn't delivered transactions yet. The /api/scan/status
+        // endpoint surfaces this so a reload of the scanning page
+        // (or a polling client) can recover the awaiting state
+        // without depending on the live SSE stream.
+        awaiting_bank_data: isFirstConnectAwaiting,
       },
     }
   );

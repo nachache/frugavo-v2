@@ -7,6 +7,7 @@ import { cn, formatCurrency } from "@/lib/utils";
 import type { ScanEvent, ScanRow } from "@/lib/types/scan";
 import { ProgressArc } from "./ProgressArc";
 import { FallbackCard } from "./FallbackCard";
+import { WaitingForBankCard } from "./WaitingForBankCard";
 import { ScanRevealOverlay } from "@/components/app/scan-reveal-overlay";
 
 // Scanning state machine.
@@ -53,6 +54,15 @@ export function StreamingList({ scanId }: Props) {
   const [isComplete, setIsComplete] = useState(false);
   const [isSlow, setIsSlow] = useState(false);
   const [error, setError] = useState<{ code: string; recoverable: boolean } | null>(null);
+  // v11 — Plaid Classic / slow-bank state. Set when the engine emits
+  // `awaiting_bank_data`. Wins over `isSlow` and `isComplete` in the
+  // UI state derivation: if Plaid hasn't released history, we don't
+  // route the user to an empty dashboard — we show honest waiting
+  // copy and let the webhook re-trigger the scan.
+  const [awaitingBank, setAwaitingBank] = useState<{
+    bankName: string | null;
+    estimatedWaitMinutes: number;
+  } | null>(null);
   // Trust receipt data — populated from the `complete` event. Real
   // numbers, never invented: detected count + actual scan duration.
   const [receipt, setReceipt] = useState<{
@@ -60,14 +70,23 @@ export function StreamingList({ scanId }: Props) {
     durationMs: number;
   } | null>(null);
 
-  // Derived UI state. Order matters: error > ready > slow > scanning.
-  // The "ready" guard ALWAYS beats slow, so a card that's already
-  // showing "slow account" disappears the moment any data arrives.
-  const isReady = isComplete || rows.length > 0;
-  const uiState: "scanning" | "slow" | "ready" | "error" = error
+  // Derived UI state. Order matters: error > ready (with rows) >
+  // awaiting > slow > scanning.
+  //
+  // `awaitingBank` outranks `isComplete` when there are no rows —
+  // that's the whole point: an empty `complete` event on first-
+  // connect should land on the honest waiting state, not on the
+  // empty dashboard. If rows DID arrive (rare but possible — the
+  // awaiting event is purely informational, complete still fires
+  // right after), we treat the scan as ready.
+  const hasRows = rows.length > 0;
+  const isReady = hasRows || (isComplete && !awaitingBank);
+  const uiState: "scanning" | "slow" | "awaiting" | "ready" | "error" = error
     ? "error"
     : isReady
     ? "ready"
+    : awaitingBank
+    ? "awaiting"
     : isSlow
     ? "slow"
     : "scanning";
@@ -97,6 +116,15 @@ export function StreamingList({ scanId }: Props) {
           setIsComplete(true);
           setReceipt({ detected: ev.detected, durationMs: ev.duration_ms });
           es.close();
+        } else if (ev.type === "awaiting_bank_data") {
+          // v11 — Plaid Classic. Bank hasn't released transactions
+          // yet; the webhook will re-trigger the scan when it does.
+          // Show honest waiting UX instead of routing to empty
+          // dashboard.
+          setAwaitingBank({
+            bankName: ev.bank_name ?? null,
+            estimatedWaitMinutes: ev.estimated_wait_minutes ?? 15,
+          });
         } else if (ev.type === "error") {
           if (!ev.recoverable) {
             setError({ code: ev.code, recoverable: ev.recoverable });
@@ -144,8 +172,19 @@ export function StreamingList({ scanId }: Props) {
           status: "running" | "finalizing" | "done" | "error" | "timeout";
           is_terminal: boolean;
           detected: number;
+          awaiting_bank_data?: boolean;
         };
         if (cancelled) return;
+        // v11 — slow-bank state recovered from the DB. Set this BEFORE
+        // isComplete so the navigation effect sees `awaitingBank` and
+        // skips the auto-redirect. Page reload, SSE timeout, or any
+        // client that joined after the 60s replay window will hit
+        // this path and still land on the honest waiting card.
+        if (data.awaiting_bank_data) {
+          setAwaitingBank((prev) =>
+            prev ?? { bankName: null, estimatedWaitMinutes: 15 }
+          );
+        }
         if (data.is_terminal) {
           setIsComplete(true);
         }
@@ -192,8 +231,14 @@ export function StreamingList({ scanId }: Props) {
   const [showVerdict, setShowVerdict] = useState(false);
   useEffect(() => {
     if (!isComplete) return;
-    // Zero-row completion: no verdict to reveal, route straight to
-    // the dashboard with the existing empty-state copy above.
+    // v11 — awaiting_bank_data wins. Plaid hasn't delivered yet, so
+    // skip both the verdict overlay AND the auto-redirect to /app.
+    // The WaitingForBankCard stays on screen until the user clicks
+    // "Go to dashboard" themselves.
+    if (awaitingBank) return;
+    // Zero-row completion (no awaiting signal — genuinely just no
+    // subs found): route straight to the dashboard with the
+    // existing empty-state copy above.
     if (rows.length === 0) {
       const t = setTimeout(() => {
         router.refresh();
@@ -206,7 +251,7 @@ export function StreamingList({ scanId }: Props) {
     // another second of "we just finished" feel.
     const t = setTimeout(() => setShowVerdict(true), POST_COMPLETE_REDIRECT_MS);
     return () => clearTimeout(t);
-  }, [isComplete, rows.length, router]);
+  }, [isComplete, rows.length, router, awaitingBank]);
 
   // Memoized navigation handler for the "I'll wait" recovery flow.
   // Same refresh-before-push contract so the dashboard never shows
@@ -240,6 +285,20 @@ export function StreamingList({ scanId }: Props) {
     return (
       <ScanError
         code={error.code}
+        onContinue={goToDashboard}
+      />
+    );
+  }
+
+  if (uiState === "awaiting" && awaitingBank) {
+    // v11 — Plaid Classic / slow-bank honest state. Replaces the
+    // empty-dashboard outcome for first-connect scans where Plaid
+    // hasn't released history yet. Webhook will trigger a re-scan
+    // when data arrives, even if the user navigates away.
+    return (
+      <WaitingForBankCard
+        bankName={awaitingBank.bankName}
+        estimatedWaitMinutes={awaitingBank.estimatedWaitMinutes}
         onContinue={goToDashboard}
       />
     );

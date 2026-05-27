@@ -44,7 +44,7 @@ export async function GET(req: Request) {
   const { data: run } = await supabaseAdmin
     .from("scan_runs")
     .select(
-      "id, user_id, status, detected_count, started_at, finished_at, duration_ms"
+      "id, user_id, status, detected_count, started_at, finished_at, duration_ms, metrics"
     )
     .eq("id", id)
     .maybeSingle();
@@ -60,6 +60,16 @@ export async function GET(req: Request) {
     | "error"
     | "timeout";
 
+  // v11 — surface the awaiting_bank_data flag stamped into scan_runs.metrics
+  // so a polling client (which can't rely on the live SSE stream after
+  // the 60s replay window) can still recover the slow-bank state on
+  // page reload. The flag is set by lib/scan.ts when a first_connect
+  // scan finishes with zero rows because Plaid hasn't delivered yet.
+  const metrics = (run.metrics ?? null) as
+    | { awaiting_bank_data?: boolean }
+    | null;
+  const awaitingBankData = Boolean(metrics?.awaiting_bank_data);
+
   return NextResponse.json({
     status,
     // The client uses `is_terminal` rather than string-matching so a
@@ -70,5 +80,6 @@ export async function GET(req: Request) {
     started_at: run.started_at as string,
     finished_at: run.finished_at as string | null,
     duration_ms: run.duration_ms as number | null,
+    awaiting_bank_data: awaitingBankData,
   });
 }

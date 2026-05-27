@@ -74,6 +74,22 @@ export type ScanEvent =
       recoverable: boolean;
       message?: string;
     }
+  // v11 — Plaid Classic / slow-bank state. Emitted when a first_connect
+  // scan exhausts its sync retry budget without Plaid delivering ANY
+  // transactions yet. The bank (typically Wealthsimple, some credit
+  // unions, anything on Plaid's "Classic" integration tier) genuinely
+  // hasn't released history. Honest UX: tell the user, stop pretending
+  // we'll have data in 5 more seconds. The webhook handler will catch
+  // SYNC_UPDATES_AVAILABLE / INITIAL_UPDATE and re-trigger the scan
+  // when Plaid eventually delivers — could be minutes, could be hours.
+  | {
+      type: "awaiting_bank_data";
+      scan_id: string;
+      bank_name?: string | null;
+      // Approximate ETA from Plaid Classic experience. Used by the UI
+      // to set expectations honestly rather than a generic "soon".
+      estimated_wait_minutes?: number;
+    }
   | { type: "heartbeat"; ts: number };
 
 // Latency budget constants — referenced by both UI and tests so a tuning

@@ -212,6 +212,48 @@ function buildTxnRow(
   };
 }
 
+// v11 — Plaid Classic nudge. Calls /transactions/refresh on every
+// active item for this user. Plaid Classic (legacy integration tier —
+// Wealthsimple, many credit unions, smaller banks) doesn't deliver
+// transactions on the first /transactions/sync call; it queues them
+// in their backend and the first sync just returns 0 rows. Calling
+// /refresh asks Plaid to prioritize the pull so the user doesn't sit
+// on an empty dashboard for 30 minutes.
+//
+// This is a fire-and-forget nudge. /refresh has a separate rate
+// limit and can 429; we swallow errors because the worst case is the
+// retry loop times out and the user lands on the honest "your bank
+// is slow" state. Best case it cuts the wait from ~30min to ~30s.
+//
+// Only called on first_connect — for subsequent scans, /sync is the
+// right tool because incremental cursor delta is faster than nudging
+// Plaid to repull.
+export async function nudgePlaidItemsForUser(userId: string): Promise<void> {
+  if (!plaidClient || !supabaseAdmin) return;
+  const { data: items } = await supabaseAdmin
+    .from("plaid_items")
+    .select("id, plaid_access_token")
+    .eq("user_id", userId)
+    .eq("status", "active");
+
+  for (const it of items ?? []) {
+    try {
+      const accessToken = decryptToken(it.plaid_access_token as string);
+      await plaidClient.transactionsRefresh({ access_token: accessToken });
+      // eslint-disable-next-line no-console
+      console.log(`[plaid-sync] /refresh nudged item=${it.id}`);
+    } catch (e) {
+      // Non-fatal. Common failure: PRODUCT_NOT_READY (Plaid still doing
+      // initial pull — fine, /sync retry loop covers it), or RATE_LIMIT
+      // (we already nudged this user recently — also fine).
+      observeError(e, {
+        route: "plaid_sync.refresh",
+        tags: { itemId: it.id as string, userId },
+      });
+    }
+  }
+}
+
 // Sync every active Plaid item for a user. Used by the scan
 // orchestrator before it reads plaid_transactions.
 export async function syncAllItemsForUser(
