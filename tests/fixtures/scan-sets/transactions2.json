@@ -1,0 +1,4359 @@
+{
+  "account_profile": {
+    "purpose": "scan-engine training corpus \u2014 single composite account",
+    "regions_covered": [
+      "US",
+      "Canada (excl. Quebec)",
+      "international travel touchpoints"
+    ],
+    "currency_convention": "All amounts posted in the account's native USD; foreign-currency transactions converted to USD with original currency/amount/rate noted inline in the descriptor.",
+    "transaction_count_target": 868,
+    "variance_notes": "Run seed 2522887: Nov 2025\u2013May 2026 window (captures Feb 28, New Year, Valentine's, Black Friday, Boxing Day), GUSTO + hourly payroll, rural-US/Atlantic-Prairie-Canada flavor, Cash App + Interac P2P, crypto-gig income, fraud emphasis on spoofing + account-takeover geo jumps."
+  },
+  "period": {
+    "start": "2025-11-15",
+    "end": "2026-05-15"
+  },
+  "transactions": [
+    {
+      "date": "2025-11-15",
+      "descriptor": "DIRECT DEP HOURLY WAGES MERIDIAN",
+      "amount": 819.21
+    },
+    {
+      "date": "2025-11-15",
+      "descriptor": "GUSTO PAY b1c2d3 NORTHGATE INC",
+      "amount": 2227.72
+    },
+    {
+      "date": "2025-11-15",
+      "descriptor": "TIM HORTONS #3674 BURNABY BC CA",
+      "amount": -7.72
+    },
+    {
+      "date": "2025-11-15",
+      "descriptor": "TOPGOLF RURAL RTE 2 PARIS TX",
+      "amount": -92.0
+    },
+    {
+      "date": "2025-11-15",
+      "descriptor": "WASTE MGMT TRASH",
+      "amount": -41.2
+    },
+    {
+      "date": "2025-11-15",
+      "descriptor": "WHOLE FOODS NEW ORLEANS LA",
+      "amount": -57.82
+    },
+    {
+      "date": "2025-11-16",
+      "descriptor": "DISCOVER E-PAYMENT",
+      "amount": -281.14
+    },
+    {
+      "date": "2025-11-16",
+      "descriptor": "SHOPSMARTREGINASK",
+      "amount": -19.99
+    },
+    {
+      "date": "2025-11-16",
+      "descriptor": "WSJ DIGITAL",
+      "amount": -38.99
+    },
+    {
+      "date": "2025-11-17",
+      "descriptor": "FIGMA.COM",
+      "amount": -15.0
+    },
+    {
+      "date": "2025-11-17",
+      "descriptor": "INTACT INSURANCE HALIFAX NS CA",
+      "amount": -64.0
+    },
+    {
+      "date": "2025-11-17",
+      "descriptor": "INTERAC E-TRF FROM D SINGH REF#C4410",
+      "amount": 260.0
+    },
+    {
+      "date": "2025-11-17",
+      "descriptor": "LYFT RIDE FARGO ND",
+      "amount": -77.67
+    },
+    {
+      "date": "2025-11-17",
+      "descriptor": "WIRE TRANSFER FEE",
+      "amount": -25.0
+    },
+    {
+      "date": "2025-11-18",
+      "descriptor": "DOCTORS WITHOUT BORDERS DONATION",
+      "amount": -75.0
+    },
+    {
+      "date": "2025-11-18",
+      "descriptor": "NICHE STREAM CO LLC",
+      "amount": -8.99
+    },
+    {
+      "date": "2025-11-18",
+      "descriptor": "NOTION LABS",
+      "amount": -10.0
+    },
+    {
+      "date": "2025-11-18",
+      "descriptor": "SPOTIFY USA",
+      "amount": -11.99
+    },
+    {
+      "date": "2025-11-18",
+      "descriptor": "TRUPANION PET INS",
+      "amount": -49.0
+    },
+    {
+      "date": "2025-11-19",
+      "descriptor": "GRUBHUB ORDER",
+      "amount": -50.73
+    },
+    {
+      "date": "2025-11-19",
+      "descriptor": "HUSKY KANSAS CITY MO",
+      "amount": -59.51
+    },
+    {
+      "date": "2025-11-19",
+      "descriptor": "T-MOBILE PCS PMT",
+      "amount": -95.0
+    },
+    {
+      "date": "2025-11-20",
+      "descriptor": "AMZN MKTP US*57NGC2",
+      "amount": -110.68
+    },
+    {
+      "date": "2025-11-20",
+      "descriptor": "AUDIBLE FREE TRIAL",
+      "amount": 0.0
+    },
+    {
+      "date": "2025-11-20",
+      "descriptor": "CASH APP TRANSFER FROM T NGUYEN",
+      "amount": 120.0
+    },
+    {
+      "date": "2025-11-20",
+      "descriptor": "CHATGPT PLUS OPENAI",
+      "amount": -20.0
+    },
+    {
+      "date": "2025-11-20",
+      "descriptor": "SERVICE ONTARIO REGISTRY FEE CA",
+      "amount": -120.0
+    },
+    {
+      "date": "2025-11-21",
+      "descriptor": "AMZN MKTP US*C66956",
+      "amount": -189.61
+    },
+    {
+      "date": "2025-11-21",
+      "descriptor": "CINEPLEX EDMONTON AB CA",
+      "amount": -26.5
+    },
+    {
+      "date": "2025-11-21",
+      "descriptor": "INTERAC E-TRF FROM S TREMBLAY REF#B9921",
+      "amount": 190.0
+    },
+    {
+      "date": "2025-11-21",
+      "descriptor": "TARGET #1174 BANGOR ME",
+      "amount": -433.33
+    },
+    {
+      "date": "2025-11-21",
+      "descriptor": "TELUS MOBILITY CALGARY AB CA",
+      "amount": -78.4
+    },
+    {
+      "date": "2025-11-21",
+      "descriptor": "UBER EATS ORDER",
+      "amount": -132.73
+    },
+    {
+      "date": "2025-11-22",
+      "descriptor": "AMAZON.COM*K77J2",
+      "amount": -249.33
+    },
+    {
+      "date": "2025-11-22",
+      "descriptor": "DIRECT DEP HOURLY WAGES MERIDIAN",
+      "amount": 685.51
+    },
+    {
+      "date": "2025-11-22",
+      "descriptor": "ETSY.COM",
+      "amount": -163.73
+    },
+    {
+      "date": "2025-11-22",
+      "descriptor": "EXPRESSVPN",
+      "amount": -12.95
+    },
+    {
+      "date": "2025-11-22",
+      "descriptor": "PELOTON MEMBERSHIP",
+      "amount": -44.0
+    },
+    {
+      "date": "2025-11-22",
+      "descriptor": "PURCHASE 0XF31C9",
+      "amount": -52.4
+    },
+    {
+      "date": "2025-11-22",
+      "descriptor": "RITE AID #6595 SPOKANE WA",
+      "amount": -36.37
+    },
+    {
+      "date": "2025-11-22",
+      "descriptor": "SUBWAY #1285 WICHITA KS",
+      "amount": -25.56
+    },
+    {
+      "date": "2025-11-22",
+      "descriptor": "TARGET #618 INDIANAPOLIS IN",
+      "amount": -130.35
+    },
+    {
+      "date": "2025-11-22",
+      "descriptor": "TIM HORTONS #3357 YELLOWKNIFE NT CA",
+      "amount": -5.44
+    },
+    {
+      "date": "2025-11-23",
+      "descriptor": "FERRELLGAS PROPANE",
+      "amount": -150.8
+    },
+    {
+      "date": "2025-11-23",
+      "descriptor": "HSA DISTRIBUTION QUALIFIED",
+      "amount": -60.0
+    },
+    {
+      "date": "2025-11-23",
+      "descriptor": "LIDL #3856 DES MOINES IA",
+      "amount": -149.5
+    },
+    {
+      "date": "2025-11-23",
+      "descriptor": "METRO #7492 YELLOWKNIFE NT CA",
+      "amount": -64.29
+    },
+    {
+      "date": "2025-11-23",
+      "descriptor": "PETRO-CANADA REGINA SK CA",
+      "amount": -68.4
+    },
+    {
+      "date": "2025-11-24",
+      "descriptor": "AMAZON PRIME",
+      "amount": -150.85
+    },
+    {
+      "date": "2025-11-24",
+      "descriptor": "ANYTIME FITNESS",
+      "amount": -44.99
+    },
+    {
+      "date": "2025-11-24",
+      "descriptor": "DEBIT  MEMO   POS   PURCHASE",
+      "amount": -44.0
+    },
+    {
+      "date": "2025-11-25",
+      "descriptor": "CLASSPASS",
+      "amount": -79.0
+    },
+    {
+      "date": "2025-11-26",
+      "descriptor": "DROPBOX",
+      "amount": -11.99
+    },
+    {
+      "date": "2025-11-26",
+      "descriptor": "LOCAL TAQUERIA PHOENIX AZ",
+      "amount": -70.71
+    },
+    {
+      "date": "2025-11-26",
+      "descriptor": "MONEYGRAM TRANSFER",
+      "amount": -250.0
+    },
+    {
+      "date": "2025-11-26",
+      "descriptor": "QUESTRADE RRSP CONTRIB TORONTO ON CA",
+      "amount": -400.0
+    },
+    {
+      "date": "2025-11-26",
+      "descriptor": "SUBWAY #6812 ALBUQUERQUE NM",
+      "amount": -67.04
+    },
+    {
+      "date": "2025-11-27",
+      "descriptor": "CHARGEBACK CREDIT ADJ",
+      "amount": 88.5
+    },
+    {
+      "date": "2025-11-27",
+      "descriptor": "GRID SOLAR BUYBACK CREDIT",
+      "amount": 39.09
+    },
+    {
+      "date": "2025-11-27",
+      "descriptor": "LYFT DRIVER PAYOUT",
+      "amount": 413.09
+    },
+    {
+      "date": "2025-11-27",
+      "descriptor": "WEALTHFRONT AUTOMATED INVEST",
+      "amount": -300.0
+    },
+    {
+      "date": "2025-11-28",
+      "descriptor": "ALDI #626 CINCINNATI OH",
+      "amount": -170.65
+    },
+    {
+      "date": "2025-11-28",
+      "descriptor": "AMZN MKTP US*BF26",
+      "amount": -86.64
+    },
+    {
+      "date": "2025-11-28",
+      "descriptor": "BEST BUY #208 ASHEVILLE NC",
+      "amount": -203.2
+    },
+    {
+      "date": "2025-11-28",
+      "descriptor": "BP BANGOR ME",
+      "amount": -152.11
+    },
+    {
+      "date": "2025-11-28",
+      "descriptor": "BP MEMPHIS TN",
+      "amount": -46.25
+    },
+    {
+      "date": "2025-11-28",
+      "descriptor": "INTEREST PAID SAVINGS",
+      "amount": 34.51
+    },
+    {
+      "date": "2025-11-28",
+      "descriptor": "KOHLS BOZEMAN MT",
+      "amount": -81.49
+    },
+    {
+      "date": "2025-11-28",
+      "descriptor": "STARBUCKS FARGO ND",
+      "amount": -7.0
+    },
+    {
+      "date": "2025-11-28",
+      "descriptor": "SUBSTACK* WRITER",
+      "amount": -7.0
+    },
+    {
+      "date": "2025-11-28",
+      "descriptor": "TARGET #117 LINCOLN NE",
+      "amount": -120.5
+    },
+    {
+      "date": "2025-11-29",
+      "descriptor": "CRAVE TOTAL HALIFAX NS CA",
+      "amount": -22.99
+    },
+    {
+      "date": "2025-11-29",
+      "descriptor": "DIRECT DEP HOURLY WAGES MERIDIAN",
+      "amount": 540.85
+    },
+    {
+      "date": "2025-11-29",
+      "descriptor": "EVGO EV CHARGING",
+      "amount": -13.6
+    },
+    {
+      "date": "2025-11-29",
+      "descriptor": "FASTRAK TOLL REPLENISH",
+      "amount": -50.0
+    },
+    {
+      "date": "2025-11-29",
+      "descriptor": "HOME DEPOT #473 ALBUQUERQUE NM",
+      "amount": -367.74
+    },
+    {
+      "date": "2025-11-29",
+      "descriptor": "KRAKEN BUY ORDER",
+      "amount": -175.0
+    },
+    {
+      "date": "2025-11-29",
+      "descriptor": "TIM HORTONS #1524 CALGARY AB CA",
+      "amount": -4.71
+    },
+    {
+      "date": "2025-11-30",
+      "descriptor": "DELTA SEAT UPGRADE",
+      "amount": -58.0
+    },
+    {
+      "date": "2025-11-30",
+      "descriptor": "FIVE GUYS TUCSON AZ",
+      "amount": -67.9
+    },
+    {
+      "date": "2025-11-30",
+      "descriptor": "GUSTO PAY b1c2d3 NORTHGATE INC",
+      "amount": 2114.58
+    },
+    {
+      "date": "2025-11-30",
+      "descriptor": "RITE AID #5851 PHOENIX AZ",
+      "amount": -132.93
+    },
+    {
+      "date": "2025-12-01",
+      "descriptor": "BILL PAYMENT WEB OAKMONT TOWERS RENT",
+      "amount": -1875.0
+    },
+    {
+      "date": "2025-12-01",
+      "descriptor": "DIRECT DEP CEDARWORKS MONTHLY SALARY",
+      "amount": 3035.32
+    },
+    {
+      "date": "2025-12-01",
+      "descriptor": "INTERAC E-TRF FROM ROOMMATE RENT REF#R55",
+      "amount": 950.0
+    },
+    {
+      "date": "2025-12-01",
+      "descriptor": "KINDERCARE LEARNING CTR",
+      "amount": -1180.0
+    },
+    {
+      "date": "2025-12-01",
+      "descriptor": "NINTENDO ESHOP",
+      "amount": -39.99
+    },
+    {
+      "date": "2025-12-01",
+      "descriptor": "PET VALU REGINA SK CA",
+      "amount": -26.0
+    },
+    {
+      "date": "2025-12-01",
+      "descriptor": "UBER TRIP BOZEMAN MT",
+      "amount": -55.1
+    },
+    {
+      "date": "2025-12-02",
+      "descriptor": "INSTACART SHOPPER PAY",
+      "amount": 167.08
+    },
+    {
+      "date": "2025-12-02",
+      "descriptor": "MISC CREDIT ADJ",
+      "amount": 9.5
+    },
+    {
+      "date": "2025-12-02",
+      "descriptor": "NELNET STUDENT LOAN",
+      "amount": -241.8
+    },
+    {
+      "date": "2025-12-02",
+      "descriptor": "NETFLIX EXTRA MEMBER",
+      "amount": -13.64
+    },
+    {
+      "date": "2025-12-02",
+      "descriptor": "RENT INCOME BUILDIUM PM",
+      "amount": 1700.0
+    },
+    {
+      "date": "2025-12-02",
+      "descriptor": "RITE AID #3181 SPOKANE WA",
+      "amount": -151.55
+    },
+    {
+      "date": "2025-12-03",
+      "descriptor": "CAPITAL ONE CRD AUTOPAY",
+      "amount": -726.9
+    },
+    {
+      "date": "2025-12-03",
+      "descriptor": "ETSY.COM",
+      "amount": -84.72
+    },
+    {
+      "date": "2025-12-03",
+      "descriptor": "MAX STREAMING",
+      "amount": -15.99
+    },
+    {
+      "date": "2025-12-03",
+      "descriptor": "SSI TREAS 310 DEPOSIT",
+      "amount": 943.0
+    },
+    {
+      "date": "2025-12-04",
+      "descriptor": "MOBILE CHECK DEPOSIT",
+      "amount": 375.0
+    },
+    {
+      "date": "2025-12-04",
+      "descriptor": "MTG ESCROW CHASE HOME",
+      "amount": -298.4
+    },
+    {
+      "date": "2025-12-04",
+      "descriptor": "MTG PYMT CHASE HOME INTEREST",
+      "amount": -531.66
+    },
+    {
+      "date": "2025-12-04",
+      "descriptor": "MTG PYMT CHASE HOME PRINCIPAL",
+      "amount": -744.2
+    },
+    {
+      "date": "2025-12-05",
+      "descriptor": "ACH PUSH FIDELITY INVEST",
+      "amount": -800.0
+    },
+    {
+      "date": "2025-12-05",
+      "descriptor": "ALBERTSONS #3850 BUFFALO NY",
+      "amount": -224.03
+    },
+    {
+      "date": "2025-12-05",
+      "descriptor": "PARAMOUNT PLUS",
+      "amount": -11.99
+    },
+    {
+      "date": "2025-12-05",
+      "descriptor": "PROGRESSIVE AUTO INS",
+      "amount": -128.55
+    },
+    {
+      "date": "2025-12-05",
+      "descriptor": "T-MOBILE FAMILY PLAN",
+      "amount": -200.0
+    },
+    {
+      "date": "2025-12-06",
+      "descriptor": "BIG TICKET ELECTRONICS DODGE CITY KS",
+      "amount": -1499.0
+    },
+    {
+      "date": "2025-12-06",
+      "descriptor": "CASH APP FROM PARENT PHONE",
+      "amount": 50.0
+    },
+    {
+      "date": "2025-12-06",
+      "descriptor": "CERTIFIED CHECK BRANCH DEPOSIT",
+      "amount": 2500.0
+    },
+    {
+      "date": "2025-12-06",
+      "descriptor": "CONDO FEES HARBOURVIEW MGMT",
+      "amount": -410.0
+    },
+    {
+      "date": "2025-12-06",
+      "descriptor": "DIRECT DEP HOURLY WAGES MERIDIAN",
+      "amount": 579.5
+    },
+    {
+      "date": "2025-12-06",
+      "descriptor": "FUEL STOP TEST SPOKANE WA",
+      "amount": -1.25
+    },
+    {
+      "date": "2025-12-06",
+      "descriptor": "TIM HORTONS #7778 SASKATOON SK CA",
+      "amount": -6.74
+    },
+    {
+      "date": "2025-12-06",
+      "descriptor": "VENMO FROM SIB PHONE",
+      "amount": 50.0
+    },
+    {
+      "date": "2025-12-07",
+      "descriptor": "DONATION MASJID AL-NOOR",
+      "amount": -150.0
+    },
+    {
+      "date": "2025-12-07",
+      "descriptor": "SPECTRUM INTERNET",
+      "amount": -79.99
+    },
+    {
+      "date": "2025-12-07",
+      "descriptor": "ZELLE FROM COUSIN PHONE",
+      "amount": 50.0
+    },
+    {
+      "date": "2025-12-08",
+      "descriptor": "ACH PULL HONDA FIN AUTO",
+      "amount": -388.55
+    },
+    {
+      "date": "2025-12-08",
+      "descriptor": "APPLE TV+",
+      "amount": -9.99
+    },
+    {
+      "date": "2025-12-08",
+      "descriptor": "LYFT RIDE SAN ANTONIO TX",
+      "amount": -81.08
+    },
+    {
+      "date": "2025-12-09",
+      "descriptor": "7-ELEVEN #2654 DES MOINES IA",
+      "amount": -24.46
+    },
+    {
+      "date": "2025-12-09",
+      "descriptor": "AMAZON PRIME",
+      "amount": -117.53
+    },
+    {
+      "date": "2025-12-09",
+      "descriptor": "APPLE MUSIC",
+      "amount": -10.99
+    },
+    {
+      "date": "2025-12-09",
+      "descriptor": "DUKE ENERGY ELECTRIC",
+      "amount": -144.08
+    },
+    {
+      "date": "2025-12-09",
+      "descriptor": "SHEETZ #3514 MILWAUKEE WI",
+      "amount": -18.14
+    },
+    {
+      "date": "2025-12-09",
+      "descriptor": "SHELL KANSAS CITY MO",
+      "amount": -45.25
+    },
+    {
+      "date": "2025-12-10",
+      "descriptor": "ALLSTATE HOMEOWNERS PREM",
+      "amount": -402.0
+    },
+    {
+      "date": "2025-12-11",
+      "descriptor": "AFTERPAY INSTALLMENT",
+      "amount": -32.0
+    },
+    {
+      "date": "2025-12-11",
+      "descriptor": "CASH APP CASHOUT",
+      "amount": 75.0
+    },
+    {
+      "date": "2025-12-11",
+      "descriptor": "SUBWAY #973 BUFFALO NY",
+      "amount": -54.18
+    },
+    {
+      "date": "2025-12-11",
+      "descriptor": "UBER EATS ORDER",
+      "amount": -98.05
+    },
+    {
+      "date": "2025-12-11",
+      "descriptor": "YOUTUBE PREMIUM",
+      "amount": -13.99
+    },
+    {
+      "date": "2025-12-12",
+      "descriptor": "AMZN MKTP US*C8J35K",
+      "amount": -169.51
+    },
+    {
+      "date": "2025-12-12",
+      "descriptor": "ENBRIDGE GAS WINNIPEG MB CA",
+      "amount": -116.54
+    },
+    {
+      "date": "2025-12-12",
+      "descriptor": "FACTOR MEALS",
+      "amount": -83.4
+    },
+    {
+      "date": "2025-12-12",
+      "descriptor": "SAMS CLUB #8211 SPOKANE WA",
+      "amount": -127.42
+    },
+    {
+      "date": "2025-12-12",
+      "descriptor": "WALGREENS #308 RICHMOND VA",
+      "amount": -13.07
+    },
+    {
+      "date": "2025-12-13",
+      "descriptor": "ALDI #9646 SPOKANE WA",
+      "amount": -7.36
+    },
+    {
+      "date": "2025-12-13",
+      "descriptor": "DIRECT DEP HOURLY WAGES MERIDIAN",
+      "amount": 757.82
+    },
+    {
+      "date": "2025-12-13",
+      "descriptor": "KINDLE UNLIMITED",
+      "amount": -11.99
+    },
+    {
+      "date": "2025-12-13",
+      "descriptor": "KLARNA INSTALLMENT",
+      "amount": -48.75
+    },
+    {
+      "date": "2025-12-13",
+      "descriptor": "LYFT RIDE KENAI AK 99611",
+      "amount": -169.22
+    },
+    {
+      "date": "2025-12-13",
+      "descriptor": "MOBIL MILWAUKEE WI",
+      "amount": -27.56
+    },
+    {
+      "date": "2025-12-13",
+      "descriptor": "SQ *MAMA ROSAS RURAL RTE 2 PARIS TX",
+      "amount": -63.51
+    },
+    {
+      "date": "2025-12-13",
+      "descriptor": "TIM HORTONS #2938 WHITEHORSE YT CA",
+      "amount": -3.14
+    },
+    {
+      "date": "2025-12-14",
+      "descriptor": "ALBERTSONS #4826 LOUISVILLE KY",
+      "amount": -144.61
+    },
+    {
+      "date": "2025-12-14",
+      "descriptor": "ALDI #5867 CHEYENNE WY",
+      "amount": -63.53
+    },
+    {
+      "date": "2025-12-14",
+      "descriptor": "NETFLIX EXTRA MEMBER",
+      "amount": -38.65
+    },
+    {
+      "date": "2025-12-14",
+      "descriptor": "REGIONAL WATER AUTH",
+      "amount": -79.25
+    },
+    {
+      "date": "2025-12-14",
+      "descriptor": "SP * SHOP ASHEVILLE NC",
+      "amount": -159.68
+    },
+    {
+      "date": "2025-12-15",
+      "descriptor": "ALDI #8667 MILWAUKEE WI",
+      "amount": -108.95
+    },
+    {
+      "date": "2025-12-15",
+      "descriptor": "FIVE GUYS INDIANAPOLIS IN",
+      "amount": -73.24
+    },
+    {
+      "date": "2025-12-15",
+      "descriptor": "GUSTO PAY b1c2d3 NORTHGATE INC",
+      "amount": 2154.28
+    },
+    {
+      "date": "2025-12-15",
+      "descriptor": "SAFEWAY #6077 TULSA OK",
+      "amount": -118.47
+    },
+    {
+      "date": "2025-12-15",
+      "descriptor": "UBER TRIP ASHEVILLE NC",
+      "amount": -110.5
+    },
+    {
+      "date": "2025-12-15",
+      "descriptor": "WASTE MGMT TRASH",
+      "amount": -41.2
+    },
+    {
+      "date": "2025-12-15",
+      "descriptor": "WEGMANS #5892 SPOKANE WA",
+      "amount": -183.57
+    },
+    {
+      "date": "2025-12-16",
+      "descriptor": "ATM CHECK DEPOSIT #5521",
+      "amount": 640.0
+    },
+    {
+      "date": "2025-12-16",
+      "descriptor": "DISCOVER E-PAYMENT",
+      "amount": -835.81
+    },
+    {
+      "date": "2025-12-16",
+      "descriptor": "ETSY.COM",
+      "amount": -127.24
+    },
+    {
+      "date": "2025-12-16",
+      "descriptor": "WALMrRT SUPERCENTER",
+      "amount": -61.0
+    },
+    {
+      "date": "2025-12-16",
+      "descriptor": "WSJ DIGITAL",
+      "amount": -38.99
+    },
+    {
+      "date": "2025-12-17",
+      "descriptor": "COUNTY PROPERTY TAX",
+      "amount": -1980.0
+    },
+    {
+      "date": "2025-12-17",
+      "descriptor": "FIGMA.COM",
+      "amount": -15.0
+    },
+    {
+      "date": "2025-12-17",
+      "descriptor": "INTACT INSURANCE HALIFAX NS CA",
+      "amount": -64.0
+    },
+    {
+      "date": "2025-12-17",
+      "descriptor": "LOWES #882 BANGOR ME",
+      "amount": -612.4
+    },
+    {
+      "date": "2025-12-17",
+      "descriptor": "UBER EATS ORDER",
+      "amount": -185.78
+    },
+    {
+      "date": "2025-12-18",
+      "descriptor": "ALDI #5108 ASHEVILLE NC",
+      "amount": -17.16
+    },
+    {
+      "date": "2025-12-18",
+      "descriptor": "NICHE STREAM CO LLC",
+      "amount": -8.99
+    },
+    {
+      "date": "2025-12-18",
+      "descriptor": "NOTION LABS",
+      "amount": -10.0
+    },
+    {
+      "date": "2025-12-18",
+      "descriptor": "RITE AID #3999 SAN ANTONIO TX",
+      "amount": -76.99
+    },
+    {
+      "date": "2025-12-18",
+      "descriptor": "RITE AID #6921 CINCINNATI OH",
+      "amount": -176.53
+    },
+    {
+      "date": "2025-12-18",
+      "descriptor": "SHELL KENAI AK 99611",
+      "amount": -67.35
+    },
+    {
+      "date": "2025-12-18",
+      "descriptor": "SPOTIFY USA",
+      "amount": -11.99
+    },
+    {
+      "date": "2025-12-18",
+      "descriptor": "TRUPANION PET INS",
+      "amount": -49.0
+    },
+    {
+      "date": "2025-12-18",
+      "descriptor": "UBER EATS ORDER",
+      "amount": -169.36
+    },
+    {
+      "date": "2025-12-19",
+      "descriptor": "ALDI #5692 ASHEVILLE NC",
+      "amount": -57.47
+    },
+    {
+      "date": "2025-12-19",
+      "descriptor": "COMPASS CARD VANCOUVER BC CA",
+      "amount": -45.0
+    },
+    {
+      "date": "2025-12-19",
+      "descriptor": "T-MOBILE PCS PMT",
+      "amount": -95.0
+    },
+    {
+      "date": "2025-12-19",
+      "descriptor": "UBER TRIP INDIANAPOLIS IN",
+      "amount": -5.62
+    },
+    {
+      "date": "2025-12-20",
+      "descriptor": "AUDIBLE MEMBERSHIP",
+      "amount": -14.95
+    },
+    {
+      "date": "2025-12-20",
+      "descriptor": "CANADA CHILD BENEFIT CCB",
+      "amount": 622.0
+    },
+    {
+      "date": "2025-12-20",
+      "descriptor": "CHATGPT PLUS OPENAI",
+      "amount": -20.0
+    },
+    {
+      "date": "2025-12-20",
+      "descriptor": "DIRECT DEP HOURLY WAGES MERIDIAN",
+      "amount": 754.05
+    },
+    {
+      "date": "2025-12-20",
+      "descriptor": "SNAP EBT BENEFIT CREDIT",
+      "amount": 271.0
+    },
+    {
+      "date": "2025-12-20",
+      "descriptor": "TARGET #3393 CINCINNATI OH",
+      "amount": -71.24
+    },
+    {
+      "date": "2025-12-20",
+      "descriptor": "TIM HORTONS #3879 SURREY BC CA",
+      "amount": -3.34
+    },
+    {
+      "date": "2025-12-21",
+      "descriptor": "CASINO RESORT MILWAUKEE WI",
+      "amount": -100.0
+    },
+    {
+      "date": "2025-12-21",
+      "descriptor": "SP * SHOP BANGOR ME",
+      "amount": -59.6
+    },
+    {
+      "date": "2025-12-21",
+      "descriptor": "TARGET #1417 EUGENE OR",
+      "amount": -181.51
+    },
+    {
+      "date": "2025-12-21",
+      "descriptor": "TELUS MOBILITY CALGARY AB CA",
+      "amount": -78.4
+    },
+    {
+      "date": "2025-12-22",
+      "descriptor": "BP RURAL RTE 2 PARIS TX",
+      "amount": -177.09
+    },
+    {
+      "date": "2025-12-22",
+      "descriptor": "EXPRESSVPN",
+      "amount": -12.95
+    },
+    {
+      "date": "2025-12-22",
+      "descriptor": "PELOTON MEMBERSHIP PAUSED",
+      "amount": 0.0
+    },
+    {
+      "date": "2025-12-22",
+      "descriptor": "REFUND: LOWES #882",
+      "amount": 612.4
+    },
+    {
+      "date": "2025-12-23",
+      "descriptor": "FERRELLGAS PROPANE",
+      "amount": -170.41
+    },
+    {
+      "date": "2025-12-23",
+      "descriptor": "TOAST PAYROLL TIPS",
+      "amount": 461.47
+    },
+    {
+      "date": "2025-12-23",
+      "descriptor": "UBER EATS ORDER",
+      "amount": -36.06
+    },
+    {
+      "date": "2025-12-24",
+      "descriptor": "ANYTIME FITNESS",
+      "amount": -44.99
+    },
+    {
+      "date": "2025-12-24",
+      "descriptor": "LYFT DRIVER PAYOUT",
+      "amount": 539.28
+    },
+    {
+      "date": "2025-12-24",
+      "descriptor": "NETFLIX EXTRA MEMBER",
+      "amount": -112.3
+    },
+    {
+      "date": "2025-12-24",
+      "descriptor": "UBER EATS ORDER",
+      "amount": -21.99
+    },
+    {
+      "date": "2025-12-24",
+      "descriptor": "UBER TRIP BANGOR ME",
+      "amount": -37.83
+    },
+    {
+      "date": "2025-12-24",
+      "descriptor": "URGENT CARE COPAY",
+      "amount": -50.0
+    },
+    {
+      "date": "2025-12-25",
+      "descriptor": "CLASSPASS",
+      "amount": -79.0
+    },
+    {
+      "date": "2025-12-25",
+      "descriptor": "SUBWAY #8160 KANSAS CITY MO",
+      "amount": -189.57
+    },
+    {
+      "date": "2025-12-26",
+      "descriptor": "ALDI #9461 INDIANAPOLIS IN",
+      "amount": -126.66
+    },
+    {
+      "date": "2025-12-26",
+      "descriptor": "BEST BUY CANADA OTTAWA ON CA",
+      "amount": -208.93
+    },
+    {
+      "date": "2025-12-26",
+      "descriptor": "CANADIAN TIRE #512 LONDON ON CA",
+      "amount": -77.1
+    },
+    {
+      "date": "2025-12-26",
+      "descriptor": "CANADIAN TIRE LONDON ON CA",
+      "amount": -57.15
+    },
+    {
+      "date": "2025-12-26",
+      "descriptor": "DROPBOX",
+      "amount": -11.99
+    },
+    {
+      "date": "2025-12-26",
+      "descriptor": "DUOLINGO PLUS",
+      "amount": -6.99
+    },
+    {
+      "date": "2025-12-26",
+      "descriptor": "FIVE GUYS ALBUQUERQUE NM",
+      "amount": -27.89
+    },
+    {
+      "date": "2025-12-26",
+      "descriptor": "HUDSONS BAY TORONTO ON CA BOXING",
+      "amount": -207.23
+    },
+    {
+      "date": "2025-12-26",
+      "descriptor": "QUESTRADE RRSP CONTRIB TORONTO ON CA",
+      "amount": -400.0
+    },
+    {
+      "date": "2025-12-26",
+      "descriptor": "WINNERS HALIFAX NS CA",
+      "amount": -73.2
+    },
+    {
+      "date": "2025-12-27",
+      "descriptor": "DIRECT DEP HOURLY WAGES MERIDIAN",
+      "amount": 562.15
+    },
+    {
+      "date": "2025-12-27",
+      "descriptor": "GRID SOLAR BUYBACK CREDIT",
+      "amount": 39.09
+    },
+    {
+      "date": "2025-12-27",
+      "descriptor": "TIM HORTONS #4183 VICTORIA BC CA",
+      "amount": -5.71
+    },
+    {
+      "date": "2025-12-27",
+      "descriptor": "TST* RIVER OAK GRILL NEW ORLEANS LA",
+      "amount": -48.25
+    },
+    {
+      "date": "2025-12-27",
+      "descriptor": "WEALTHFRONT AUTOMATED INVEST",
+      "amount": -300.0
+    },
+    {
+      "date": "2025-12-28",
+      "descriptor": "BINANCE US CASHOUT",
+      "amount": 980.0
+    },
+    {
+      "date": "2025-12-28",
+      "descriptor": "INTEREST PAID SAVINGS",
+      "amount": 17.17
+    },
+    {
+      "date": "2025-12-28",
+      "descriptor": "SP * SHOP SPOKANE WA",
+      "amount": -43.32
+    },
+    {
+      "date": "2025-12-28",
+      "descriptor": "SUBSTACK* WRITER",
+      "amount": -7.0
+    },
+    {
+      "date": "2025-12-28",
+      "descriptor": "UBER TRIP INDIANAPOLIS IN",
+      "amount": -121.68
+    },
+    {
+      "date": "2025-12-29",
+      "descriptor": "ACTBLUE CONTRIBUTION",
+      "amount": -15.0
+    },
+    {
+      "date": "2025-12-29",
+      "descriptor": "CRAVE TOTAL HALIFAX NS CA",
+      "amount": -22.99
+    },
+    {
+      "date": "2025-12-29",
+      "descriptor": "OAS DEPOSIT CANADA",
+      "amount": 718.1
+    },
+    {
+      "date": "2025-12-29",
+      "descriptor": "TARGET #2264 SPOKANE WA",
+      "amount": -139.87
+    },
+    {
+      "date": "2025-12-30",
+      "descriptor": "GUSTO PAY b1c2d3 NORTHGATE INC",
+      "amount": 2219.81
+    },
+    {
+      "date": "2025-12-30",
+      "descriptor": "REI #1173 RICHMOND VA",
+      "amount": -454.82
+    },
+    {
+      "date": "2025-12-31",
+      "descriptor": "LYFT RIDE BUFFALO NY",
+      "amount": -177.82
+    },
+    {
+      "date": "2026-01-01",
+      "descriptor": "ALASKA AIRLINES",
+      "amount": -372.0
+    },
+    {
+      "date": "2026-01-01",
+      "descriptor": "BILL PAYMENT WEB OAKMONT TOWERS RENT",
+      "amount": -1875.0
+    },
+    {
+      "date": "2026-01-01",
+      "descriptor": "DINER 24H INDIANAPOLIS IN",
+      "amount": -36.71
+    },
+    {
+      "date": "2026-01-01",
+      "descriptor": "DIRECT DEP CEDARWORKS MONTHLY SALARY",
+      "amount": 3090.38
+    },
+    {
+      "date": "2026-01-01",
+      "descriptor": "KINDERCARE LEARNING CTR",
+      "amount": -1180.0
+    },
+    {
+      "date": "2026-01-01",
+      "descriptor": "LASIK EYE SURGERY CLINIC",
+      "amount": -3950.0
+    },
+    {
+      "date": "2026-01-01",
+      "descriptor": "LIQUOR BARN ALBUQUERQUE NM NYE",
+      "amount": -50.34
+    },
+    {
+      "date": "2026-01-01",
+      "descriptor": "UBER TRIP RURAL RTE 2 PARIS TX",
+      "amount": -24.99
+    },
+    {
+      "date": "2026-01-01",
+      "descriptor": "UBER TRIP SAN ANTONIO TX",
+      "amount": -178.47
+    },
+    {
+      "date": "2026-01-02",
+      "descriptor": "AMZN MKTP US*6GHNC1",
+      "amount": -158.38
+    },
+    {
+      "date": "2026-01-02",
+      "descriptor": "NELNET STUDENT LOAN",
+      "amount": -241.8
+    },
+    {
+      "date": "2026-01-02",
+      "descriptor": "RENT INCOME BUILDIUM PM",
+      "amount": 1700.0
+    },
+    {
+      "date": "2026-01-02",
+      "descriptor": "SUBWAY #8409 TULSA OK",
+      "amount": -19.46
+    },
+    {
+      "date": "2026-01-02",
+      "descriptor": "VANGUARD 401K DISTRIBUTION",
+      "amount": 3000.0
+    },
+    {
+      "date": "2026-01-02",
+      "descriptor": "WISE USD->MXN",
+      "amount": -350.0
+    },
+    {
+      "date": "2026-01-03",
+      "descriptor": "CAPITAL ONE CRD AUTOPAY",
+      "amount": -467.91
+    },
+    {
+      "date": "2026-01-03",
+      "descriptor": "DIRECT DEP HOURLY WAGES MERIDIAN",
+      "amount": 682.25
+    },
+    {
+      "date": "2026-01-03",
+      "descriptor": "LYFT DRIVER PAYOUT",
+      "amount": 444.44
+    },
+    {
+      "date": "2026-01-03",
+      "descriptor": "MAX STREAMING",
+      "amount": -15.99
+    },
+    {
+      "date": "2026-01-03",
+      "descriptor": "TIM HORTONS #6105 YELLOWKNIFE NT CA",
+      "amount": -3.62
+    },
+    {
+      "date": "2026-01-04",
+      "descriptor": "ETSY.COM",
+      "amount": -24.57
+    },
+    {
+      "date": "2026-01-04",
+      "descriptor": "LYFT RIDE TULSA OK",
+      "amount": -168.27
+    },
+    {
+      "date": "2026-01-04",
+      "descriptor": "MTG ESCROW CHASE HOME",
+      "amount": -298.4
+    },
+    {
+      "date": "2026-01-04",
+      "descriptor": "MTG PYMT CHASE HOME INTEREST",
+      "amount": -531.66
+    },
+    {
+      "date": "2026-01-04",
+      "descriptor": "MTG PYMT CHASE HOME PRINCIPAL",
+      "amount": -744.2
+    },
+    {
+      "date": "2026-01-04",
+      "descriptor": "PENDING ALASKA AIRLINES",
+      "amount": -372.0
+    },
+    {
+      "date": "2026-01-04",
+      "descriptor": "UBER TRIP FRESNO CA",
+      "amount": -31.34
+    },
+    {
+      "date": "2026-01-05",
+      "descriptor": "ACH PUSH FIDELITY INVEST",
+      "amount": -800.0
+    },
+    {
+      "date": "2026-01-05",
+      "descriptor": "ALASKA AIRLINES",
+      "amount": -372.0
+    },
+    {
+      "date": "2026-01-05",
+      "descriptor": "GST HST CREDIT CRA",
+      "amount": 141.0
+    },
+    {
+      "date": "2026-01-05",
+      "descriptor": "PARAMOUNT PLUS",
+      "amount": -11.99
+    },
+    {
+      "date": "2026-01-05",
+      "descriptor": "PROGRESSIVE AUTO INS",
+      "amount": -128.55
+    },
+    {
+      "date": "2026-01-05",
+      "descriptor": "TASKRABBIT PAYOUT",
+      "amount": 178.22
+    },
+    {
+      "date": "2026-01-05",
+      "descriptor": "UI BENEFIT DEPOSIT",
+      "amount": 588.0
+    },
+    {
+      "date": "2026-01-06",
+      "descriptor": "AUTO SPA CAR WASH",
+      "amount": -18.0
+    },
+    {
+      "date": "2026-01-06",
+      "descriptor": "CONDO FEES HARBOURVIEW MGMT",
+      "amount": -410.0
+    },
+    {
+      "date": "2026-01-07",
+      "descriptor": "AMAZON PRIME",
+      "amount": -236.88
+    },
+    {
+      "date": "2026-01-07",
+      "descriptor": "DONATION MASJID AL-NOOR",
+      "amount": -150.0
+    },
+    {
+      "date": "2026-01-07",
+      "descriptor": "LYFT RIDE OKLAHOMA CITY OK",
+      "amount": -109.44
+    },
+    {
+      "date": "2026-01-07",
+      "descriptor": "SPECTRUM INTERNET",
+      "amount": -79.99
+    },
+    {
+      "date": "2026-01-07",
+      "descriptor": "VENMO CASHOUT",
+      "amount": 55.0
+    },
+    {
+      "date": "2026-01-07",
+      "descriptor": "VISION OPTOMETRY DES MOINES IA",
+      "amount": -145.0
+    },
+    {
+      "date": "2026-01-08",
+      "descriptor": "ACH PULL HONDA FIN AUTO",
+      "amount": -388.55
+    },
+    {
+      "date": "2026-01-08",
+      "descriptor": "APPLE TV+",
+      "amount": -9.99
+    },
+    {
+      "date": "2026-01-08",
+      "descriptor": "SUBWAY #7143 MOBILE AL",
+      "amount": -12.25
+    },
+    {
+      "date": "2026-01-08",
+      "descriptor": "UBER TRIP WICHITA KS",
+      "amount": -125.07
+    },
+    {
+      "date": "2026-01-09",
+      "descriptor": "APPLE MUSIC",
+      "amount": -10.99
+    },
+    {
+      "date": "2026-01-09",
+      "descriptor": "AVIS RENT A CAR BOISE ID",
+      "amount": -244.0
+    },
+    {
+      "date": "2026-01-09",
+      "descriptor": "DUKE ENERGY ELECTRIC",
+      "amount": -108.69
+    },
+    {
+      "date": "2026-01-09",
+      "descriptor": "FIVE GUYS CINCINNATI OH",
+      "amount": -19.35
+    },
+    {
+      "date": "2026-01-09",
+      "descriptor": "INTL WIRE IN FX EUR->USD REF 8810 RATE 1.08",
+      "amount": 4320.0
+    },
+    {
+      "date": "2026-01-09",
+      "descriptor": "SKIPTHEDISHES WINNIPEG MB CA",
+      "amount": -29.4
+    },
+    {
+      "date": "2026-01-09",
+      "descriptor": "UBER EATS ORDER",
+      "amount": -160.32
+    },
+    {
+      "date": "2026-01-09",
+      "descriptor": "UBER TRIP RICHMOND VA",
+      "amount": -34.25
+    },
+    {
+      "date": "2026-01-10",
+      "descriptor": "AMAZON FLEX PAYMENT",
+      "amount": 299.98
+    },
+    {
+      "date": "2026-01-10",
+      "descriptor": "DIRECT DEP HOURLY WAGES MERIDIAN",
+      "amount": 728.28
+    },
+    {
+      "date": "2026-01-10",
+      "descriptor": "GRUBHUB ORDER",
+      "amount": -29.47
+    },
+    {
+      "date": "2026-01-10",
+      "descriptor": "LYFT DRIVER PAYOUT",
+      "amount": 333.12
+    },
+    {
+      "date": "2026-01-10",
+      "descriptor": "LYFT RIDE KENAI AK 99611",
+      "amount": -104.37
+    },
+    {
+      "date": "2026-01-10",
+      "descriptor": "TIM HORTONS #1525 YELLOWKNIFE NT CA",
+      "amount": -6.05
+    },
+    {
+      "date": "2026-01-11",
+      "descriptor": "AFTERPAY INSTALLMENT",
+      "amount": -32.0
+    },
+    {
+      "date": "2026-01-11",
+      "descriptor": "BP MOBILE AL",
+      "amount": -21.95
+    },
+    {
+      "date": "2026-01-11",
+      "descriptor": "YOUTUBE PREMIUM",
+      "amount": -13.99
+    },
+    {
+      "date": "2026-01-12",
+      "descriptor": "AMAZON FLEX PAYMENT",
+      "amount": 264.13
+    },
+    {
+      "date": "2026-01-12",
+      "descriptor": "AMZN MKTP US*Q12B8X",
+      "amount": -200.29
+    },
+    {
+      "date": "2026-01-12",
+      "descriptor": "ENBRIDGE GAS WINNIPEG MB CA",
+      "amount": -82.9
+    },
+    {
+      "date": "2026-01-12",
+      "descriptor": "FACTOR MEALS",
+      "amount": -83.4
+    },
+    {
+      "date": "2026-01-12",
+      "descriptor": "RITE AID #4996 SALT LAKE CITY UT",
+      "amount": -21.78
+    },
+    {
+      "date": "2026-01-13",
+      "descriptor": "BP OKLAHOMA CITY OK",
+      "amount": -119.86
+    },
+    {
+      "date": "2026-01-13",
+      "descriptor": "GEMINI WITHDRAWAL",
+      "amount": 455.1
+    },
+    {
+      "date": "2026-01-13",
+      "descriptor": "KINDLE UNLIMITED",
+      "amount": -11.99
+    },
+    {
+      "date": "2026-01-13",
+      "descriptor": "KLARNA INSTALLMENT",
+      "amount": -48.75
+    },
+    {
+      "date": "2026-01-13",
+      "descriptor": "PATIO FURNITURE CO LOUISVILLE KY",
+      "amount": -100.0
+    },
+    {
+      "date": "2026-01-14",
+      "descriptor": "LOWES #5354 KENAI AK 99611",
+      "amount": -532.26
+    },
+    {
+      "date": "2026-01-14",
+      "descriptor": "REGIONAL WATER AUTH",
+      "amount": -59.84
+    },
+    {
+      "date": "2026-01-15",
+      "descriptor": "ALDI #8647 CINCINNATI OH",
+      "amount": -184.72
+    },
+    {
+      "date": "2026-01-15",
+      "descriptor": "GUSTO PAY b1c2d3 NORTHGATE INC",
+      "amount": 2253.72
+    },
+    {
+      "date": "2026-01-15",
+      "descriptor": "INTL ATM WITHDRAWAL TOKYO JP FX",
+      "amount": -205.4
+    },
+    {
+      "date": "2026-01-15",
+      "descriptor": "IRS DIRECTPAY EST TAX Q4",
+      "amount": -2100.0
+    },
+    {
+      "date": "2026-01-15",
+      "descriptor": "WASTE MGMT TRASH",
+      "amount": -41.2
+    },
+    {
+      "date": "2026-01-16",
+      "descriptor": "DISCOVER E-PAYMENT",
+      "amount": -752.3
+    },
+    {
+      "date": "2026-01-16",
+      "descriptor": "NETFLIX EXTRA MEMBER",
+      "amount": -39.38
+    },
+    {
+      "date": "2026-01-16",
+      "descriptor": "WHOLE FOODS BANGOR ME",
+      "amount": -175.39
+    },
+    {
+      "date": "2026-01-16",
+      "descriptor": "WSJ DIGITAL",
+      "amount": -38.99
+    },
+    {
+      "date": "2026-01-17",
+      "descriptor": "AMZN MKTP US*8K13Q4",
+      "amount": -73.78
+    },
+    {
+      "date": "2026-01-17",
+      "descriptor": "DIRECT DEP HOURLY WAGES MERIDIAN",
+      "amount": 861.63
+    },
+    {
+      "date": "2026-01-17",
+      "descriptor": "FIGMA.COM",
+      "amount": -15.0
+    },
+    {
+      "date": "2026-01-17",
+      "descriptor": "INTACT INSURANCE HALIFAX NS CA",
+      "amount": -64.0
+    },
+    {
+      "date": "2026-01-17",
+      "descriptor": "LYFT RIDE KANSAS CITY MO",
+      "amount": -100.36
+    },
+    {
+      "date": "2026-01-17",
+      "descriptor": "REXALL OTTAWA ON CA",
+      "amount": -19.8
+    },
+    {
+      "date": "2026-01-17",
+      "descriptor": "TIM HORTONS #3761 BURNABY BC CA",
+      "amount": -3.16
+    },
+    {
+      "date": "2026-01-18",
+      "descriptor": "ALDI #9052 INDIANAPOLIS IN",
+      "amount": -172.79
+    },
+    {
+      "date": "2026-01-18",
+      "descriptor": "INTEREST CREDIT",
+      "amount": 0.99
+    },
+    {
+      "date": "2026-01-18",
+      "descriptor": "NETFLIX EXTRA MEMBER",
+      "amount": -104.78
+    },
+    {
+      "date": "2026-01-18",
+      "descriptor": "NO FRILLS #7415 WINDSOR ON CA",
+      "amount": -44.83
+    },
+    {
+      "date": "2026-01-18",
+      "descriptor": "NOTION LABS",
+      "amount": -10.0
+    },
+    {
+      "date": "2026-01-18",
+      "descriptor": "PANDA EXPRESS NEW ORLEANS LA",
+      "amount": -57.39
+    },
+    {
+      "date": "2026-01-18",
+      "descriptor": "SPOTIFY USA",
+      "amount": -11.99
+    },
+    {
+      "date": "2026-01-18",
+      "descriptor": "TRUPANION PET INS",
+      "amount": -49.0
+    },
+    {
+      "date": "2026-01-18",
+      "descriptor": "XBOX GAME PASS",
+      "amount": -16.99
+    },
+    {
+      "date": "2026-01-19",
+      "descriptor": "ETSY.COM",
+      "amount": -38.4
+    },
+    {
+      "date": "2026-01-19",
+      "descriptor": "LOBLAWS #8162 FREDERICTON NB CA",
+      "amount": -141.64
+    },
+    {
+      "date": "2026-01-19",
+      "descriptor": "OVERDRAFT FEE",
+      "amount": -35.0
+    },
+    {
+      "date": "2026-01-19",
+      "descriptor": "SP * SHOP ASHEVILLE NC",
+      "amount": -49.89
+    },
+    {
+      "date": "2026-01-19",
+      "descriptor": "T-MOBILE PCS PMT",
+      "amount": -95.0
+    },
+    {
+      "date": "2026-01-19",
+      "descriptor": "UBER TRIP LOUISVILLE KY",
+      "amount": -104.92
+    },
+    {
+      "date": "2026-01-20",
+      "descriptor": "AUDIBLE MEMBERSHIP",
+      "amount": -14.95
+    },
+    {
+      "date": "2026-01-20",
+      "descriptor": "CHATGPT PLUS OPENAI",
+      "amount": -20.0
+    },
+    {
+      "date": "2026-01-20",
+      "descriptor": "CRA REFUND CANADA WINNIPEG MB CA",
+      "amount": 1120.0
+    },
+    {
+      "date": "2026-01-20",
+      "descriptor": "CTA VENTRA TRANSIT CHICAGO IL",
+      "amount": -30.0
+    },
+    {
+      "date": "2026-01-20",
+      "descriptor": "RITE AID #3522 TUCSON AZ",
+      "amount": -71.62
+    },
+    {
+      "date": "2026-01-21",
+      "descriptor": "AMZN MKTP US*DLNAKK",
+      "amount": -138.84
+    },
+    {
+      "date": "2026-01-21",
+      "descriptor": "HUSKY RURAL RTE 2 PARIS TX",
+      "amount": -62.75
+    },
+    {
+      "date": "2026-01-21",
+      "descriptor": "INTEREST CREDIT",
+      "amount": 0.01
+    },
+    {
+      "date": "2026-01-21",
+      "descriptor": "LYFT RIDE PHILADELPHIA PA",
+      "amount": -33.74
+    },
+    {
+      "date": "2026-01-21",
+      "descriptor": "LYFT RIDE SAN ANTONIO TX",
+      "amount": -48.88
+    },
+    {
+      "date": "2026-01-21",
+      "descriptor": "RITE AID #9139 BOISE ID",
+      "amount": -99.96
+    },
+    {
+      "date": "2026-01-21",
+      "descriptor": "SOBEYS #8421 SASKATOON SK CA",
+      "amount": -50.12
+    },
+    {
+      "date": "2026-01-21",
+      "descriptor": "TELUS MOBILITY CALGARY AB CA",
+      "amount": -78.4
+    },
+    {
+      "date": "2026-01-22",
+      "descriptor": "EXPRESSVPN",
+      "amount": -12.95
+    },
+    {
+      "date": "2026-01-22",
+      "descriptor": "WINRED CONTRIBUTION",
+      "amount": -50.0
+    },
+    {
+      "date": "2026-01-23",
+      "descriptor": "ALDI #5332 SPOKANE WA",
+      "amount": -159.88
+    },
+    {
+      "date": "2026-01-23",
+      "descriptor": "FERRELLGAS PROPANE",
+      "amount": -114.31
+    },
+    {
+      "date": "2026-01-23",
+      "descriptor": "PAPER STATEMENT FEE",
+      "amount": -2.0
+    },
+    {
+      "date": "2026-01-24",
+      "descriptor": "ANYTIME FITNESS",
+      "amount": -44.99
+    },
+    {
+      "date": "2026-01-24",
+      "descriptor": "DIRECT DEP HOURLY WAGES MERIDIAN",
+      "amount": 593.24
+    },
+    {
+      "date": "2026-01-24",
+      "descriptor": "NETFLIX EXTRA MEMBER",
+      "amount": -71.19
+    },
+    {
+      "date": "2026-01-24",
+      "descriptor": "RITE AID #3579 NEW ORLEANS LA",
+      "amount": -114.72
+    },
+    {
+      "date": "2026-01-24",
+      "descriptor": "TIM HORTONS #183 EDMONTON AB CA",
+      "amount": -3.62
+    },
+    {
+      "date": "2026-01-25",
+      "descriptor": "AMZN MKTP US*4KNF7C",
+      "amount": -117.96
+    },
+    {
+      "date": "2026-01-25",
+      "descriptor": "CITI CASHBACK REDEMPTION",
+      "amount": 112.0
+    },
+    {
+      "date": "2026-01-25",
+      "descriptor": "CLASSPASS",
+      "amount": -79.0
+    },
+    {
+      "date": "2026-01-26",
+      "descriptor": "DROPBOX",
+      "amount": -11.99
+    },
+    {
+      "date": "2026-01-26",
+      "descriptor": "ETSY.COM",
+      "amount": -23.4
+    },
+    {
+      "date": "2026-01-26",
+      "descriptor": "QUESTRADE RRSP CONTRIB TORONTO ON CA",
+      "amount": -400.0
+    },
+    {
+      "date": "2026-01-26",
+      "descriptor": "WEB SUBSCRIPTION CHARGE 880231",
+      "amount": -49.99
+    },
+    {
+      "date": "2026-01-26",
+      "descriptor": "WEB SUBSCRIPTION CHARGE 880231",
+      "amount": -49.99
+    },
+    {
+      "date": "2026-01-27",
+      "descriptor": "GRID SOLAR BUYBACK CREDIT",
+      "amount": 20.83
+    },
+    {
+      "date": "2026-01-27",
+      "descriptor": "ULTA BEAUTY RURAL RTE 2 PARIS TX",
+      "amount": -235.02
+    },
+    {
+      "date": "2026-01-27",
+      "descriptor": "WEALTHFRONT AUTOMATED INVEST",
+      "amount": -300.0
+    },
+    {
+      "date": "2026-01-28",
+      "descriptor": "CHEWY.COM",
+      "amount": -71.4
+    },
+    {
+      "date": "2026-01-28",
+      "descriptor": "CPP PENSION DEPOSIT",
+      "amount": 1071.0
+    },
+    {
+      "date": "2026-01-28",
+      "descriptor": "INTEREST PAID SAVINGS",
+      "amount": 24.63
+    },
+    {
+      "date": "2026-01-28",
+      "descriptor": "REI #2965 SPOKANE WA",
+      "amount": -87.68
+    },
+    {
+      "date": "2026-01-28",
+      "descriptor": "RITE AID #991 KENAI AK 99611",
+      "amount": -58.39
+    },
+    {
+      "date": "2026-01-28",
+      "descriptor": "SUBSTACK* WRITER",
+      "amount": -7.0
+    },
+    {
+      "date": "2026-01-28",
+      "descriptor": "UBER EATS ORDER",
+      "amount": -115.9
+    },
+    {
+      "date": "2026-01-28",
+      "descriptor": "WAWA #3742 PHOENIX AZ",
+      "amount": -17.15
+    },
+    {
+      "date": "2026-01-29",
+      "descriptor": "CRAVE TOTAL HALIFAX NS CA",
+      "amount": -22.99
+    },
+    {
+      "date": "2026-01-30",
+      "descriptor": "GUSTO PAY b1c2d3 NORTHGATE INC",
+      "amount": 2203.03
+    },
+    {
+      "date": "2026-01-30",
+      "descriptor": "PENDING TST* BRASSERIE KANSAS CITY MO",
+      "amount": -70.0
+    },
+    {
+      "date": "2026-01-30",
+      "descriptor": "STRIPE *POKE BAR FARGO ND",
+      "amount": -55.36
+    },
+    {
+      "date": "2026-01-31",
+      "descriptor": "DIRECT DEP HOURLY WAGES MERIDIAN",
+      "amount": 658.23
+    },
+    {
+      "date": "2026-01-31",
+      "descriptor": "RITE AID #9666 BUFFALO NY",
+      "amount": -51.33
+    },
+    {
+      "date": "2026-01-31",
+      "descriptor": "SAFEWAY #9933 KENAI AK 99611",
+      "amount": -91.08
+    },
+    {
+      "date": "2026-01-31",
+      "descriptor": "TIM HORTONS #5310 FREDERICTON NB CA",
+      "amount": -7.2
+    },
+    {
+      "date": "2026-01-31",
+      "descriptor": "TST* BRASSERIE CHEYENNE WY",
+      "amount": -84.0
+    },
+    {
+      "date": "2026-02-01",
+      "descriptor": "ALDI #9034 BUFFALO NY",
+      "amount": -41.19
+    },
+    {
+      "date": "2026-02-01",
+      "descriptor": "BILL PAYMENT WEB OAKMONT TOWERS RENT",
+      "amount": -1875.0
+    },
+    {
+      "date": "2026-02-01",
+      "descriptor": "COSTCO WHSE #8314 BOZEMAN MT",
+      "amount": -50.84
+    },
+    {
+      "date": "2026-02-01",
+      "descriptor": "DIRECT DEP CEDARWORKS MONTHLY SALARY",
+      "amount": 3106.26
+    },
+    {
+      "date": "2026-02-01",
+      "descriptor": "KINDERCARE LEARNING CTR",
+      "amount": -1180.0
+    },
+    {
+      "date": "2026-02-01",
+      "descriptor": "RRIF WITHDRAWAL QUESTRADE CA",
+      "amount": 1600.0
+    },
+    {
+      "date": "2026-02-02",
+      "descriptor": "COSTCO WHSE #8973 LOUISVILLE KY",
+      "amount": -111.15
+    },
+    {
+      "date": "2026-02-02",
+      "descriptor": "EI BENEFITS CANADA",
+      "amount": 561.0
+    },
+    {
+      "date": "2026-02-02",
+      "descriptor": "ETSY.COM",
+      "amount": -140.61
+    },
+    {
+      "date": "2026-02-02",
+      "descriptor": "NELNET STUDENT LOAN",
+      "amount": -241.8
+    },
+    {
+      "date": "2026-02-03",
+      "descriptor": "BEST BUY #3629 FRESNO CA",
+      "amount": -405.23
+    },
+    {
+      "date": "2026-02-03",
+      "descriptor": "CAPITAL ONE CRD AUTOPAY",
+      "amount": -1055.71
+    },
+    {
+      "date": "2026-02-03",
+      "descriptor": "MAX STREAMING",
+      "amount": -15.99
+    },
+    {
+      "date": "2026-02-03",
+      "descriptor": "SP * MAPLE GOODS",
+      "amount": -44.0
+    },
+    {
+      "date": "2026-02-03",
+      "descriptor": "UBER EATS ORDER",
+      "amount": -171.84
+    },
+    {
+      "date": "2026-02-04",
+      "descriptor": "ETSY.COM",
+      "amount": -112.63
+    },
+    {
+      "date": "2026-02-04",
+      "descriptor": "FIVE GUYS CINCINNATI OH",
+      "amount": -33.28
+    },
+    {
+      "date": "2026-02-04",
+      "descriptor": "MTG ESCROW CHASE HOME",
+      "amount": -298.4
+    },
+    {
+      "date": "2026-02-04",
+      "descriptor": "MTG PYMT CHASE HOME INTEREST",
+      "amount": -531.66
+    },
+    {
+      "date": "2026-02-04",
+      "descriptor": "MTG PYMT CHASE HOME PRINCIPAL",
+      "amount": -744.2
+    },
+    {
+      "date": "2026-02-04",
+      "descriptor": "TALKSPACE THERAPY",
+      "amount": -260.0
+    },
+    {
+      "date": "2026-02-05",
+      "descriptor": "ACH PUSH FIDELITY INVEST",
+      "amount": -800.0
+    },
+    {
+      "date": "2026-02-05",
+      "descriptor": "CLASS ACTION SETTLEMENT",
+      "amount": 41.77
+    },
+    {
+      "date": "2026-02-05",
+      "descriptor": "PARAMOUNT PLUS",
+      "amount": -11.99
+    },
+    {
+      "date": "2026-02-05",
+      "descriptor": "PROGRESSIVE AUTO INS",
+      "amount": -128.55
+    },
+    {
+      "date": "2026-02-06",
+      "descriptor": "AMZN MKTP US*QMG60P",
+      "amount": -137.56
+    },
+    {
+      "date": "2026-02-06",
+      "descriptor": "CONDO FEES HARBOURVIEW MGMT",
+      "amount": -410.0
+    },
+    {
+      "date": "2026-02-06",
+      "descriptor": "DIVIDEND PAYMENT VANGUARD",
+      "amount": 96.44
+    },
+    {
+      "date": "2026-02-07",
+      "descriptor": "DIRECT DEP HOURLY WAGES MERIDIAN",
+      "amount": 778.57
+    },
+    {
+      "date": "2026-02-07",
+      "descriptor": "DONATION MASJID AL-NOOR",
+      "amount": -150.0
+    },
+    {
+      "date": "2026-02-07",
+      "descriptor": "EXXON TUCSON AZ",
+      "amount": -39.09
+    },
+    {
+      "date": "2026-02-07",
+      "descriptor": "NSLSC STUDENT LOAN CANADA",
+      "amount": -198.0
+    },
+    {
+      "date": "2026-02-07",
+      "descriptor": "SAMS CLUB #2650 TULSA OK",
+      "amount": -105.01
+    },
+    {
+      "date": "2026-02-07",
+      "descriptor": "SPECTRUM INTERNET",
+      "amount": -79.99
+    },
+    {
+      "date": "2026-02-07",
+      "descriptor": "TIM HORTONS #188 WINNIPEG MB CA",
+      "amount": -7.84
+    },
+    {
+      "date": "2026-02-07",
+      "descriptor": "UBER TRIP RURAL RTE 2 PARIS TX",
+      "amount": -81.73
+    },
+    {
+      "date": "2026-02-08",
+      "descriptor": "ACH PULL HONDA FIN AUTO",
+      "amount": -388.55
+    },
+    {
+      "date": "2026-02-08",
+      "descriptor": "APPLE TV+",
+      "amount": -9.99
+    },
+    {
+      "date": "2026-02-08",
+      "descriptor": "BP MILWAUKEE WI",
+      "amount": -88.18
+    },
+    {
+      "date": "2026-02-08",
+      "descriptor": "GOFUNDME DONATION",
+      "amount": -40.0
+    },
+    {
+      "date": "2026-02-08",
+      "descriptor": "TEMU.COM",
+      "amount": -19.9
+    },
+    {
+      "date": "2026-02-09",
+      "descriptor": "AMZN MKTP US*0J79HM",
+      "amount": -100.8
+    },
+    {
+      "date": "2026-02-09",
+      "descriptor": "AMZN MKTP US*A4C8K4",
+      "amount": -173.92
+    },
+    {
+      "date": "2026-02-09",
+      "descriptor": "APPLE MUSIC",
+      "amount": -10.99
+    },
+    {
+      "date": "2026-02-09",
+      "descriptor": "DUKE ENERGY ELECTRIC",
+      "amount": -70.84
+    },
+    {
+      "date": "2026-02-09",
+      "descriptor": "NORDVPN ANNUAL",
+      "amount": -99.0
+    },
+    {
+      "date": "2026-02-09",
+      "descriptor": "STOP PAYMENT FEE",
+      "amount": -30.0
+    },
+    {
+      "date": "2026-02-09",
+      "descriptor": "UBER TRIP BANGOR ME",
+      "amount": -155.14
+    },
+    {
+      "date": "2026-02-10",
+      "descriptor": "BOOKING.COM HOTEL",
+      "amount": -640.0
+    },
+    {
+      "date": "2026-02-11",
+      "descriptor": "AFTERPAY INSTALLMENT",
+      "amount": -32.0
+    },
+    {
+      "date": "2026-02-11",
+      "descriptor": "YOUTUBE PREMIUM",
+      "amount": -13.99
+    },
+    {
+      "date": "2026-02-12",
+      "descriptor": "ENBRIDGE GAS WINNIPEG MB CA",
+      "amount": -32.32
+    },
+    {
+      "date": "2026-02-12",
+      "descriptor": "FACTOR MEALS",
+      "amount": -83.4
+    },
+    {
+      "date": "2026-02-12",
+      "descriptor": "MESSY STORE A",
+      "amount": -14.27
+    },
+    {
+      "date": "2026-02-13",
+      "descriptor": "CRA TAX PAYMENT CANADA",
+      "amount": -540.0
+    },
+    {
+      "date": "2026-02-13",
+      "descriptor": "KINDLE UNLIMITED",
+      "amount": -11.99
+    },
+    {
+      "date": "2026-02-13",
+      "descriptor": "KLARNA INSTALLMENT",
+      "amount": -48.75
+    },
+    {
+      "date": "2026-02-13",
+      "descriptor": "STRIPE *POKE BAR MOBILE AL",
+      "amount": -31.16
+    },
+    {
+      "date": "2026-02-13",
+      "descriptor": "SUBWAY #4205 BOISE ID",
+      "amount": -141.57
+    },
+    {
+      "date": "2026-02-14",
+      "descriptor": "DIRECT DEP HOURLY WAGES MERIDIAN",
+      "amount": 811.17
+    },
+    {
+      "date": "2026-02-14",
+      "descriptor": "FLORIST VALENTINE BOZEMAN MT",
+      "amount": -83.95
+    },
+    {
+      "date": "2026-02-14",
+      "descriptor": "GODIVA CHOCOLATE KENAI AK 99611",
+      "amount": -25.56
+    },
+    {
+      "date": "2026-02-14",
+      "descriptor": "REFUND DUKE ENERGY OVERPAYMENT",
+      "amount": 38.9
+    },
+    {
+      "date": "2026-02-14",
+      "descriptor": "REGIONAL WATER AUTH",
+      "amount": -73.09
+    },
+    {
+      "date": "2026-02-14",
+      "descriptor": "TIM HORTONS #6137 WHITEHORSE YT CA",
+      "amount": -7.58
+    },
+    {
+      "date": "2026-02-14",
+      "descriptor": "TST* FINE DINING INDIANAPOLIS IN",
+      "amount": -139.52
+    },
+    {
+      "date": "2026-02-15",
+      "descriptor": "GUSTO PAY b1c2d3 NORTHGATE INC",
+      "amount": 2256.0
+    },
+    {
+      "date": "2026-02-15",
+      "descriptor": "IRS TREAS 310 TAX REF",
+      "amount": 2880.4
+    },
+    {
+      "date": "2026-02-15",
+      "descriptor": "WASTE MGMT TRASH",
+      "amount": -41.2
+    },
+    {
+      "date": "2026-02-23",
+      "descriptor": "AMAZON PRIME",
+      "amount": -166.45
+    },
+    {
+      "date": "2026-02-23",
+      "descriptor": "FERRELLGAS PROPANE",
+      "amount": -104.54
+    },
+    {
+      "date": "2026-02-23",
+      "descriptor": "SP * SHOP PHILADELPHIA PA",
+      "amount": -74.25
+    },
+    {
+      "date": "2026-02-23",
+      "descriptor": "VENMO PAYMENT TIP CLEANER",
+      "amount": -30.0
+    },
+    {
+      "date": "2026-02-24",
+      "descriptor": "ANYTIME FITNESS",
+      "amount": -44.99
+    },
+    {
+      "date": "2026-02-24",
+      "descriptor": "COUCHE-TARD #2201 WINNIPEG MB CA",
+      "amount": -11.8
+    },
+    {
+      "date": "2026-02-24",
+      "descriptor": "IN-APP MICROTXN",
+      "amount": -0.99
+    },
+    {
+      "date": "2026-02-25",
+      "descriptor": "AIRPORT PARKING BUFFALO NY",
+      "amount": -48.0
+    },
+    {
+      "date": "2026-02-25",
+      "descriptor": "CLASSPASS",
+      "amount": -79.0
+    },
+    {
+      "date": "2026-02-25",
+      "descriptor": "LIDL #5404 FARGO ND",
+      "amount": -172.96
+    },
+    {
+      "date": "2026-02-25",
+      "descriptor": "LOWES #4479 ALBUQUERQUE NM",
+      "amount": -20.52
+    },
+    {
+      "date": "2026-02-25",
+      "descriptor": "SAMS CLUB #1431 SAN ANTONIO TX",
+      "amount": -218.88
+    },
+    {
+      "date": "2026-02-26",
+      "descriptor": "ALDI #8403 KENAI AK 99611",
+      "amount": -6.85
+    },
+    {
+      "date": "2026-02-26",
+      "descriptor": "DROPBOX",
+      "amount": -11.99
+    },
+    {
+      "date": "2026-02-26",
+      "descriptor": "ETSY.COM",
+      "amount": -142.68
+    },
+    {
+      "date": "2026-02-26",
+      "descriptor": "MASTERCLASS ANNUAL",
+      "amount": -120.0
+    },
+    {
+      "date": "2026-02-26",
+      "descriptor": "MESSY STORE C",
+      "amount": -112.04
+    },
+    {
+      "date": "2026-02-26",
+      "descriptor": "PANDA EXPRESS MOBILE AL",
+      "amount": -23.3
+    },
+    {
+      "date": "2026-02-26",
+      "descriptor": "QUESTRADE RRSP CONTRIB TORONTO ON CA",
+      "amount": -400.0
+    },
+    {
+      "date": "2026-02-27",
+      "descriptor": "AMAZON WEB SERVICES",
+      "amount": -71.94
+    },
+    {
+      "date": "2026-02-27",
+      "descriptor": "GRID SOLAR BUYBACK CREDIT",
+      "amount": 29.99
+    },
+    {
+      "date": "2026-02-27",
+      "descriptor": "LYFT RIDE BUFFALO NY",
+      "amount": -181.86
+    },
+    {
+      "date": "2026-02-27",
+      "descriptor": "PAYPAI *SECURE",
+      "amount": -19.99
+    },
+    {
+      "date": "2026-02-27",
+      "descriptor": "SAFEWAY #2057 KENAI AK 99611",
+      "amount": -164.27
+    },
+    {
+      "date": "2026-02-27",
+      "descriptor": "WEALTHFRONT AUTOMATED INVEST",
+      "amount": -300.0
+    },
+    {
+      "date": "2026-02-28",
+      "descriptor": "AMZN MKTP US*E77QB8",
+      "amount": -26.43
+    },
+    {
+      "date": "2026-02-28",
+      "descriptor": "CRAVE TOTAL HALIFAX NS CA",
+      "amount": -22.99
+    },
+    {
+      "date": "2026-02-28",
+      "descriptor": "DIRECT DEP HOURLY WAGES MERIDIAN",
+      "amount": 683.39
+    },
+    {
+      "date": "2026-02-28",
+      "descriptor": "GUSTO PAY b1c2d3 NORTHGATE INC",
+      "amount": 2186.57
+    },
+    {
+      "date": "2026-02-28",
+      "descriptor": "INTEREST PAID SAVINGS",
+      "amount": 4.52
+    },
+    {
+      "date": "2026-02-28",
+      "descriptor": "LYFT RIDE PHOENIX AZ",
+      "amount": -50.31
+    },
+    {
+      "date": "2026-02-28",
+      "descriptor": "SUBSTACK* WRITER",
+      "amount": -7.0
+    },
+    {
+      "date": "2026-02-28",
+      "descriptor": "TIM HORTONS #8669 HALIFAX NS CA",
+      "amount": -4.3
+    },
+    {
+      "date": "2026-02-28",
+      "descriptor": "TRADER JOES #7290 ALBUQUERQUE NM",
+      "amount": -164.49
+    },
+    {
+      "date": "2026-02-28",
+      "descriptor": "TST* RIVER OAK GRILL MOBILE AL",
+      "amount": -40.97
+    },
+    {
+      "date": "2026-03-01",
+      "descriptor": "BILL PAYMENT WEB OAKMONT TOWERS RENT",
+      "amount": -1875.0
+    },
+    {
+      "date": "2026-03-01",
+      "descriptor": "DIRECT DEP CEDARWORKS MONTHLY SALARY",
+      "amount": 3101.3
+    },
+    {
+      "date": "2026-03-01",
+      "descriptor": "KINDERCARE LEARNING CTR",
+      "amount": -1180.0
+    },
+    {
+      "date": "2026-03-01",
+      "descriptor": "TARGET #5933 PHOENIX AZ",
+      "amount": -164.25
+    },
+    {
+      "date": "2026-03-01",
+      "descriptor": "VA BENEFITS DEPOSIT",
+      "amount": 1544.0
+    },
+    {
+      "date": "2026-03-02",
+      "descriptor": "IKEA BOZEMAN MT",
+      "amount": -85.37
+    },
+    {
+      "date": "2026-03-02",
+      "descriptor": "INSTACART SHOPPER PAY",
+      "amount": 157.2
+    },
+    {
+      "date": "2026-03-02",
+      "descriptor": "NELNET STUDENT LOAN",
+      "amount": -241.8
+    },
+    {
+      "date": "2026-03-03",
+      "descriptor": "CAPITAL ONE CRD AUTOPAY",
+      "amount": -1262.32
+    },
+    {
+      "date": "2026-03-03",
+      "descriptor": "MAX STREAMING",
+      "amount": -15.99
+    },
+    {
+      "date": "2026-03-03",
+      "descriptor": "UBER EATS ORDER",
+      "amount": -110.07
+    },
+    {
+      "date": "2026-03-03",
+      "descriptor": "WIRE TRANSFER INCOMING REF 7733",
+      "amount": 6500.0
+    },
+    {
+      "date": "2026-03-04",
+      "descriptor": "MTG ESCROW CHASE HOME",
+      "amount": -298.4
+    },
+    {
+      "date": "2026-03-04",
+      "descriptor": "MTG PYMT CHASE HOME INTEREST",
+      "amount": -531.66
+    },
+    {
+      "date": "2026-03-04",
+      "descriptor": "MTG PYMT CHASE HOME PRINCIPAL",
+      "amount": -744.2
+    },
+    {
+      "date": "2026-03-04",
+      "descriptor": "ROBINHOOD SELL PROCEEDS",
+      "amount": 1840.22
+    },
+    {
+      "date": "2026-03-05",
+      "descriptor": "ACH PUSH FIDELITY INVEST",
+      "amount": -800.0
+    },
+    {
+      "date": "2026-03-05",
+      "descriptor": "PARAMOUNT PLUS",
+      "amount": -11.99
+    },
+    {
+      "date": "2026-03-05",
+      "descriptor": "PROGRESSIVE AUTO INS",
+      "amount": -128.55
+    },
+    {
+      "date": "2026-03-05",
+      "descriptor": "RITE AID #8593 SALT LAKE CITY UT",
+      "amount": -59.49
+    },
+    {
+      "date": "2026-03-06",
+      "descriptor": "ATM WITHDRAWAL IN-NETWORK",
+      "amount": -120.0
+    },
+    {
+      "date": "2026-03-06",
+      "descriptor": "CONDO FEES HARBOURVIEW MGMT",
+      "amount": -410.0
+    },
+    {
+      "date": "2026-03-06",
+      "descriptor": "ETSY.COM",
+      "amount": -76.68
+    },
+    {
+      "date": "2026-03-06",
+      "descriptor": "SAFEWAY #221 BUFFALO NY CASHBACK $60",
+      "amount": -138.42
+    },
+    {
+      "date": "2026-03-07",
+      "descriptor": "DIRECT DEP HOURLY WAGES MERIDIAN",
+      "amount": 852.61
+    },
+    {
+      "date": "2026-03-07",
+      "descriptor": "DONATION MASJID AL-NOOR",
+      "amount": -150.0
+    },
+    {
+      "date": "2026-03-07",
+      "descriptor": "PARENT SUPPORT TO COLLEGE KID ZELLE",
+      "amount": -600.0
+    },
+    {
+      "date": "2026-03-07",
+      "descriptor": "RITE AID #6787 SALT LAKE CITY UT",
+      "amount": -163.48
+    },
+    {
+      "date": "2026-03-07",
+      "descriptor": "SPECTRUM INTERNET",
+      "amount": -79.99
+    },
+    {
+      "date": "2026-03-07",
+      "descriptor": "SUBWAY #7845 ALBUQUERQUE NM",
+      "amount": -48.67
+    },
+    {
+      "date": "2026-03-07",
+      "descriptor": "TIM HORTONS #5500 MONCTON NB CA",
+      "amount": -7.04
+    },
+    {
+      "date": "2026-03-08",
+      "descriptor": "ACH PULL HONDA FIN AUTO",
+      "amount": -388.55
+    },
+    {
+      "date": "2026-03-08",
+      "descriptor": "AMAZON PRIME",
+      "amount": -118.3
+    },
+    {
+      "date": "2026-03-08",
+      "descriptor": "APPLE TV+",
+      "amount": -9.99
+    },
+    {
+      "date": "2026-03-08",
+      "descriptor": "BP SAN ANTONIO TX",
+      "amount": -163.55
+    },
+    {
+      "date": "2026-03-08",
+      "descriptor": "ETSY.COM",
+      "amount": -133.43
+    },
+    {
+      "date": "2026-03-08",
+      "descriptor": "NORTHSIDE VET CLINIC",
+      "amount": -228.0
+    },
+    {
+      "date": "2026-03-09",
+      "descriptor": "APPLE MUSIC",
+      "amount": -10.99
+    },
+    {
+      "date": "2026-03-09",
+      "descriptor": "CRATE & BARREL FARGO ND",
+      "amount": -113.09
+    },
+    {
+      "date": "2026-03-09",
+      "descriptor": "DUKE ENERGY ELECTRIC",
+      "amount": -65.42
+    },
+    {
+      "date": "2026-03-09",
+      "descriptor": "ETSY.COM",
+      "amount": -45.4
+    },
+    {
+      "date": "2026-03-10",
+      "descriptor": "ALLSTATE HOMEOWNERS PREM",
+      "amount": -402.0
+    },
+    {
+      "date": "2026-03-10",
+      "descriptor": "HEB #5469 SPOKANE WA",
+      "amount": -129.04
+    },
+    {
+      "date": "2026-03-10",
+      "descriptor": "STATE TAX REFUND OHIO DOR",
+      "amount": 412.18
+    },
+    {
+      "date": "2026-03-10",
+      "descriptor": "WESTERN UNION SEND",
+      "amount": -200.0
+    },
+    {
+      "date": "2026-03-11",
+      "descriptor": "AFTERPAY INSTALLMENT",
+      "amount": -32.0
+    },
+    {
+      "date": "2026-03-11",
+      "descriptor": "OHIO DOR TAX PYMT",
+      "amount": -360.0
+    },
+    {
+      "date": "2026-03-11",
+      "descriptor": "REI #2335 FARGO ND",
+      "amount": -354.24
+    },
+    {
+      "date": "2026-03-11",
+      "descriptor": "YOUTUBE PREMIUM",
+      "amount": -13.99
+    },
+    {
+      "date": "2026-03-12",
+      "descriptor": "BP KANSAS CITY MO",
+      "amount": -116.64
+    },
+    {
+      "date": "2026-03-12",
+      "descriptor": "ENBRIDGE GAS WINNIPEG MB CA",
+      "amount": -43.76
+    },
+    {
+      "date": "2026-03-12",
+      "descriptor": "HARRODS LONDON GB FX GBP 60.00 RATE 1.27",
+      "amount": -76.2
+    },
+    {
+      "date": "2026-03-12",
+      "descriptor": "STRIPE *POKE BAR SPOKANE WA",
+      "amount": -23.29
+    },
+    {
+      "date": "2026-03-13",
+      "descriptor": "KINDLE UNLIMITED",
+      "amount": -11.99
+    },
+    {
+      "date": "2026-03-13",
+      "descriptor": "KLARNA INSTALLMENT",
+      "amount": -48.75
+    },
+    {
+      "date": "2026-03-13",
+      "descriptor": "MERCADO ROMA MEXICO CITY MX FX MXN 480 RATE 0.058",
+      "amount": -27.84
+    },
+    {
+      "date": "2026-03-13",
+      "descriptor": "TARGET #1688 MEMPHIS TN",
+      "amount": -132.63
+    },
+    {
+      "date": "2026-03-14",
+      "descriptor": "DIRECT DEP HOURLY WAGES MERIDIAN",
+      "amount": 727.43
+    },
+    {
+      "date": "2026-03-14",
+      "descriptor": "KADEWE BERLIN DE FX EUR 45.00 RATE 1.08",
+      "amount": -48.6
+    },
+    {
+      "date": "2026-03-14",
+      "descriptor": "REGIONAL WATER AUTH",
+      "amount": -56.97
+    },
+    {
+      "date": "2026-03-14",
+      "descriptor": "STATE FARM CLAIM PAYOUT",
+      "amount": 2100.0
+    },
+    {
+      "date": "2026-03-14",
+      "descriptor": "TIM HORTONS #9617 REGINA SK CA",
+      "amount": -3.35
+    },
+    {
+      "date": "2026-03-14",
+      "descriptor": "TST* RIVER OAK GRILL MOBILE AL",
+      "amount": -20.6
+    },
+    {
+      "date": "2026-03-15",
+      "descriptor": "ALDI #5753 BANGOR ME",
+      "amount": -114.78
+    },
+    {
+      "date": "2026-03-15",
+      "descriptor": "GUSTO PAY b1c2d3 NORTHGATE INC",
+      "amount": 2232.39
+    },
+    {
+      "date": "2026-03-15",
+      "descriptor": "SAVE-ON-FOODS #4746 WINNIPEG MB CA",
+      "amount": -65.41
+    },
+    {
+      "date": "2026-03-15",
+      "descriptor": "WASTE MGMT TRASH",
+      "amount": -41.2
+    },
+    {
+      "date": "2026-03-16",
+      "descriptor": "DISCOVER E-PAYMENT",
+      "amount": -734.93
+    },
+    {
+      "date": "2026-03-16",
+      "descriptor": "NETFLIX EXTRA MEMBER",
+      "amount": -156.73
+    },
+    {
+      "date": "2026-03-16",
+      "descriptor": "WSJ DIGITAL",
+      "amount": -38.99
+    },
+    {
+      "date": "2026-03-17",
+      "descriptor": "CASH CONVERTERS PAWN BUFFALO NY",
+      "amount": -95.0
+    },
+    {
+      "date": "2026-03-17",
+      "descriptor": "ETSY.COM",
+      "amount": -128.58
+    },
+    {
+      "date": "2026-03-17",
+      "descriptor": "FIGMA.COM",
+      "amount": -15.0
+    },
+    {
+      "date": "2026-03-17",
+      "descriptor": "FOREIGN TRANSACTION FEE",
+      "amount": -3.21
+    },
+    {
+      "date": "2026-03-17",
+      "descriptor": "INTACT INSURANCE HALIFAX NS CA",
+      "amount": -64.0
+    },
+    {
+      "date": "2026-03-17",
+      "descriptor": "LYFT RIDE CINCINNATI OH",
+      "amount": -122.86
+    },
+    {
+      "date": "2026-03-17",
+      "descriptor": "MOBIL OKLAHOMA CITY OK",
+      "amount": -32.22
+    },
+    {
+      "date": "2026-03-18",
+      "descriptor": "HERBAL WELLNESS COLLECTIVE CINCINNATI OH",
+      "amount": -72.0
+    },
+    {
+      "date": "2026-03-18",
+      "descriptor": "HUSKY EUGENE OR",
+      "amount": -77.9
+    },
+    {
+      "date": "2026-03-18",
+      "descriptor": "INDIEGOGO PLEDGE",
+      "amount": -60.0
+    },
+    {
+      "date": "2026-03-18",
+      "descriptor": "NOTION LABS",
+      "amount": -10.0
+    },
+    {
+      "date": "2026-03-18",
+      "descriptor": "SPOTIFY USA",
+      "amount": -13.99
+    },
+    {
+      "date": "2026-03-18",
+      "descriptor": "TRUPANION PET INS",
+      "amount": -49.0
+    },
+    {
+      "date": "2026-03-19",
+      "descriptor": "AMAZON.CA*P810 EDMONTON AB CA",
+      "amount": -98.41
+    },
+    {
+      "date": "2026-03-19",
+      "descriptor": "ELECTRONICS BAZAAR BERLIN DE FX",
+      "amount": -940.0
+    },
+    {
+      "date": "2026-03-19",
+      "descriptor": "EXXON RURAL RTE 2 PARIS TX",
+      "amount": -80.02
+    },
+    {
+      "date": "2026-03-19",
+      "descriptor": "GROCERY MART EUGENE OR",
+      "amount": -58.0
+    },
+    {
+      "date": "2026-03-19",
+      "descriptor": "LYFT RIDE LOUISVILLE KY",
+      "amount": -169.53
+    },
+    {
+      "date": "2026-03-19",
+      "descriptor": "T-MOBILE PCS PMT",
+      "amount": -95.0
+    },
+    {
+      "date": "2026-03-19",
+      "descriptor": "TARGET #1948 RURAL RTE 2 PARIS TX",
+      "amount": -19.47
+    },
+    {
+      "date": "2026-03-20",
+      "descriptor": "CHATGPT PLUS OPENAI",
+      "amount": -20.0
+    },
+    {
+      "date": "2026-03-20",
+      "descriptor": "RITE AID #1409 BOISE ID",
+      "amount": -143.51
+    },
+    {
+      "date": "2026-03-21",
+      "descriptor": "DIRECT DEP HOURLY WAGES MERIDIAN",
+      "amount": 691.9
+    },
+    {
+      "date": "2026-03-21",
+      "descriptor": "HOME DEPOT #4259 CINCINNATI OH",
+      "amount": -364.95
+    },
+    {
+      "date": "2026-03-21",
+      "descriptor": "SAFEWAY #3296 MEMPHIS TN",
+      "amount": -118.97
+    },
+    {
+      "date": "2026-03-21",
+      "descriptor": "TELUS MOBILITY CALGARY AB CA",
+      "amount": -78.4
+    },
+    {
+      "date": "2026-03-21",
+      "descriptor": "TIM HORTONS #5816 MONCTON NB CA",
+      "amount": -4.25
+    },
+    {
+      "date": "2026-03-21",
+      "descriptor": "TUITION WIRE STATE UNIVERSITY",
+      "amount": -11200.0
+    },
+    {
+      "date": "2026-03-22",
+      "descriptor": "ALDI #8230 BANGOR ME",
+      "amount": -13.33
+    },
+    {
+      "date": "2026-03-22",
+      "descriptor": "COINBASE INC PURCHASE",
+      "amount": -300.0
+    },
+    {
+      "date": "2026-03-22",
+      "descriptor": "EXPRESSVPN",
+      "amount": -12.95
+    },
+    {
+      "date": "2026-03-22",
+      "descriptor": "JIFFY LUBE OIL CHANGE",
+      "amount": -74.99
+    },
+    {
+      "date": "2026-03-22",
+      "descriptor": "PELOTON MEMBERSHIP RESUMED",
+      "amount": -44.0
+    },
+    {
+      "date": "2026-03-22",
+      "descriptor": "RITE AID #4347 SAN ANTONIO TX",
+      "amount": -37.64
+    },
+    {
+      "date": "2026-03-22",
+      "descriptor": "ULTA BEAUTY ASHEVILLE NC",
+      "amount": -416.58
+    },
+    {
+      "date": "2026-03-23",
+      "descriptor": "ALDI #6468 KANSAS CITY MO",
+      "amount": -158.14
+    },
+    {
+      "date": "2026-03-23",
+      "descriptor": "AMZN MKTP US*K6A4M0",
+      "amount": -97.86
+    },
+    {
+      "date": "2026-03-23",
+      "descriptor": "BP RICHMOND VA",
+      "amount": -106.39
+    },
+    {
+      "date": "2026-03-23",
+      "descriptor": "COSTCO WHSE #4877 FARGO ND",
+      "amount": -231.84
+    },
+    {
+      "date": "2026-03-23",
+      "descriptor": "FERRELLGAS PROPANE",
+      "amount": -179.64
+    },
+    {
+      "date": "2026-03-23",
+      "descriptor": "HEB #7611 PHOENIX AZ",
+      "amount": -117.04
+    },
+    {
+      "date": "2026-03-23",
+      "descriptor": "LABCORP LAB FEE",
+      "amount": -92.0
+    },
+    {
+      "date": "2026-03-23",
+      "descriptor": "RITE AID #942 FARGO ND",
+      "amount": -133.63
+    },
+    {
+      "date": "2026-03-23",
+      "descriptor": "SHELL KENAI AK 99611",
+      "amount": -29.54
+    },
+    {
+      "date": "2026-03-23",
+      "descriptor": "SUBWAY #3533 SALT LAKE CITY UT",
+      "amount": -78.19
+    },
+    {
+      "date": "2026-03-24",
+      "descriptor": "ANYTIME FITNESS",
+      "amount": -44.99
+    },
+    {
+      "date": "2026-03-24",
+      "descriptor": "UBER EATS ORDER",
+      "amount": -103.82
+    },
+    {
+      "date": "2026-03-24",
+      "descriptor": "WENDYS #8112 CHEYENNE WY",
+      "amount": -35.53
+    },
+    {
+      "date": "2026-03-25",
+      "descriptor": "CLASSPASS",
+      "amount": -79.0
+    },
+    {
+      "date": "2026-03-25",
+      "descriptor": "FIRESTONE AUTO REPAIR TUCSON AZ",
+      "amount": -410.2
+    },
+    {
+      "date": "2026-03-25",
+      "descriptor": "LYFT DRIVER PAYOUT",
+      "amount": 488.84
+    },
+    {
+      "date": "2026-03-25",
+      "descriptor": "PANDA EXPRESS SALT LAKE CITY UT",
+      "amount": -20.36
+    },
+    {
+      "date": "2026-03-26",
+      "descriptor": "ALBERTSONS #3336 RICHMOND VA",
+      "amount": -78.57
+    },
+    {
+      "date": "2026-03-26",
+      "descriptor": "COFFEE STAND LOUISVILLE KY",
+      "amount": -5.4
+    },
+    {
+      "date": "2026-03-26",
+      "descriptor": "DROPBOX",
+      "amount": -11.99
+    },
+    {
+      "date": "2026-03-26",
+      "descriptor": "ETSY.COM",
+      "amount": -56.67
+    },
+    {
+      "date": "2026-03-26",
+      "descriptor": "FANDUEL DEPOSIT",
+      "amount": -40.0
+    },
+    {
+      "date": "2026-03-26",
+      "descriptor": "NETFLIX EXTRA MEMBER",
+      "amount": -61.59
+    },
+    {
+      "date": "2026-03-26",
+      "descriptor": "QUESTRADE RRSP CONTRIB TORONTO ON CA",
+      "amount": -400.0
+    },
+    {
+      "date": "2026-03-26",
+      "descriptor": "WIRE OUT TO NEW PAYEE REF 0001",
+      "amount": -4800.0
+    },
+    {
+      "date": "2026-03-27",
+      "descriptor": "FIVERR SELLER PAYOUT",
+      "amount": 266.57
+    },
+    {
+      "date": "2026-03-27",
+      "descriptor": "GRID SOLAR BUYBACK CREDIT",
+      "amount": 22.6
+    },
+    {
+      "date": "2026-03-27",
+      "descriptor": "SP * SHOP BANGOR ME",
+      "amount": -76.98
+    },
+    {
+      "date": "2026-03-27",
+      "descriptor": "WEALTHFRONT AUTOMATED INVEST",
+      "amount": -300.0
+    },
+    {
+      "date": "2026-03-28",
+      "descriptor": "AMC THEATRES EUGENE OR",
+      "amount": -31.0
+    },
+    {
+      "date": "2026-03-28",
+      "descriptor": "DIRECT DEP HOURLY WAGES MERIDIAN",
+      "amount": 675.24
+    },
+    {
+      "date": "2026-03-28",
+      "descriptor": "INTEREST PAID SAVINGS",
+      "amount": 31.86
+    },
+    {
+      "date": "2026-03-28",
+      "descriptor": "SUBSTACK* WRITER",
+      "amount": -7.0
+    },
+    {
+      "date": "2026-03-28",
+      "descriptor": "TIM HORTONS #3630 BURNABY BC CA",
+      "amount": -5.36
+    },
+    {
+      "date": "2026-03-29",
+      "descriptor": "CRAVE TOTAL HALIFAX NS CA",
+      "amount": -22.99
+    },
+    {
+      "date": "2026-03-29",
+      "descriptor": "RITE AID #3214 ALBUQUERQUE NM",
+      "amount": -56.4
+    },
+    {
+      "date": "2026-03-29",
+      "descriptor": "SP * SHOP INDIANAPOLIS IN",
+      "amount": -165.18
+    },
+    {
+      "date": "2026-03-29",
+      "descriptor": "TST* RIVER OAK GRILL KANSAS CITY MO",
+      "amount": -34.22
+    },
+    {
+      "date": "2026-03-30",
+      "descriptor": "ATM SURCHARGE FEE",
+      "amount": -3.0
+    },
+    {
+      "date": "2026-03-30",
+      "descriptor": "BP RURAL RTE 2 PARIS TX",
+      "amount": -157.54
+    },
+    {
+      "date": "2026-03-30",
+      "descriptor": "GUSTO PAY b1c2d3 NORTHGATE INC",
+      "amount": 2194.53
+    },
+    {
+      "date": "2026-03-30",
+      "descriptor": "INSTACART SHOPPER PAY",
+      "amount": 157.69
+    },
+    {
+      "date": "2026-04-01",
+      "descriptor": "BILL PAYMENT WEB OAKMONT TOWERS RENT",
+      "amount": -1875.0
+    },
+    {
+      "date": "2026-04-01",
+      "descriptor": "DIRECT DEP CEDARWORKS MONTHLY SALARY",
+      "amount": 3033.16
+    },
+    {
+      "date": "2026-04-01",
+      "descriptor": "HYATT OKLAHOMA CITY OK",
+      "amount": -512.4
+    },
+    {
+      "date": "2026-04-01",
+      "descriptor": "KINDERCARE LEARNING CTR",
+      "amount": -1180.0
+    },
+    {
+      "date": "2026-04-01",
+      "descriptor": "LYFT RIDE OKLAHOMA CITY OK",
+      "amount": -48.2
+    },
+    {
+      "date": "2026-04-01",
+      "descriptor": "PAYPAL *EBAY",
+      "amount": -61.0
+    },
+    {
+      "date": "2026-04-02",
+      "descriptor": "AMZN MKTP US*639943",
+      "amount": -52.7
+    },
+    {
+      "date": "2026-04-02",
+      "descriptor": "ETSY.COM",
+      "amount": -177.84
+    },
+    {
+      "date": "2026-04-02",
+      "descriptor": "NELNET STUDENT LOAN",
+      "amount": -241.8
+    },
+    {
+      "date": "2026-04-02",
+      "descriptor": "RONA EDMONTON AB CA",
+      "amount": -94.3
+    },
+    {
+      "date": "2026-04-02",
+      "descriptor": "UBER EATS ORDER",
+      "amount": -69.91
+    },
+    {
+      "date": "2026-04-03",
+      "descriptor": "AMZN MKTP US*Q12B8X",
+      "amount": -84.06
+    },
+    {
+      "date": "2026-04-03",
+      "descriptor": "BUDGET RENT A CAR",
+      "amount": -188.5
+    },
+    {
+      "date": "2026-04-03",
+      "descriptor": "CAPITAL ONE CRD AUTOPAY",
+      "amount": -562.56
+    },
+    {
+      "date": "2026-04-03",
+      "descriptor": "MAX STREAMING",
+      "amount": -15.99
+    },
+    {
+      "date": "2026-04-03",
+      "descriptor": "UBER EATS ORDER",
+      "amount": -146.77
+    },
+    {
+      "date": "2026-04-04",
+      "descriptor": "COSTCO WHSE #6163 BANGOR ME",
+      "amount": -32.95
+    },
+    {
+      "date": "2026-04-04",
+      "descriptor": "DIRECT DEP HOURLY WAGES MERIDIAN",
+      "amount": 795.79
+    },
+    {
+      "date": "2026-04-04",
+      "descriptor": "MTG ESCROW CHASE HOME",
+      "amount": -298.4
+    },
+    {
+      "date": "2026-04-04",
+      "descriptor": "MTG PYMT CHASE HOME INTEREST",
+      "amount": -531.66
+    },
+    {
+      "date": "2026-04-04",
+      "descriptor": "MTG PYMT CHASE HOME PRINCIPAL",
+      "amount": -744.2
+    },
+    {
+      "date": "2026-04-04",
+      "descriptor": "RITE AID #144 ASHEVILLE NC",
+      "amount": -29.38
+    },
+    {
+      "date": "2026-04-04",
+      "descriptor": "SHELL CONVENIENCE FEE",
+      "amount": -0.55
+    },
+    {
+      "date": "2026-04-04",
+      "descriptor": "SHELL SPOKANE WA",
+      "amount": -49.0
+    },
+    {
+      "date": "2026-04-04",
+      "descriptor": "TARGET #8273 BUFFALO NY",
+      "amount": -116.14
+    },
+    {
+      "date": "2026-04-04",
+      "descriptor": "TIM HORTONS #1143 WINDSOR ON CA",
+      "amount": -3.03
+    },
+    {
+      "date": "2026-04-05",
+      "descriptor": "ACH PUSH FIDELITY INVEST",
+      "amount": -800.0
+    },
+    {
+      "date": "2026-04-05",
+      "descriptor": "PARAMOUNT PLUS",
+      "amount": -11.99
+    },
+    {
+      "date": "2026-04-05",
+      "descriptor": "PROGRESSIVE AUTO INS",
+      "amount": -128.55
+    },
+    {
+      "date": "2026-04-06",
+      "descriptor": "CONDO FEES HARBOURVIEW MGMT",
+      "amount": -410.0
+    },
+    {
+      "date": "2026-04-06",
+      "descriptor": "NSF RETURNED ITEM FEE",
+      "amount": -35.0
+    },
+    {
+      "date": "2026-04-06",
+      "descriptor": "SAMS CLUB #3930 MILWAUKEE WI",
+      "amount": -144.45
+    },
+    {
+      "date": "2026-04-07",
+      "descriptor": "ALDI #1504 EUGENE OR",
+      "amount": -165.46
+    },
+    {
+      "date": "2026-04-07",
+      "descriptor": "DONATION MASJID AL-NOOR",
+      "amount": -150.0
+    },
+    {
+      "date": "2026-04-07",
+      "descriptor": "SPECTRUM INTERNET",
+      "amount": -79.99
+    },
+    {
+      "date": "2026-04-07",
+      "descriptor": "UBER EATS ORDER",
+      "amount": -131.11
+    },
+    {
+      "date": "2026-04-08",
+      "descriptor": "ACH PULL HONDA FIN AUTO",
+      "amount": -388.55
+    },
+    {
+      "date": "2026-04-08",
+      "descriptor": "APPLE TV+",
+      "amount": -9.99
+    },
+    {
+      "date": "2026-04-08",
+      "descriptor": "REMITLY REMITTANCE PHL",
+      "amount": -400.0
+    },
+    {
+      "date": "2026-04-09",
+      "descriptor": "AMZN MKTP US*Q12B8X",
+      "amount": -206.76
+    },
+    {
+      "date": "2026-04-09",
+      "descriptor": "APPLE MUSIC",
+      "amount": -10.99
+    },
+    {
+      "date": "2026-04-09",
+      "descriptor": "DUKE ENERGY ELECTRIC",
+      "amount": -174.36
+    },
+    {
+      "date": "2026-04-09",
+      "descriptor": "NETFLIX EXTRA MEMBER",
+      "amount": -162.59
+    },
+    {
+      "date": "2026-04-10",
+      "descriptor": "COSTC0  WHSE  #8 8 1  FRESN0 CA",
+      "amount": -188.66
+    },
+    {
+      "date": "2026-04-10",
+      "descriptor": "D\u00c9PANNEUR? NO\u2014 RIVERSIDE STORE MONCTON NB CA",
+      "amount": -12.4
+    },
+    {
+      "date": "2026-04-10",
+      "descriptor": "TARGET #5254 MILWAUKEE WI",
+      "amount": -171.53
+    },
+    {
+      "date": "2026-04-10",
+      "descriptor": "UBER EATS ORDER",
+      "amount": -23.07
+    },
+    {
+      "date": "2026-04-11",
+      "descriptor": "AFTERPAY INSTALLMENT",
+      "amount": -32.0
+    },
+    {
+      "date": "2026-04-11",
+      "descriptor": "ALDI #9028 MILWAUKEE WI",
+      "amount": -91.27
+    },
+    {
+      "date": "2026-04-11",
+      "descriptor": "BP RURAL RTE 2 PARIS TX",
+      "amount": -164.43
+    },
+    {
+      "date": "2026-04-11",
+      "descriptor": "DIRECT DEP HOURLY WAGES MERIDIAN",
+      "amount": 762.76
+    },
+    {
+      "date": "2026-04-11",
+      "descriptor": "TIM HORTONS #5966 EDMONTON AB CA",
+      "amount": -6.18
+    },
+    {
+      "date": "2026-04-11",
+      "descriptor": "YOUTUBE PREMIUM",
+      "amount": -13.99
+    },
+    {
+      "date": "2026-04-11",
+      "descriptor": "ZELLE TRANSFER FROM B OKAFOR",
+      "amount": 200.0
+    },
+    {
+      "date": "2026-04-12",
+      "descriptor": "ENBRIDGE GAS WINNIPEG MB CA",
+      "amount": -116.41
+    },
+    {
+      "date": "2026-04-13",
+      "descriptor": "BP SALT LAKE CITY UT",
+      "amount": -82.92
+    },
+    {
+      "date": "2026-04-13",
+      "descriptor": "FENCE INSTALL CONTRACTOR",
+      "amount": -1000.0
+    },
+    {
+      "date": "2026-04-13",
+      "descriptor": "GADGET WORLD LLC",
+      "amount": -329.0
+    },
+    {
+      "date": "2026-04-13",
+      "descriptor": "IHG HOLIDAY INN PHOENIX AZ",
+      "amount": -288.1
+    },
+    {
+      "date": "2026-04-13",
+      "descriptor": "KINDLE UNLIMITED",
+      "amount": -11.99
+    },
+    {
+      "date": "2026-04-13",
+      "descriptor": "KLARNA INSTALLMENT",
+      "amount": -48.75
+    },
+    {
+      "date": "2026-04-14",
+      "descriptor": "REGIONAL WATER AUTH",
+      "amount": -75.31
+    },
+    {
+      "date": "2026-04-14",
+      "descriptor": "REVERSAL GADGET WORLD",
+      "amount": 329.0
+    },
+    {
+      "date": "2026-04-14",
+      "descriptor": "SUBWAY #3158 NEW ORLEANS LA",
+      "amount": -87.49
+    },
+    {
+      "date": "2026-04-14",
+      "descriptor": "SUBWAY #4691 PHILADELPHIA PA",
+      "amount": -120.99
+    },
+    {
+      "date": "2026-04-15",
+      "descriptor": "GADGET WORLD LLC RECHARGE",
+      "amount": -329.0
+    },
+    {
+      "date": "2026-04-15",
+      "descriptor": "GUSTO PAY b1c2d3 NORTHGATE INC",
+      "amount": 2122.14
+    },
+    {
+      "date": "2026-04-15",
+      "descriptor": "IRS DIRECTPAY EST TAX Q1",
+      "amount": -2100.0
+    },
+    {
+      "date": "2026-04-15",
+      "descriptor": "SP * SHOP BOISE ID",
+      "amount": -147.26
+    },
+    {
+      "date": "2026-04-15",
+      "descriptor": "WASTE MGMT TRASH",
+      "amount": -41.2
+    },
+    {
+      "date": "2026-04-15",
+      "descriptor": "WHOLE FOODS OKLAHOMA CITY OK",
+      "amount": -155.3
+    },
+    {
+      "date": "2026-04-16",
+      "descriptor": "DISCOVER E-PAYMENT",
+      "amount": -332.1
+    },
+    {
+      "date": "2026-04-16",
+      "descriptor": "LIDL #5668 INDIANAPOLIS IN",
+      "amount": -46.47
+    },
+    {
+      "date": "2026-04-16",
+      "descriptor": "UBER EATS ORDER",
+      "amount": -44.39
+    },
+    {
+      "date": "2026-04-16",
+      "descriptor": "WSJ DIGITAL",
+      "amount": -38.99
+    },
+    {
+      "date": "2026-04-16",
+      "descriptor": "ZAPPOS ORDER",
+      "amount": -189.0
+    },
+    {
+      "date": "2026-04-17",
+      "descriptor": "FIGMA.COM",
+      "amount": -15.0
+    },
+    {
+      "date": "2026-04-17",
+      "descriptor": "INTACT INSURANCE HALIFAX NS CA",
+      "amount": -64.0
+    },
+    {
+      "date": "2026-04-17",
+      "descriptor": "PENDING EXXON ASHEVILLE NC",
+      "amount": -60.0
+    },
+    {
+      "date": "2026-04-17",
+      "descriptor": "UBER EATS ORDER",
+      "amount": -184.02
+    },
+    {
+      "date": "2026-04-18",
+      "descriptor": "BP ALBUQUERQUE NM",
+      "amount": -144.06
+    },
+    {
+      "date": "2026-04-18",
+      "descriptor": "DIRECT DEP HOURLY WAGES MERIDIAN",
+      "amount": 608.09
+    },
+    {
+      "date": "2026-04-18",
+      "descriptor": "HOME DEPOT #1312 KANSAS CITY MO",
+      "amount": -200.2
+    },
+    {
+      "date": "2026-04-18",
+      "descriptor": "INSTACART SHOPPER PAY",
+      "amount": 132.53
+    },
+    {
+      "date": "2026-04-18",
+      "descriptor": "NOTION LABS",
+      "amount": -10.0
+    },
+    {
+      "date": "2026-04-18",
+      "descriptor": "SPOTIFY USA",
+      "amount": -13.99
+    },
+    {
+      "date": "2026-04-18",
+      "descriptor": "TIM HORTONS #4205 WINDSOR ON CA",
+      "amount": -3.52
+    },
+    {
+      "date": "2026-04-18",
+      "descriptor": "TRUPANION PET INS",
+      "amount": -49.0
+    },
+    {
+      "date": "2026-04-19",
+      "descriptor": "ADJUSTMENT CORRECTION PRIOR CHARGE",
+      "amount": 15.0
+    },
+    {
+      "date": "2026-04-19",
+      "descriptor": "EXXON SAN ANTONIO TX SETTLED",
+      "amount": -56.91
+    },
+    {
+      "date": "2026-04-19",
+      "descriptor": "REFUND: ZAPPOS PARTIAL",
+      "amount": 70.0
+    },
+    {
+      "date": "2026-04-19",
+      "descriptor": "T-MOBILE PCS PMT",
+      "amount": -95.0
+    },
+    {
+      "date": "2026-04-19",
+      "descriptor": "TARGET #8059 WICHITA KS",
+      "amount": -118.01
+    },
+    {
+      "date": "2026-04-20",
+      "descriptor": "AMZN MKTP US*9C83P4",
+      "amount": -36.79
+    },
+    {
+      "date": "2026-04-20",
+      "descriptor": "CHATGPT PLUS OPENAI",
+      "amount": -20.0
+    },
+    {
+      "date": "2026-04-20",
+      "descriptor": "HYDRO ONE REF 88210394 ON CA",
+      "amount": -71.0
+    },
+    {
+      "date": "2026-04-20",
+      "descriptor": "NETFLIX EXTRA MEMBER",
+      "amount": -158.76
+    },
+    {
+      "date": "2026-04-21",
+      "descriptor": "AMAZON FLEX PAYMENT",
+      "amount": 200.53
+    },
+    {
+      "date": "2026-04-21",
+      "descriptor": "COMMUNITY COLLEGE TUITION",
+      "amount": -1450.0
+    },
+    {
+      "date": "2026-04-21",
+      "descriptor": "TARGET #6850 KANSAS CITY MO",
+      "amount": -119.19
+    },
+    {
+      "date": "2026-04-21",
+      "descriptor": "TELUS MOBILITY CALGARY AB CA",
+      "amount": -78.4
+    },
+    {
+      "date": "2026-04-22",
+      "descriptor": "ATM WITHDRAWAL OUT-OF-NETWORK",
+      "amount": -63.0
+    },
+    {
+      "date": "2026-04-22",
+      "descriptor": "EXPRESSVPN",
+      "amount": -12.95
+    },
+    {
+      "date": "2026-04-22",
+      "descriptor": "SQ *FADES BARBERSHOP RICHMOND VA",
+      "amount": -32.0
+    },
+    {
+      "date": "2026-04-22",
+      "descriptor": "UBER TRIP CINCINNATI OH",
+      "amount": -143.92
+    },
+    {
+      "date": "2026-04-23",
+      "descriptor": "FERRELLGAS PROPANE",
+      "amount": -74.09
+    },
+    {
+      "date": "2026-04-24",
+      "descriptor": "ANYTIME FITNESS",
+      "amount": -44.99
+    },
+    {
+      "date": "2026-04-24",
+      "descriptor": "BP PHILADELPHIA PA",
+      "amount": -39.44
+    },
+    {
+      "date": "2026-04-25",
+      "descriptor": "CLASSPASS",
+      "amount": -79.0
+    },
+    {
+      "date": "2026-04-25",
+      "descriptor": "DIRECT DEP HOURLY WAGES MERIDIAN",
+      "amount": 655.96
+    },
+    {
+      "date": "2026-04-25",
+      "descriptor": "TIM HORTONS #4096 LONDON ON CA",
+      "amount": -5.67
+    },
+    {
+      "date": "2026-04-25",
+      "descriptor": "TOAST *DAYBREAK CAFE MILWAUKEE WI",
+      "amount": -38.83
+    },
+    {
+      "date": "2026-04-26",
+      "descriptor": "DROPBOX",
+      "amount": -11.99
+    },
+    {
+      "date": "2026-04-26",
+      "descriptor": "INTL ATM FEE",
+      "amount": -5.0
+    },
+    {
+      "date": "2026-04-26",
+      "descriptor": "QUESTRADE RRSP CONTRIB TORONTO ON CA",
+      "amount": -400.0
+    },
+    {
+      "date": "2026-04-27",
+      "descriptor": "GRID SOLAR BUYBACK CREDIT",
+      "amount": 10.51
+    },
+    {
+      "date": "2026-04-27",
+      "descriptor": "LYFT RIDE OKLAHOMA CITY OK",
+      "amount": -116.57
+    },
+    {
+      "date": "2026-04-27",
+      "descriptor": "SPECIALTY RETAIL 7741 LLC",
+      "amount": -49.0
+    },
+    {
+      "date": "2026-04-27",
+      "descriptor": "SUBWAY #384 DODGE CITY KS",
+      "amount": -91.27
+    },
+    {
+      "date": "2026-04-27",
+      "descriptor": "WEALTHFRONT AUTOMATED INVEST",
+      "amount": -300.0
+    },
+    {
+      "date": "2026-04-28",
+      "descriptor": "ALDI #2017 FARGO ND",
+      "amount": -139.1
+    },
+    {
+      "date": "2026-04-28",
+      "descriptor": "E-COMMERCE VERIFY LLC",
+      "amount": -1.0
+    },
+    {
+      "date": "2026-04-28",
+      "descriptor": "E-COMMERCE VERIFY LLC",
+      "amount": -1.0
+    },
+    {
+      "date": "2026-04-28",
+      "descriptor": "E-COMMERCE VERIFY LLC",
+      "amount": -1.0
+    },
+    {
+      "date": "2026-04-28",
+      "descriptor": "INTEREST PAID SAVINGS",
+      "amount": 37.35
+    },
+    {
+      "date": "2026-04-28",
+      "descriptor": "MONTHLY MAINTENANCE FEE",
+      "amount": -15.0
+    },
+    {
+      "date": "2026-04-28",
+      "descriptor": "PAYPAL TRANSFER PAYOUT",
+      "amount": 488.7
+    },
+    {
+      "date": "2026-04-28",
+      "descriptor": "SUBSTACK* WRITER",
+      "amount": -7.0
+    },
+    {
+      "date": "2026-04-29",
+      "descriptor": "AMZN MKTP US*J2CLQD",
+      "amount": -27.69
+    },
+    {
+      "date": "2026-04-29",
+      "descriptor": "CRAVE TOTAL HALIFAX NS CA",
+      "amount": -22.99
+    },
+    {
+      "date": "2026-04-29",
+      "descriptor": "UBER TRIP NEW ORLEANS LA",
+      "amount": -116.78
+    },
+    {
+      "date": "2026-04-30",
+      "descriptor": "  cash app *square  ",
+      "amount": -18.2
+    },
+    {
+      "date": "2026-04-30",
+      "descriptor": "GUSTO PAY b1c2d3 NORTHGATE INC",
+      "amount": 2227.36
+    },
+    {
+      "date": "2026-04-30",
+      "descriptor": "RITE AID #662 ASHEVILLE NC",
+      "amount": -156.59
+    },
+    {
+      "date": "2026-04-30",
+      "descriptor": "UBER EATS ORDER",
+      "amount": -135.41
+    },
+    {
+      "date": "2026-05-01",
+      "descriptor": "AIRBNB * HMRESVN",
+      "amount": -720.0
+    },
+    {
+      "date": "2026-05-01",
+      "descriptor": "ALDI #7306 OKLAHOMA CITY OK",
+      "amount": -219.86
+    },
+    {
+      "date": "2026-05-01",
+      "descriptor": "BABYSITTER CASH APP MEMO FRI",
+      "amount": -90.0
+    },
+    {
+      "date": "2026-05-01",
+      "descriptor": "BILL PAYMENT WEB OAKMONT TOWERS RENT",
+      "amount": -1875.0
+    },
+    {
+      "date": "2026-05-01",
+      "descriptor": "DIRECT DEP CEDARWORKS MONTHLY SALARY",
+      "amount": 3136.22
+    },
+    {
+      "date": "2026-05-01",
+      "descriptor": "KINDERCARE LEARNING CTR",
+      "amount": -1180.0
+    },
+    {
+      "date": "2026-05-01",
+      "descriptor": "MESSY STORE B",
+      "amount": -87.91
+    },
+    {
+      "date": "2026-05-01",
+      "descriptor": "PATIO SET SPLIT 1/2",
+      "amount": -275.0
+    },
+    {
+      "date": "2026-05-01",
+      "descriptor": "PATIO SET SPLIT 2/2",
+      "amount": -275.0
+    },
+    {
+      "date": "2026-05-01",
+      "descriptor": "SUBWAY #8265 OKLAHOMA CITY OK",
+      "amount": -42.29
+    },
+    {
+      "date": "2026-05-01",
+      "descriptor": "TARGET #9403 SAN ANTONIO TX",
+      "amount": -99.25
+    },
+    {
+      "date": "2026-05-01",
+      "descriptor": "TST* RIVER OAK GRILL RURAL RTE 2 PARIS TX",
+      "amount": -66.35
+    },
+    {
+      "date": "2026-05-02",
+      "descriptor": "DIRECT DEP HOURLY WAGES MERIDIAN",
+      "amount": 606.04
+    },
+    {
+      "date": "2026-05-02",
+      "descriptor": "LYFT RIDE FRESNO CA",
+      "amount": -110.55
+    },
+    {
+      "date": "2026-05-02",
+      "descriptor": "NELNET STUDENT LOAN",
+      "amount": -241.8
+    },
+    {
+      "date": "2026-05-02",
+      "descriptor": "SUBWAY #1699 BUFFALO NY",
+      "amount": -130.73
+    },
+    {
+      "date": "2026-05-02",
+      "descriptor": "TIM HORTONS #3489 ST JOHNS NL CA",
+      "amount": -5.33
+    },
+    {
+      "date": "2026-05-03",
+      "descriptor": "CAPITAL ONE CRD AUTOPAY",
+      "amount": -1200.96
+    },
+    {
+      "date": "2026-05-03",
+      "descriptor": "MAX STREAMING",
+      "amount": -15.99
+    },
+    {
+      "date": "2026-05-03",
+      "descriptor": "SAFEWAY #3724 MOBILE AL",
+      "amount": -143.11
+    },
+    {
+      "date": "2026-05-04",
+      "descriptor": "7710238841 PURCHASE",
+      "amount": -21.15
+    },
+    {
+      "date": "2026-05-04",
+      "descriptor": "ALBERTSONS #2479 BOISE ID",
+      "amount": -135.54
+    },
+    {
+      "date": "2026-05-04",
+      "descriptor": "CASH APP TO M REYES",
+      "amount": -60.0
+    },
+    {
+      "date": "2026-05-04",
+      "descriptor": "MTG ESCROW CHASE HOME",
+      "amount": -298.4
+    },
+    {
+      "date": "2026-05-04",
+      "descriptor": "MTG PYMT CHASE HOME INTEREST",
+      "amount": -531.66
+    },
+    {
+      "date": "2026-05-04",
+      "descriptor": "MTG PYMT CHASE HOME PRINCIPAL",
+      "amount": -744.2
+    },
+    {
+      "date": "2026-05-04",
+      "descriptor": "SUBWAY #1840 INDIANAPOLIS IN",
+      "amount": -99.85
+    },
+    {
+      "date": "2026-05-04",
+      "descriptor": "ZELLE TO LANDLORD",
+      "amount": -250.0
+    },
+    {
+      "date": "2026-05-05",
+      "descriptor": "ACH PUSH FIDELITY INVEST",
+      "amount": -800.0
+    },
+    {
+      "date": "2026-05-05",
+      "descriptor": "APPLE CASH IN",
+      "amount": 30.0
+    },
+    {
+      "date": "2026-05-05",
+      "descriptor": "BP ALBUQUERQUE NM",
+      "amount": -12.78
+    },
+    {
+      "date": "2026-05-05",
+      "descriptor": "FRONTIER AIRLINES BAG FEE",
+      "amount": -42.0
+    },
+    {
+      "date": "2026-05-05",
+      "descriptor": "PARAMOUNT PLUS",
+      "amount": -11.99
+    },
+    {
+      "date": "2026-05-05",
+      "descriptor": "PROGRESSIVE AUTO INS",
+      "amount": -128.55
+    },
+    {
+      "date": "2026-05-05",
+      "descriptor": "SHELL INDIANAPOLIS IN",
+      "amount": -88.85
+    },
+    {
+      "date": "2026-05-05",
+      "descriptor": "UBER TRIP BOISE ID",
+      "amount": -40.01
+    },
+    {
+      "date": "2026-05-05",
+      "descriptor": "WENDYS #1539 MEMPHIS TN",
+      "amount": -38.24
+    },
+    {
+      "date": "2026-05-06",
+      "descriptor": "ALDI #9892 PHILADELPHIA PA",
+      "amount": -182.74
+    },
+    {
+      "date": "2026-05-06",
+      "descriptor": "AMZN MKTP US*L0GL1P",
+      "amount": -174.27
+    },
+    {
+      "date": "2026-05-06",
+      "descriptor": "CONDO FEES HARBOURVIEW MGMT",
+      "amount": -410.0
+    },
+    {
+      "date": "2026-05-07",
+      "descriptor": "ATM CASH DEPOSIT",
+      "amount": 200.0
+    },
+    {
+      "date": "2026-05-07",
+      "descriptor": "DONATION MASJID AL-NOOR",
+      "amount": -150.0
+    },
+    {
+      "date": "2026-05-07",
+      "descriptor": "SPECTRUM INTERNET",
+      "amount": -79.99
+    },
+    {
+      "date": "2026-05-07",
+      "descriptor": "SUBWAY #6443 SPOKANE WA",
+      "amount": -64.74
+    },
+    {
+      "date": "2026-05-08",
+      "descriptor": "ACH PULL HONDA FIN AUTO",
+      "amount": -388.55
+    },
+    {
+      "date": "2026-05-08",
+      "descriptor": "APPLE TV+",
+      "amount": -9.99
+    },
+    {
+      "date": "2026-05-08",
+      "descriptor": "DUNKIN #5521 INDIANAPOLIS IN",
+      "amount": -4.65
+    },
+    {
+      "date": "2026-05-08",
+      "descriptor": "DUNKIN #5521 OKLAHOMA CITY OK",
+      "amount": -4.65
+    },
+    {
+      "date": "2026-05-08",
+      "descriptor": "ETSY.COM",
+      "amount": -110.86
+    },
+    {
+      "date": "2026-05-08",
+      "descriptor": "EVENTBRITE 10K RACE",
+      "amount": -65.0
+    },
+    {
+      "date": "2026-05-08",
+      "descriptor": "FLASH STORE 500",
+      "amount": -5.22
+    },
+    {
+      "date": "2026-05-08",
+      "descriptor": "FLASH STORE 501",
+      "amount": -6.77
+    },
+    {
+      "date": "2026-05-08",
+      "descriptor": "FLASH STORE 502",
+      "amount": -2.72
+    },
+    {
+      "date": "2026-05-08",
+      "descriptor": "FLASH STORE 503",
+      "amount": -5.5
+    },
+    {
+      "date": "2026-05-08",
+      "descriptor": "FLASH STORE 504",
+      "amount": -4.73
+    },
+    {
+      "date": "2026-05-08",
+      "descriptor": "FLASH STORE 505",
+      "amount": -4.58
+    },
+    {
+      "date": "2026-05-08",
+      "descriptor": "FLASH STORE 506",
+      "amount": -2.37
+    },
+    {
+      "date": "2026-05-08",
+      "descriptor": "FLASH STORE 507",
+      "amount": -6.09
+    },
+    {
+      "date": "2026-05-08",
+      "descriptor": "FLASH STORE 508",
+      "amount": -4.78
+    },
+    {
+      "date": "2026-05-08",
+      "descriptor": "FLASH STORE 509",
+      "amount": -4.37
+    },
+    {
+      "date": "2026-05-08",
+      "descriptor": "FLASH STORE 510",
+      "amount": -4.39
+    },
+    {
+      "date": "2026-05-08",
+      "descriptor": "FLASH STORE 511",
+      "amount": -6.76
+    },
+    {
+      "date": "2026-05-09",
+      "descriptor": "ALDI #2915 FRESNO CA",
+      "amount": -29.62
+    },
+    {
+      "date": "2026-05-09",
+      "descriptor": "AMAZON.CA*P810 EDMONTON AB CA",
+      "amount": -85.65
+    },
+    {
+      "date": "2026-05-09",
+      "descriptor": "APPLE MUSIC",
+      "amount": -10.99
+    },
+    {
+      "date": "2026-05-09",
+      "descriptor": "DIRECT DEP HOURLY WAGES MERIDIAN",
+      "amount": 657.03
+    },
+    {
+      "date": "2026-05-09",
+      "descriptor": "DUKE ENERGY ELECTRIC",
+      "amount": -83.74
+    },
+    {
+      "date": "2026-05-09",
+      "descriptor": "ETSY.COM",
+      "amount": -85.48
+    },
+    {
+      "date": "2026-05-09",
+      "descriptor": "PETCO #371 RICHMOND VA",
+      "amount": -43.2
+    },
+    {
+      "date": "2026-05-09",
+      "descriptor": "PORTER AIRLINES TORONTO ON CA",
+      "amount": -265.0
+    },
+    {
+      "date": "2026-05-09",
+      "descriptor": "TIM HORTONS #6546 LONDON ON CA",
+      "amount": -7.37
+    },
+    {
+      "date": "2026-05-10",
+      "descriptor": "AMERICAN AIRLINES",
+      "amount": -489.2
+    },
+    {
+      "date": "2026-05-10",
+      "descriptor": "BP WICHITA KS",
+      "amount": -74.46
+    },
+    {
+      "date": "2026-05-10",
+      "descriptor": "SERENITY NAIL BAR LINCOLN NE",
+      "amount": -50.0
+    },
+    {
+      "date": "2026-05-11",
+      "descriptor": "AFTERPAY INSTALLMENT",
+      "amount": -32.0
+    },
+    {
+      "date": "2026-05-11",
+      "descriptor": "ETSY.COM",
+      "amount": -126.55
+    },
+    {
+      "date": "2026-05-11",
+      "descriptor": "RITE AID #463 PHOENIX AZ",
+      "amount": -6.44
+    },
+    {
+      "date": "2026-05-11",
+      "descriptor": "SP * SHOP MOBILE AL",
+      "amount": -84.54
+    },
+    {
+      "date": "2026-05-11",
+      "descriptor": "SUBWAY #7516 SALT LAKE CITY UT",
+      "amount": -169.99
+    },
+    {
+      "date": "2026-05-11",
+      "descriptor": "YOUTUBE PREMIUM",
+      "amount": -13.99
+    },
+    {
+      "date": "2026-05-12",
+      "descriptor": "ENBRIDGE GAS WINNIPEG MB CA",
+      "amount": -74.45
+    },
+    {
+      "date": "2026-05-12",
+      "descriptor": "ETSY.COM",
+      "amount": -86.06
+    },
+    {
+      "date": "2026-05-12",
+      "descriptor": "LIDL #8916 DODGE CITY KS",
+      "amount": -128.52
+    },
+    {
+      "date": "2026-05-12",
+      "descriptor": "REI #3822 BANGOR ME",
+      "amount": -495.74
+    },
+    {
+      "date": "2026-05-13",
+      "descriptor": "AMZN MKTP US*Q12B8X",
+      "amount": -182.55
+    },
+    {
+      "date": "2026-05-13",
+      "descriptor": "CHECK 2207",
+      "amount": -310.0
+    },
+    {
+      "date": "2026-05-13",
+      "descriptor": "KINDLE UNLIMITED",
+      "amount": -11.99
+    },
+    {
+      "date": "2026-05-13",
+      "descriptor": "KLARNA INSTALLMENT",
+      "amount": -48.75
+    },
+    {
+      "date": "2026-05-13",
+      "descriptor": "WENDYS #5437 TULSA OK",
+      "amount": -75.39
+    },
+    {
+      "date": "2026-05-14",
+      "descriptor": "REGIONAL WATER AUTH",
+      "amount": -64.16
+    }
+  ]
+}

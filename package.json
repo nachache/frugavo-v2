@@ -13,6 +13,7 @@
     "test:smoke": "vitest run --config vitest.smoke.config.ts",
     "verify:scan": "tsx scripts/verify-scan.ts",
     "verify:scan:live": "tsx --env-file=.env.local scripts/verify-scan-live.ts",
+    "scan:test": "tsx scripts/scan-harness.ts",
     "stripe:configure-portal": "tsx scripts/configure-portal.ts"
   },
   "dependencies": {

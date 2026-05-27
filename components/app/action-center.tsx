@@ -46,6 +46,7 @@ import { CancelModal } from "./cancel-modal";
 import { CancelCelebration } from "./cancel-celebration";
 import { annualCents, monthlyEquivalentCents, type SubLike } from "@/lib/subscription-math";
 import type { ActionItem } from "@/lib/selectors/dashboard";
+import { SHOW_BILLS_SURFACE } from "@/lib/feature-flags";
 
 type Tab = "worth" | "watching" | "pruned" | "hidden" | "all";
 type Sort = "price" | "age" | "category";
@@ -629,22 +630,24 @@ function RowOverflow({
               Keep
             </button>
           )}
-          <button
-            type="button"
-            onClick={() => {
-              setOpen(false);
-              onReclassify();
-            }}
-            className="w-full flex items-center gap-2 px-3 py-2 text-[13px] text-ink hover:bg-ink/[0.04] rounded-lg transition text-left"
-          >
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <polyline points="17 1 21 5 17 9" />
-              <path d="M3 11V9a4 4 0 0 1 4-4h14" />
-              <polyline points="7 23 3 19 7 15" />
-              <path d="M21 13v2a4 4 0 0 1-4 4H3" />
-            </svg>
-            {isBills ? "Move to subscriptions" : "Mark as a bill"}
-          </button>
+          {SHOW_BILLS_SURFACE && (
+            <button
+              type="button"
+              onClick={() => {
+                setOpen(false);
+                onReclassify();
+              }}
+              className="w-full flex items-center gap-2 px-3 py-2 text-[13px] text-ink hover:bg-ink/[0.04] rounded-lg transition text-left"
+            >
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <polyline points="17 1 21 5 17 9" />
+                <path d="M3 11V9a4 4 0 0 1 4-4h14" />
+                <polyline points="7 23 3 19 7 15" />
+                <path d="M21 13v2a4 4 0 0 1-4 4H3" />
+              </svg>
+              {isBills ? "Move to subscriptions" : "Mark as a bill"}
+            </button>
+          )}
         </div>
       )}
     </div>

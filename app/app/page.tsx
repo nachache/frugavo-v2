@@ -25,6 +25,7 @@ import { getOrCreatePublicSlug } from "@/lib/users/public-slug";
 import { maybeNotifySignup } from "@/lib/users/signup-notify";
 import { getEntitlement } from "@/lib/billing/entitlements";
 import { buildDashboardData } from "@/lib/selectors/dashboard";
+import { SHOW_BILLS_SURFACE } from "@/lib/feature-flags";
 
 // /app — the authenticated dashboard root.
 //
@@ -52,8 +53,17 @@ export default async function AppHome({
   // Tab state lives in the URL so it's bookmarkable + shareable.
   // Defaults to subscriptions; ?tab=bills swaps the hero / donut /
   // action list to the bills tier.
-  const activeTab: "subscriptions" | "bills" =
-    searchParams?.tab === "bills" ? "bills" : "subscriptions";
+  //
+  // SHOW_BILLS_SURFACE feature flag: when false (current default),
+  // the Bills tab is hidden entirely and activeTab is pinned to
+  // subscriptions regardless of the URL param. Bills are still
+  // detected + persisted by the engine — only the UI surface is
+  // hidden. Flip the flag in lib/feature-flags.ts to re-expose.
+  const activeTab: "subscriptions" | "bills" = SHOW_BILLS_SURFACE
+    ? searchParams?.tab === "bills"
+      ? "bills"
+      : "subscriptions"
+    : "subscriptions";
 
   if (!supabaseAdmin) {
     return (
@@ -295,19 +305,23 @@ export default async function AppHome({
           */}
           {/* Tab strip — Subscriptions / Bills. URL-driven. Sits
               above the hero grid so the user always sees which lens
-              they're in. */}
-          <div className="flex items-center justify-between gap-3 flex-wrap">
-            <DashboardTabs
-              active={activeTab}
-              subCount={data.monthly.sub_only_count}
-              billCount={data.monthly.other_recurring_count}
-            />
-            <div className="text-[11.5px] md:text-[12px] text-ink-muted">
-              {activeTab === "subscriptions"
-                ? "Things you subscribe to. Cancel-able."
-                : "Recurring obligations. Watched, not cancel-able."}
+              they're in. Hidden when SHOW_BILLS_SURFACE=false; with
+              the Bills lens gone there's only one view, so the
+              switcher would be a stub. */}
+          {SHOW_BILLS_SURFACE && (
+            <div className="flex items-center justify-between gap-3 flex-wrap">
+              <DashboardTabs
+                active={activeTab}
+                subCount={data.monthly.sub_only_count}
+                billCount={data.monthly.other_recurring_count}
+              />
+              <div className="text-[11.5px] md:text-[12px] text-ink-muted">
+                {activeTab === "subscriptions"
+                  ? "Things you subscribe to. Cancel-able."
+                  : "Recurring obligations. Watched, not cancel-able."}
+              </div>
             </div>
-          </div>
+          )}
 
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 md:gap-6 items-start">
             {/* IdentityHero only renders on the Subscriptions tab —

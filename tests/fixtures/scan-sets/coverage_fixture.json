@@ -1,0 +1,1012 @@
+{
+  "account_profile": {
+    "purpose": "max-coverage scan-engine test fixture",
+    "regions_covered": [
+      "US",
+      "Canada (excl. Quebec)"
+    ],
+    "currency_convention": "Single-currency account; all amounts expressed as posted USD-equivalent values (CAD-origin transactions converted), so the schema carries only date/descriptor/amount.",
+    "coverage_notes": "Synthetic composite rig spanning every geography, deposit type, spend category, descriptor style, and amount/temporal edge case."
+  },
+  "period": {
+    "start": "2025-09-15",
+    "end": "2026-03-15"
+  },
+  "transactions": [
+    {
+      "date": "2025-09-15",
+      "descriptor": "MORTGAGE PYMT WELLS FARGO HOME",
+      "amount": -1872.44
+    },
+    {
+      "date": "2025-09-15",
+      "descriptor": "NETFLIX.COM",
+      "amount": -24.99
+    },
+    {
+      "date": "2025-09-15",
+      "descriptor": "BRIGHT HORIZONS CHILDCARE",
+      "amount": -980.0
+    },
+    {
+      "date": "2025-09-16",
+      "descriptor": "MCDONALD'S F1204 CHICAGO IL",
+      "amount": -11.48
+    },
+    {
+      "date": "2025-09-16",
+      "descriptor": "PLANET FITNESS CLUB FEE",
+      "amount": -24.99
+    },
+    {
+      "date": "2025-09-17",
+      "descriptor": "WAL-MART #2841 HOUSTON TX",
+      "amount": -87.91
+    },
+    {
+      "date": "2025-09-18",
+      "descriptor": "CONED ENERGY BILLPAY",
+      "amount": -142.07
+    },
+    {
+      "date": "2025-09-18",
+      "descriptor": "GOOGLE *STORAGE",
+      "amount": -1.99
+    },
+    {
+      "date": "2025-09-18",
+      "descriptor": "AMZN MKTP US*M21K78Q",
+      "amount": -42.66
+    },
+    {
+      "date": "2025-09-19",
+      "descriptor": "ACH DEPOSIT ADP PAYROLL",
+      "amount": 2184.55
+    },
+    {
+      "date": "2025-09-19",
+      "descriptor": "CHEVRON 0094412 LOS ANGELES CA",
+      "amount": -58.44
+    },
+    {
+      "date": "2025-09-20",
+      "descriptor": "COMCAST XFINITY INTERNET",
+      "amount": -89.99
+    },
+    {
+      "date": "2025-09-20",
+      "descriptor": "GEICO AUTO INS PREMIUM",
+      "amount": -138.5
+    },
+    {
+      "date": "2025-09-20",
+      "descriptor": "NELNET STUDENT LOAN PMT",
+      "amount": -245.0
+    },
+    {
+      "date": "2025-09-21",
+      "descriptor": "ATMOS ENERGY GAS BILL",
+      "amount": -54.62
+    },
+    {
+      "date": "2025-09-21",
+      "descriptor": "MACYS WEST 0231 SAN FRANCISCO CA",
+      "amount": -94.12
+    },
+    {
+      "date": "2025-09-22",
+      "descriptor": "UBER PARTNER PAYMENT",
+      "amount": 184.73
+    },
+    {
+      "date": "2025-09-22",
+      "descriptor": "SPOTIFY USA",
+      "amount": -11.99
+    },
+    {
+      "date": "2025-09-23",
+      "descriptor": "STARBUCKS STORE 09122",
+      "amount": -6.75
+    },
+    {
+      "date": "2025-09-23",
+      "descriptor": "ATM WITHDRAWAL 110 W 42ND ST NEW YORK NY",
+      "amount": -100.0
+    },
+    {
+      "date": "2025-09-24",
+      "descriptor": "ZELLE TRANSFER FROM J SMITH",
+      "amount": 250.0
+    },
+    {
+      "date": "2025-09-24",
+      "descriptor": "CVS/PHARMACY #04122",
+      "amount": -22.18
+    },
+    {
+      "date": "2025-09-25",
+      "descriptor": "VERIZON WIRELESS PMT",
+      "amount": -112.04
+    },
+    {
+      "date": "2025-09-26",
+      "descriptor": "DIR DEP HOURLY WAGE STORE 118",
+      "amount": 612.44
+    },
+    {
+      "date": "2025-09-26",
+      "descriptor": "DISNEY PLUS",
+      "amount": -13.99
+    },
+    {
+      "date": "2025-09-27",
+      "descriptor": "SQ *JOES BARBER",
+      "amount": -35.0
+    },
+    {
+      "date": "2025-09-27",
+      "descriptor": "THE HOME DEPOT #6534 NASHVILLE TN",
+      "amount": -176.2
+    },
+    {
+      "date": "2025-09-28",
+      "descriptor": "COSTCO WHSE #1043 SEATTLE WA",
+      "amount": -243.18
+    },
+    {
+      "date": "2025-09-28",
+      "descriptor": "ACH AUTO LOAN TOYOTA FIN SVC",
+      "amount": -389.12
+    },
+    {
+      "date": "2025-09-29",
+      "descriptor": "STRIPE TRANSFER ST-7K2QPLD",
+      "amount": 1340.0
+    },
+    {
+      "date": "2025-09-29",
+      "descriptor": "BCBS HEALTH PREMIUM ACH",
+      "amount": -312.0
+    },
+    {
+      "date": "2025-09-30",
+      "descriptor": "ACH SALARY SEMI-MONTHLY NORTHWIND LLC",
+      "amount": 1640.0
+    },
+    {
+      "date": "2025-09-30",
+      "descriptor": "INTEREST CREDIT",
+      "amount": 0.01
+    },
+    {
+      "date": "2025-09-30",
+      "descriptor": "MTA NYCT PAYGO SUBWAY",
+      "amount": -2.9
+    },
+    {
+      "date": "2025-09-30",
+      "descriptor": "ACH DONATION RED CROSS",
+      "amount": -50.0
+    },
+    {
+      "date": "2025-10-01",
+      "descriptor": "ACH WEB PYMT RIVERSTONE PROPERTY MGMT",
+      "amount": -2150.0
+    },
+    {
+      "date": "2025-10-01",
+      "descriptor": "NYTIMES DIGITAL SUBSCRIPTION",
+      "amount": -17.0
+    },
+    {
+      "date": "2025-10-01",
+      "descriptor": "UNIV OF MINNESOTA TUITION",
+      "amount": -2480.0
+    },
+    {
+      "date": "2025-10-01",
+      "descriptor": "VANGUARD BUY INVESTMENT",
+      "amount": -500.0
+    },
+    {
+      "date": "2025-10-02",
+      "descriptor": "SSA TREAS 310 XXSOC SEC",
+      "amount": 1421.0
+    },
+    {
+      "date": "2025-10-02",
+      "descriptor": "CHEWY.COM",
+      "amount": -68.21
+    },
+    {
+      "date": "2025-10-03",
+      "descriptor": "ACH DEPOSIT ADP PAYROLL",
+      "amount": 2207.12
+    },
+    {
+      "date": "2025-10-03",
+      "descriptor": "PAYCHEX EIB PAYROLL DEP",
+      "amount": 1487.22
+    },
+    {
+      "date": "2025-10-03",
+      "descriptor": "AMC ONLINE 6131 DALLAS TX",
+      "amount": -19.5
+    },
+    {
+      "date": "2025-10-04",
+      "descriptor": "KROGER #0455 ATLANTA GA",
+      "amount": -64.23
+    },
+    {
+      "date": "2025-10-05",
+      "descriptor": "OLIVE GARDEN 00231 PHOENIX AZ",
+      "amount": -64.85
+    },
+    {
+      "date": "2025-10-05",
+      "descriptor": "OVERDRAFT FEE",
+      "amount": -35.0
+    },
+    {
+      "date": "2025-10-06",
+      "descriptor": "LYFT DRIVER PAYOUT",
+      "amount": 142.18
+    },
+    {
+      "date": "2025-10-07",
+      "descriptor": "MERCY CLINIC COPAY",
+      "amount": -40.0
+    },
+    {
+      "date": "2025-10-08",
+      "descriptor": "SQ *TACO STAND BOISE ID",
+      "amount": -13.42
+    },
+    {
+      "date": "2025-10-09",
+      "descriptor": "CITY OF AUSTIN WATER UTIL",
+      "amount": -73.18
+    },
+    {
+      "date": "2025-10-09",
+      "descriptor": "AMAZON.CA*RT4490Q2 OTTAWA ON",
+      "amount": -57.88
+    },
+    {
+      "date": "2025-10-10",
+      "descriptor": "STRIPE *ACME COFFEE",
+      "amount": -5.5
+    },
+    {
+      "date": "2025-10-11",
+      "descriptor": "RETURN CREDIT BESTBUY.COM",
+      "amount": 129.99
+    },
+    {
+      "date": "2025-10-12",
+      "descriptor": "THE DEAD RABBIT BAR NYC",
+      "amount": -47.2
+    },
+    {
+      "date": "2025-10-13",
+      "descriptor": "SHELL OIL 57544288 DENVER CO",
+      "amount": -61.2
+    },
+    {
+      "date": "2025-10-14",
+      "descriptor": "tst* mixed case merchant",
+      "amount": -19.04
+    },
+    {
+      "date": "2025-10-15",
+      "descriptor": "ACH SALARY SEMI-MONTHLY NORTHWIND LLC",
+      "amount": 1640.0
+    },
+    {
+      "date": "2025-10-15",
+      "descriptor": "NETFLIX.COM",
+      "amount": -24.99
+    },
+    {
+      "date": "2025-10-15",
+      "descriptor": "CHASE CREDIT CRD AUTOPAY",
+      "amount": -640.33
+    },
+    {
+      "date": "2025-10-16",
+      "descriptor": "PARKWHIZ PARKING BOSTON MA",
+      "amount": -18.0
+    },
+    {
+      "date": "2025-10-16",
+      "descriptor": "PLANET FITNESS CLUB FEE",
+      "amount": -24.99
+    },
+    {
+      "date": "2025-10-17",
+      "descriptor": "ACH DEPOSIT ADP PAYROLL",
+      "amount": 2184.55
+    },
+    {
+      "date": "2025-10-17",
+      "descriptor": "PACIFIC GAS ELECTRIC",
+      "amount": -98.31
+    },
+    {
+      "date": "2025-10-18",
+      "descriptor": "VENMO CASHOUT",
+      "amount": 75.0
+    },
+    {
+      "date": "2025-10-18",
+      "descriptor": "ADOBE *CREATIVE CLOUD",
+      "amount": -54.99
+    },
+    {
+      "date": "2025-10-19",
+      "descriptor": "WALGREENS #6651 DETROIT MI",
+      "amount": -8.49
+    },
+    {
+      "date": "2025-10-20",
+      "descriptor": "DOORDASH DASHER WEEKLY",
+      "amount": 96.4
+    },
+    {
+      "date": "2025-10-20",
+      "descriptor": "COMCAST XFINITY INTERNET",
+      "amount": -89.99
+    },
+    {
+      "date": "2025-10-20",
+      "descriptor": "GEICO AUTO INS PREMIUM",
+      "amount": -138.5
+    },
+    {
+      "date": "2025-10-21",
+      "descriptor": "QUIKTRIP #112 TULSA OK",
+      "amount": -44.18
+    },
+    {
+      "date": "2025-10-22",
+      "descriptor": "H-E-B #271 AUSTIN TX",
+      "amount": -119.66
+    },
+    {
+      "date": "2025-10-22",
+      "descriptor": "SPOTIFY USA",
+      "amount": -11.99
+    },
+    {
+      "date": "2025-10-24",
+      "descriptor": "DIR DEP HOURLY WAGE STORE 118",
+      "amount": 588.19
+    },
+    {
+      "date": "2025-10-25",
+      "descriptor": "VERIZON WIRELESS PMT",
+      "amount": -112.04
+    },
+    {
+      "date": "2025-10-26",
+      "descriptor": "LOWE'S #1188 PHILADELPHIA PA",
+      "amount": -88.05
+    },
+    {
+      "date": "2025-10-27",
+      "descriptor": "  POS DEBIT CORNER STORE  ",
+      "amount": -7.63
+    },
+    {
+      "date": "2025-10-28",
+      "descriptor": "DOORDASH*WENDYS",
+      "amount": -28.91
+    },
+    {
+      "date": "2025-10-28",
+      "descriptor": "ACH AUTO LOAN TOYOTA FIN SVC",
+      "amount": -389.12
+    },
+    {
+      "date": "2025-10-29",
+      "descriptor": "LEMONADE RENTERS INS",
+      "amount": -14.5
+    },
+    {
+      "date": "2025-10-30",
+      "descriptor": "LOBLAWS #1532 TORONTO ON",
+      "amount": -76.34
+    },
+    {
+      "date": "2025-10-31",
+      "descriptor": "ACH DEPOSIT ADP PAYROLL",
+      "amount": 2199.83
+    },
+    {
+      "date": "2025-10-31",
+      "descriptor": "ACH SALARY SEMI-MONTHLY NORTHWIND LLC",
+      "amount": 1640.0
+    },
+    {
+      "date": "2025-10-31",
+      "descriptor": "INTEREST CREDIT",
+      "amount": 0.04
+    },
+    {
+      "date": "2025-11-01",
+      "descriptor": "FIDELITY RET DISTRIBUTION",
+      "amount": 905.0
+    },
+    {
+      "date": "2025-11-01",
+      "descriptor": "ACH WEB PYMT RIVERSTONE PROPERTY MGMT",
+      "amount": -2150.0
+    },
+    {
+      "date": "2025-11-01",
+      "descriptor": "MONTHLY MAINTENANCE FEE",
+      "amount": -12.0
+    },
+    {
+      "date": "2025-11-02",
+      "descriptor": "TIM HORTONS #4521 CALGARY AB",
+      "amount": -9.84
+    },
+    {
+      "date": "2025-11-03",
+      "descriptor": "INSTACART SHOPPER PAYOUT",
+      "amount": 211.06
+    },
+    {
+      "date": "2025-11-03",
+      "descriptor": "FIDELITY INVST TRANSFER",
+      "amount": -750.0
+    },
+    {
+      "date": "2025-11-04",
+      "descriptor": "PETRO-CANADA 8821 EDMONTON AB",
+      "amount": -52.77
+    },
+    {
+      "date": "2025-11-05",
+      "descriptor": "NORTHWESTERN MUTUAL LIFE PREM",
+      "amount": -67.4
+    },
+    {
+      "date": "2025-11-06",
+      "descriptor": "PUBLIX #1190 MIAMI FL",
+      "amount": -52.4
+    },
+    {
+      "date": "2025-11-07",
+      "descriptor": "SQUARE INC PAYOUT",
+      "amount": 482.55
+    },
+    {
+      "date": "2025-11-08",
+      "descriptor": "LYFT *RIDE SAT 1130AM",
+      "amount": -22.65
+    },
+    {
+      "date": "2025-11-09",
+      "descriptor": "CASH APP*FROM A PATEL",
+      "amount": 40.0
+    },
+    {
+      "date": "2025-11-10",
+      "descriptor": "DELTA AIR 0062213998 ATLANTA GA",
+      "amount": -428.4
+    },
+    {
+      "date": "2025-11-11",
+      "descriptor": "SHOPPERS DRUG MART #1099 VANCOUVER BC",
+      "amount": -19.63
+    },
+    {
+      "date": "2025-11-11",
+      "descriptor": "MARRIOTT BOSTON COPLEY",
+      "amount": -512.77
+    },
+    {
+      "date": "2025-11-12",
+      "descriptor": "ROGERS COMMUNICATIONS TORONTO ON",
+      "amount": -78.55
+    },
+    {
+      "date": "2025-11-12",
+      "descriptor": "HERTZ RENT-A-CAR BOS",
+      "amount": -204.15
+    },
+    {
+      "date": "2025-11-13",
+      "descriptor": "REI #14 PORTLAND OR",
+      "amount": -129.43
+    },
+    {
+      "date": "2025-11-14",
+      "descriptor": "ACH DEPOSIT ADP PAYROLL",
+      "amount": 2184.55
+    },
+    {
+      "date": "2025-11-14",
+      "descriptor": "PAYCHEX EIB PAYROLL DEP",
+      "amount": 1502.1
+    },
+    {
+      "date": "2025-11-15",
+      "descriptor": "UBER EATS SAN DIEGO CA",
+      "amount": -34.07
+    },
+    {
+      "date": "2025-11-15",
+      "descriptor": "CHASE CREDIT CRD AUTOPAY",
+      "amount": -712.08
+    },
+    {
+      "date": "2025-11-16",
+      "descriptor": "CANADIAN TIRE #445 WINNIPEG MB",
+      "amount": -64.99
+    },
+    {
+      "date": "2025-11-16",
+      "descriptor": "PLANET FITNESS CLUB FEE",
+      "amount": -24.99
+    },
+    {
+      "date": "2025-11-17",
+      "descriptor": "ATM WD CIBC 200 BAY ST TORONTO ON",
+      "amount": -80.0
+    },
+    {
+      "date": "2025-11-18",
+      "descriptor": "BRIGHT SMILES DENTAL PC",
+      "amount": -185.0
+    },
+    {
+      "date": "2025-11-19",
+      "descriptor": "WEGMANS FOOD MKTS #84",
+      "amount": -98.77
+    },
+    {
+      "date": "2025-11-20",
+      "descriptor": "OUTSCHOOL CLASS ENROLL",
+      "amount": -39.0
+    },
+    {
+      "date": "2025-11-20",
+      "descriptor": "VERIZON WIRELESS PMT",
+      "amount": -112.04
+    },
+    {
+      "date": "2025-11-21",
+      "descriptor": "DIR DEP HOURLY WAGE STORE 118",
+      "amount": 701.55
+    },
+    {
+      "date": "2025-11-21",
+      "descriptor": "STARBUCKS STORE 04417",
+      "amount": -5.95
+    },
+    {
+      "date": "2025-11-21",
+      "descriptor": "SHELL OIL 11290 DENVER CO",
+      "amount": -52.3
+    },
+    {
+      "date": "2025-11-21",
+      "descriptor": "TRADER JOE'S #455",
+      "amount": -61.77
+    },
+    {
+      "date": "2025-11-21",
+      "descriptor": "AMZN MKTP US*A1B2C3D",
+      "amount": -27.49
+    },
+    {
+      "date": "2025-11-21",
+      "descriptor": "CHIPOTLE 2299 DENVER CO",
+      "amount": -14.86
+    },
+    {
+      "date": "2025-11-21",
+      "descriptor": "REDBOX RENTAL",
+      "amount": -2.49
+    },
+    {
+      "date": "2025-11-22",
+      "descriptor": "PETCO 1841 SAN DIEGO CA",
+      "amount": -36.74
+    },
+    {
+      "date": "2025-11-22",
+      "descriptor": "SPOTIFY USA",
+      "amount": -11.99
+    },
+    {
+      "date": "2025-11-24",
+      "descriptor": "FRENCH BROAD CHOC ASHEVILLE NC",
+      "amount": -16.85
+    },
+    {
+      "date": "2025-11-27",
+      "descriptor": "SOBEYS #4410 HALIFAX NS",
+      "amount": -58.12
+    },
+    {
+      "date": "2025-11-28",
+      "descriptor": "ACH DEPOSIT ADP PAYROLL",
+      "amount": 2243.07
+    },
+    {
+      "date": "2025-11-28",
+      "descriptor": "TGT *TARGET 00012841 4500 N CENTRAL EXPY DALLAS TX US",
+      "amount": -103.55
+    },
+    {
+      "date": "2025-11-29",
+      "descriptor": "TICKETMASTER CONCERT EVT",
+      "amount": -156.0
+    },
+    {
+      "date": "2025-12-01",
+      "descriptor": "ACH WEB PYMT RIVERSTONE PROPERTY MGMT",
+      "amount": -2150.0
+    },
+    {
+      "date": "2025-12-01",
+      "descriptor": "WEALTHSIMPLE INVEST TORONTO ON",
+      "amount": -300.0
+    },
+    {
+      "date": "2025-12-02",
+      "descriptor": "ALDI 64 DES MOINES IA",
+      "amount": -41.09
+    },
+    {
+      "date": "2025-12-03",
+      "descriptor": "RONA #8821 MISSISSAUGA ON",
+      "amount": -112.3
+    },
+    {
+      "date": "2025-12-05",
+      "descriptor": "CANADA CRA GST/HST CREDIT",
+      "amount": 116.25
+    },
+    {
+      "date": "2025-12-07",
+      "descriptor": "PAYPAL *XYZ",
+      "amount": -29.99
+    },
+    {
+      "date": "2025-12-08",
+      "descriptor": "SKIPTHEDISHES CALGARY AB",
+      "amount": -31.55
+    },
+    {
+      "date": "2025-12-09",
+      "descriptor": "BANGOR SAVINGS ATM BANGOR ME",
+      "amount": -60.0
+    },
+    {
+      "date": "2025-12-11",
+      "descriptor": "CHECK 1042",
+      "amount": -325.0
+    },
+    {
+      "date": "2025-12-12",
+      "descriptor": "ACH DEPOSIT ADP PAYROLL",
+      "amount": 2184.55
+    },
+    {
+      "date": "2025-12-12",
+      "descriptor": "GUSTO PAY 8841 DIRECT DEP",
+      "amount": 1944.06
+    },
+    {
+      "date": "2025-12-14",
+      "descriptor": "TESLA SUPERCHARGER FREMONT",
+      "amount": -14.27
+    },
+    {
+      "date": "2025-12-15",
+      "descriptor": "POS PURCHASE",
+      "amount": -18.4
+    },
+    {
+      "date": "2025-12-15",
+      "descriptor": "NETFLIX.COM",
+      "amount": -24.99
+    },
+    {
+      "date": "2025-12-16",
+      "descriptor": "TARGET 00018 MINNEAPOLIS MN",
+      "amount": -77.31
+    },
+    {
+      "date": "2025-12-18",
+      "descriptor": "LCBO #042 TORONTO ON",
+      "amount": -41.27
+    },
+    {
+      "date": "2025-12-20",
+      "descriptor": "INTERAC E-TRF FROM M LEE",
+      "amount": 88.1
+    },
+    {
+      "date": "2025-12-20",
+      "descriptor": "VERIZON WIRELESS PMT",
+      "amount": -112.04
+    },
+    {
+      "date": "2025-12-20",
+      "descriptor": "COMCAST XFINITY INTERNET",
+      "amount": -89.99
+    },
+    {
+      "date": "2025-12-22",
+      "descriptor": "BESTBUY.COM 8841 ONLINE",
+      "amount": -329.99
+    },
+    {
+      "date": "2025-12-24",
+      "descriptor": "PAYPAL *LOCALMASJID",
+      "amount": -100.0
+    },
+    {
+      "date": "2025-12-26",
+      "descriptor": "ACH DEPOSIT ADP PAYROLL",
+      "amount": 2191.44
+    },
+    {
+      "date": "2025-12-27",
+      "descriptor": "REFUND BESTBUY.COM 8841 ONLINE",
+      "amount": 329.99
+    },
+    {
+      "date": "2025-12-28",
+      "descriptor": "KROGER #0455 ATLANTA GA",
+      "amount": -71.55
+    },
+    {
+      "date": "2026-01-01",
+      "descriptor": "ACH WEB PYMT RIVERSTONE PROPERTY MGMT",
+      "amount": -2150.0
+    },
+    {
+      "date": "2026-01-05",
+      "descriptor": "WIRE TRANSFER INCOMING",
+      "amount": 3500.0
+    },
+    {
+      "date": "2026-01-07",
+      "descriptor": "DD/BR #338 PHOENIX AZ",
+      "amount": -7.2
+    },
+    {
+      "date": "2026-01-09",
+      "descriptor": "ACH DEPOSIT ADP PAYROLL",
+      "amount": 2184.55
+    },
+    {
+      "date": "2026-01-09",
+      "descriptor": "STRIPE TRANSFER ST-9M4XZ2A",
+      "amount": 920.18
+    },
+    {
+      "date": "2026-01-11",
+      "descriptor": "WAL-MART #2841 HOUSTON TX",
+      "amount": -103.62
+    },
+    {
+      "date": "2026-01-12",
+      "descriptor": "UBER PARTNER PAYMENT",
+      "amount": 167.92
+    },
+    {
+      "date": "2026-01-14",
+      "descriptor": "ZARA US 0455 NEW YORK NY",
+      "amount": -159.9
+    },
+    {
+      "date": "2026-01-15",
+      "descriptor": "BRIGHT HORIZONS CHILDCARE",
+      "amount": -980.0
+    },
+    {
+      "date": "2026-01-15",
+      "descriptor": "NETFLIX.COM",
+      "amount": -24.99
+    },
+    {
+      "date": "2026-01-15",
+      "descriptor": "CHASE CREDIT CRD AUTOPAY",
+      "amount": -555.21
+    },
+    {
+      "date": "2026-01-16",
+      "descriptor": "PLANET FITNESS CLUB FEE",
+      "amount": -24.99
+    },
+    {
+      "date": "2026-01-18",
+      "descriptor": "ZARA US 0455 NEW YORK NY",
+      "amount": 159.9
+    },
+    {
+      "date": "2026-01-19",
+      "descriptor": "POS DEBIT GROCERY SASKATOON SK",
+      "amount": -38.9
+    },
+    {
+      "date": "2026-01-20",
+      "descriptor": "GEICO AUTO INS PREMIUM",
+      "amount": -138.5
+    },
+    {
+      "date": "2026-01-22",
+      "descriptor": "WESTJET 8385517 VICTORIA BC",
+      "amount": -389.66
+    },
+    {
+      "date": "2026-01-22",
+      "descriptor": "SPOTIFY USA",
+      "amount": -11.99
+    },
+    {
+      "date": "2026-01-23",
+      "descriptor": "ACH DEPOSIT ADP PAYROLL",
+      "amount": 2216.78
+    },
+    {
+      "date": "2026-01-23",
+      "descriptor": "CAFE LONDRES LONDON GB 18.40 GBP",
+      "amount": -23.37
+    },
+    {
+      "date": "2026-01-23",
+      "descriptor": "FOREIGN TRANSACTION FEE",
+      "amount": -0.5
+    },
+    {
+      "date": "2026-01-23",
+      "descriptor": "INTL TRANSACTION FEE",
+      "amount": -0.99
+    },
+    {
+      "date": "2026-01-26",
+      "descriptor": "ST JOHNS NL PARKING AUTH",
+      "amount": -6.0
+    },
+    {
+      "date": "2026-01-28",
+      "descriptor": "ACH AUTO LOAN TOYOTA FIN SVC",
+      "amount": -389.12
+    },
+    {
+      "date": "2026-02-01",
+      "descriptor": "ACH WEB PYMT RIVERSTONE PROPERTY MGMT",
+      "amount": -2150.0
+    },
+    {
+      "date": "2026-02-02",
+      "descriptor": "DEBIT MEMO",
+      "amount": -50.0
+    },
+    {
+      "date": "2026-02-04",
+      "descriptor": "BOZEMAN VET CLINIC MT",
+      "amount": -245.5
+    },
+    {
+      "date": "2026-02-05",
+      "descriptor": "STARBUCKS STORE 09122",
+      "amount": -7.1
+    },
+    {
+      "date": "2026-02-06",
+      "descriptor": "ACH DEPOSIT ADP PAYROLL",
+      "amount": 2184.55
+    },
+    {
+      "date": "2026-02-07",
+      "descriptor": "COSTCO WHSE #1043 SEATTLE WA",
+      "amount": -198.44
+    },
+    {
+      "date": "2026-02-09",
+      "descriptor": "HAMILTON ON TRANSIT HSR",
+      "amount": -3.75
+    },
+    {
+      "date": "2026-02-11",
+      "descriptor": "AMAZON.COM PENDING AUTH",
+      "amount": -64.0
+    },
+    {
+      "date": "2026-02-13",
+      "descriptor": "GUSTO PAY 8841 DIRECT DEP",
+      "amount": 1961.37
+    },
+    {
+      "date": "2026-02-13",
+      "descriptor": "AMZN MKTP US*Q88L21K",
+      "amount": -61.45
+    },
+    {
+      "date": "2026-02-15",
+      "descriptor": "NETFLIX.COM",
+      "amount": -24.99
+    },
+    {
+      "date": "2026-02-16",
+      "descriptor": "MORTGAGE PYMT WELLS FARGO HOME",
+      "amount": -1872.44
+    },
+    {
+      "date": "2026-02-18",
+      "descriptor": "RURAL ROUTE MARKET 59745",
+      "amount": -22.11
+    },
+    {
+      "date": "2026-02-20",
+      "descriptor": "ACH DEPOSIT ADP PAYROLL",
+      "amount": 2184.55
+    },
+    {
+      "date": "2026-02-20",
+      "descriptor": "STARBUCKS STORE 09122",
+      "amount": -6.75
+    },
+    {
+      "date": "2026-02-20",
+      "descriptor": "STARBUCKS STORE 09122",
+      "amount": -6.75
+    },
+    {
+      "date": "2026-02-27",
+      "descriptor": "INTEREST CREDIT",
+      "amount": 0.03
+    },
+    {
+      "date": "2026-02-28",
+      "descriptor": "WHOLE FOODS MKT 10241 NYC",
+      "amount": -73.88
+    },
+    {
+      "date": "2026-02-28",
+      "descriptor": "SHELL OIL 88123 BROOKLYN NY",
+      "amount": -49.1
+    },
+    {
+      "date": "2026-02-28",
+      "descriptor": "ACH AUTO LOAN TOYOTA FIN SVC",
+      "amount": -389.12
+    },
+    {
+      "date": "2026-03-01",
+      "descriptor": "ACH WEB PYMT RIVERSTONE PROPERTY MGMT",
+      "amount": -2150.0
+    },
+    {
+      "date": "2026-03-02",
+      "descriptor": "UBER EATS BOSTON MA",
+      "amount": -29.83
+    },
+    {
+      "date": "2026-03-04",
+      "descriptor": "SHELL OIL 57544288 DENVER CO",
+      "amount": -57.66
+    },
+    {
+      "date": "2026-03-06",
+      "descriptor": "ACH DEPOSIT ADP PAYROLL",
+      "amount": 2230.61
+    },
+    {
+      "date": "2026-03-06",
+      "descriptor": "IRS TREAS 310 TAX REF",
+      "amount": 1188.0
+    }
+  ]
+}

@@ -180,6 +180,14 @@ export async function POST() {
         outliers: txnInputs,
         pfc_primary: null,
         pfc_detailed: null,
+        // v5 — backfill synthesizes historical audit rows for
+        // already-classified subscriptions. We default tier to
+        // discretionary (the engine default); the real tier lives
+        // on the subscription row that this backfill is filling
+        // history under.
+        tier: "discretionary" as const,
+        rescued: false,
+        rescue_reason: null,
       };
       await writeSubscriptionCharges({
         userId: user.id,

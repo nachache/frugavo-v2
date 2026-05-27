@@ -1,0 +1,25 @@
+{
+  "name": "Processor pass-through (Paddle, Stripe, PayPal)",
+  "description": "Charges hidden behind payment processors. The merchant inside the descriptor (after PADDLE.NET*, STRIPE*, PAYPAL *) is what should drive the merchant_key — not the processor.",
+  "as_of": "2026-05-25",
+  "expected": {
+    "min_streams": 2,
+    "must_detect": []
+  },
+  "transactions": [
+    { "date": "2025-12-08", "descriptor": "PADDLE.NET* SUPERWHISP", "amount": -8.49 },
+    { "date": "2026-01-08", "descriptor": "PADDLE.NET* SUPERWHISP", "amount": -8.49 },
+    { "date": "2026-02-08", "descriptor": "PADDLE.NET* SUPERWHISP", "amount": -8.49 },
+    { "date": "2026-03-08", "descriptor": "PADDLE.NET* SUPERWHISP", "amount": -8.49 },
+    { "date": "2026-04-08", "descriptor": "PADDLE.NET* SUPERWHISP", "amount": -8.49 },
+
+    { "date": "2025-12-22", "descriptor": "STRIPE *N8N.IO",         "amount": -20.00 },
+    { "date": "2026-01-22", "descriptor": "STRIPE *N8N.IO",         "amount": -20.00 },
+    { "date": "2026-02-22", "descriptor": "STRIPE *N8N.IO",         "amount": -20.00 },
+    { "date": "2026-03-22", "descriptor": "STRIPE *N8N.IO",         "amount": -20.00 },
+
+    { "date": "2025-12-28", "descriptor": "PAYPAL *PATREON",        "amount": -12.00 },
+    { "date": "2026-01-28", "descriptor": "PAYPAL *PATREON",        "amount": -12.00 },
+    { "date": "2026-02-28", "descriptor": "PAYPAL *PATREON",        "amount": -12.00 }
+  ]
+}

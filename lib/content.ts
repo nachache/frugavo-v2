@@ -13,7 +13,7 @@ export const nav = {
 };
 
 export const hero = {
-  eyebrow: "Sample data shown",
+  eyebrow: "Beta",
   headline: "Your subscription watchdog.",
   stat: "You think you pay $86 in subscriptions. It's really $219.",
   sourceCitation: "Source: C+R Research, 2026",

@@ -1,0 +1,33 @@
+{
+  "name": "Same-day batch billers (property tax, utilities)",
+  "description": "Utility billers post multiple line items on the same day each month. Without collapseSameDayCharges() the median gap = 0 and the merchant gets silently dropped (no_cadence_band). This is the regression that ate 4 of 6 bills on real bank data.",
+  "as_of": "2026-05-25",
+  "expected": {
+    "min_streams": 2,
+    "must_detect": ["Hydro", "Gazifere"]
+  },
+  "transactions": [
+    { "date": "2025-12-15", "descriptor": "HYDRO-QUEBEC",          "amount": -84.20 },
+    { "date": "2025-12-15", "descriptor": "HYDRO-QUEBEC",          "amount": -32.15 },
+    { "date": "2025-12-15", "descriptor": "HYDRO-QUEBEC",          "amount": -18.40 },
+    { "date": "2026-01-15", "descriptor": "HYDRO-QUEBEC",          "amount": -91.50 },
+    { "date": "2026-01-15", "descriptor": "HYDRO-QUEBEC",          "amount": -29.85 },
+    { "date": "2026-01-15", "descriptor": "HYDRO-QUEBEC",          "amount": -17.20 },
+    { "date": "2026-02-15", "descriptor": "HYDRO-QUEBEC",          "amount": -78.30 },
+    { "date": "2026-02-15", "descriptor": "HYDRO-QUEBEC",          "amount": -28.90 },
+    { "date": "2026-02-15", "descriptor": "HYDRO-QUEBEC",          "amount": -16.80 },
+    { "date": "2026-03-15", "descriptor": "HYDRO-QUEBEC",          "amount": -82.60 },
+    { "date": "2026-03-15", "descriptor": "HYDRO-QUEBEC",          "amount": -31.20 },
+    { "date": "2026-03-15", "descriptor": "HYDRO-QUEBEC",          "amount": -18.10 },
+
+    { "date": "2025-12-20", "descriptor": "GAZIFERE INC",          "amount": -42.10 },
+    { "date": "2025-12-20", "descriptor": "GAZIFERE INC",          "amount": -22.50 },
+    { "date": "2025-12-20", "descriptor": "GAZIFERE INC",          "amount": -11.30 },
+    { "date": "2026-01-20", "descriptor": "GAZIFERE INC",          "amount": -48.90 },
+    { "date": "2026-01-20", "descriptor": "GAZIFERE INC",          "amount": -24.10 },
+    { "date": "2026-01-20", "descriptor": "GAZIFERE INC",          "amount": -12.20 },
+    { "date": "2026-02-20", "descriptor": "GAZIFERE INC",          "amount": -45.30 },
+    { "date": "2026-02-20", "descriptor": "GAZIFERE INC",          "amount": -23.40 },
+    { "date": "2026-02-20", "descriptor": "GAZIFERE INC",          "amount": -11.80 }
+  ]
+}

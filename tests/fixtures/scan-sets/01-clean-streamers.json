@@ -1,0 +1,45 @@
+{
+  "name": "Clean monthly streamers",
+  "description": "Five canonical monthly subscriptions, 6 months of history each. Sanity baseline — if this fails, the engine is broken.",
+  "as_of": "2026-05-25",
+  "expected": {
+    "min_streams": 5,
+    "must_detect": ["Netflix", "Spotify", "Disney", "HBO", "Hulu"]
+  },
+  "transactions": [
+    { "date": "2025-12-01", "descriptor": "NETFLIX.COM", "amount": -15.49 },
+    { "date": "2026-01-01", "descriptor": "NETFLIX.COM", "amount": -15.49 },
+    { "date": "2026-02-01", "descriptor": "NETFLIX.COM", "amount": -15.49 },
+    { "date": "2026-03-01", "descriptor": "NETFLIX.COM", "amount": -15.49 },
+    { "date": "2026-04-01", "descriptor": "NETFLIX.COM", "amount": -15.49 },
+    { "date": "2026-05-01", "descriptor": "NETFLIX.COM", "amount": -15.49 },
+
+    { "date": "2025-12-04", "descriptor": "SPOTIFY USA", "amount": -10.99 },
+    { "date": "2026-01-04", "descriptor": "SPOTIFY USA", "amount": -10.99 },
+    { "date": "2026-02-04", "descriptor": "SPOTIFY USA", "amount": -10.99 },
+    { "date": "2026-03-04", "descriptor": "SPOTIFY USA", "amount": -10.99 },
+    { "date": "2026-04-04", "descriptor": "SPOTIFY USA", "amount": -10.99 },
+    { "date": "2026-05-04", "descriptor": "SPOTIFY USA", "amount": -10.99 },
+
+    { "date": "2025-12-09", "descriptor": "DISNEY PLUS", "amount": -13.99 },
+    { "date": "2026-01-09", "descriptor": "DISNEY PLUS", "amount": -13.99 },
+    { "date": "2026-02-09", "descriptor": "DISNEY PLUS", "amount": -13.99 },
+    { "date": "2026-03-09", "descriptor": "DISNEY PLUS", "amount": -13.99 },
+    { "date": "2026-04-09", "descriptor": "DISNEY PLUS", "amount": -13.99 },
+    { "date": "2026-05-09", "descriptor": "DISNEY PLUS", "amount": -13.99 },
+
+    { "date": "2025-12-12", "descriptor": "HBO MAX", "amount": -16.99 },
+    { "date": "2026-01-12", "descriptor": "HBO MAX", "amount": -16.99 },
+    { "date": "2026-02-12", "descriptor": "HBO MAX", "amount": -16.99 },
+    { "date": "2026-03-12", "descriptor": "HBO MAX", "amount": -16.99 },
+    { "date": "2026-04-12", "descriptor": "HBO MAX", "amount": -16.99 },
+    { "date": "2026-05-12", "descriptor": "HBO MAX", "amount": -16.99 },
+
+    { "date": "2025-12-18", "descriptor": "HULU.COM/BILL", "amount": -7.99 },
+    { "date": "2026-01-18", "descriptor": "HULU.COM/BILL", "amount": -7.99 },
+    { "date": "2026-02-18", "descriptor": "HULU.COM/BILL", "amount": -7.99 },
+    { "date": "2026-03-18", "descriptor": "HULU.COM/BILL", "amount": -7.99 },
+    { "date": "2026-04-18", "descriptor": "HULU.COM/BILL", "amount": -7.99 },
+    { "date": "2026-05-18", "descriptor": "HULU.COM/BILL", "amount": -7.99 }
+  ]
+}

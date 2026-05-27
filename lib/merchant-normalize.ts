@@ -353,6 +353,37 @@ export function normalizeDescriptor(rawDescriptor: string): NormalizedMerchant {
 
   const bankFee = findBankFeeIndicator(lowered);
 
+  // ─── Pre-strip catalog lookup (brand-token priority) ────────────
+  //
+  // Processor-prefix stripping (next step) is destructive: "GOOGLE
+  // *STORAGE" reduces to "storage" and the catalog never gets a
+  // chance to see "google storage"; "AMZN MKTP US*M21K78Q" reduces
+  // to noise tokens and the three Amazon variants never group.
+  //
+  // We run the catalog lookup against the un-stripped descriptor
+  // first. If a MERCHANT alias matches (not a biller — billers must
+  // still flow through the strip pipeline so their inner product
+  // gets extracted), we use that merchant and skip stripping. This
+  // is the brand-token-over-positional-token priority fix.
+  const preStrip = lookupByAliases(lowered);
+  if (preStrip.hit && preStrip.hit.kind === "merchant") {
+    return {
+      merchant_name: preStrip.hit.display,
+      category: preStrip.hit.category,
+      biller: null,
+      biller_passthrough: preStrip.biller_passthrough_override === true,
+      domain: preStrip.hit.domains[0] ?? null,
+      catalog_key: preStrip.hit.key,
+      signals: {
+        stripped_prefix: null,
+        stripped_trailing: null,
+        matched_alias: preStrip.matchedAlias,
+        matched_domain: null,
+        bank_fee_indicator: bankFee,
+      },
+    };
+  }
+
   const { cleaned: afterPrefix, stripped: strippedPrefix } = stripPrefix(lowered);
   const { cleaned: afterTrailing, stripped: strippedTrailing } =
     stripTrailing(afterPrefix);
@@ -454,3 +485,41 @@ export function normalizeDescriptor(rawDescriptor: string): NormalizedMerchant {
 // Convenience export for the scan layer + tests.
 export const CATALOG_VERSION = (catalog as { _meta?: { version?: string } })._meta
   ?.version ?? "unknown";
+
+// ─── Subscription-grade category gate ───────────────────────────────
+//
+// A catalog hit proves IDENTITY (we know who this merchant is). It
+// does NOT automatically prove this is a subscription-style charge —
+// the curated `amazon` entry exists so 21 marketplace transactions
+// group as one Amazon stream, but those transactions are retail
+// purchases, not subscription fees. Same logic for food-delivery
+// brands (DoorDash, Uber Eats): catalog hit by brand, but most
+// individual charges are commerce, not the membership fee.
+//
+// "Subscription-grade" means the merchant's category implies that
+// recurring charges from this brand are typically the subscription
+// fee itself: streaming, software, news, cloud storage, education,
+// fitness, gaming, insurance, telecom. The classifier uses this set
+// to decide whether the `isCuratedMerchant` confirm path should
+// unlock for a given stream.
+//
+// Excluded on purpose: "other" (Amazon-style retail), "food_delivery"
+// (DoorDash, Uber Eats — usually purchases, not membership fees).
+const SUBSCRIPTION_GRADE_CATEGORIES = new Set<string>([
+  "streaming",
+  "software",
+  "news",
+  "cloud_storage",
+  "education",
+  "fitness",
+  "gaming",
+  "insurance",
+  "telecom",
+]);
+
+export function isSubscriptionGradeCategory(
+  category: string | null | undefined
+): boolean {
+  if (!category) return false;
+  return SUBSCRIPTION_GRADE_CATEGORIES.has(category);
+}

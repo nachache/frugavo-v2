@@ -76,6 +76,12 @@ export type ClassifyInput = {
   // (rent / vendor / b2b_supply / long_digits). Forwarded to the
   // classifier as extra context but does NOT change the cache key.
   softReviewReason?: string | null;
+  // True iff the canonical identity came from the curated
+  // merchant-catalog.json (deterministic, hand-vetted). Used by the
+  // stricter LLM-confirm gate: a curated identity is sufficient
+  // independent evidence to back an LLM "yes" verdict; an LLM-only
+  // identity (resolver guess) is not.
+  isCuratedMerchant?: boolean;
 };
 
 export type ClassifyDecision = "confirm" | "review" | "reject";
@@ -180,7 +186,15 @@ const DESCRIPTOR_DENY_GROUPS: { name: string; pattern: RegExp }[] = [
   // "loan" pattern moved from hard reject to soft route. Mortgages,
   // car loans, student loans are legitimate recurring_bill candidates.
   { name: "transfer_to_account", pattern: /\bpc\s+to\s+\d/i },
-  { name: "card_payment", pattern: /\b(credit\s*card[^a-z]*payment|automatic\s+payment|auto[\s-]?pay\b|cc\s+payment|card\s+payment|payment\s+received|payment\s+-?\s*thank|thank\s+you[^a-z]*payment)\b/i },
+  // NOTE: "AUTOPAY" / "auto-pay" / "auto pay" was removed from this
+  // pattern. AUTOPAY is the merchant's signal that the user enrolled
+  // their bill in autopay (T-Mobile AUTOPAY, Cox AUTOPAY) — a recurring
+  // obligation, not a credit card payment to exclude. We still hard-
+  // reject literal credit-card-payment language ("credit card payment",
+  // "cc payment", "card payment", "payment received", "thank you for
+  // your payment") because those refer to the user paying off their
+  // own credit card, which is internal money movement.
+  { name: "card_payment", pattern: /\b(credit\s*card[^a-z]*payment|automatic\s+payment|cc\s+payment|card\s+payment|payment\s+received|payment\s+-?\s*thank|thank\s+you[^a-z]*payment)\b/i },
   { name: "bank_internal", pattern: /\b(cd\s+deposit|certificate\s+of\s+deposit|savings\s+transfer|sweep\s+to\s+savings|investment\s+contribution|brokerage\s+transfer|round[\-\s]?up|abm\s+withdrawal|atm\s+withdrawal|bank\s+withdrawal|scotia\s+direct|scotiaconnect|cash\s+sent|cash\s+withdrawal)\b/i },
   { name: "bare_generic", pattern: /^(deposit|transfer|withdrawal|debit|credit)$/i },
   { name: "brokerage",  pattern: /\b(questrade|wealthsimple|td\s+direct|td\s+waterhouse|etrade|e\*trade|schwab|fidelity|vanguard|robinhood|interactive\s+brokers|brokerage)\b/i },
@@ -380,6 +394,86 @@ export type LlmCallback = (input: ClassifyInput) => Promise<LlmClassifyResponse 
 // Trust asymmetry: users forgive missing subscriptions, never fake ones.
 const CLASSIFY_CONFIRM_FLOOR = 0.85;
 
+// ─── Math-decisive confirm thresholds (v4) ──────────────────────────
+//
+// The cadence math + amount stability already prove recurrence for a
+// large class of streams (utilities, loans, insurance, fixed-price
+// subs). Before v4 the LLM could downgrade those to needs_review on a
+// "not a subscription" verdict — wrong, because the LLM's question is
+// about category, not recurrence. v4 introduces two thresholds:
+//
+//   CV_DECISIVE — coefficient of variation below this is mathematically
+//                 certain recurrence (e.g. cv < 0.02 means every charge
+//                 within 2% of the median). Confirmable on math alone.
+//   CV_STABLE   — generous ceiling for "stable enough." Utility bills
+//                 swing 30%+ between summer and winter; we still want
+//                 to confirm them when a recurring_bill signal pairs
+//                 with reasonably stable amounts.
+//
+// These mirror Fix 5 from the spec: confirm requires EITHER a
+// recognized recurring-merchant match (curated catalog) OR near-zero
+// CV. Streams like "Costco Gas" (cv ~0.045, no catalog hit) and
+// "Amazon Marketplace" (cv ~0.087, marketplace not a sub) fail both
+// gates and route to review instead of confirming on cadence luck.
+const CV_DECISIVE = 0.02;
+const CV_STABLE = 0.15;
+
+// PFC tags that mean "this is a recurring bill" (utility / loan /
+// insurance / mortgage / rent). Used by the math-decisive confirm path
+// to whitelist these categories so they don't depend on the LLM saying
+// is_subscription=true. Mirrors Fix 2: utilities + loans + insurance
+// are valid recurring streams even when the LLM thinks "subscription"
+// means streaming services only.
+const RECURRING_BILL_PFC_PRIMARIES = new Set<string>([
+  "RENT_AND_UTILITIES",
+  "LOAN_PAYMENTS",
+]);
+
+// Detailed-PFC substrings that also indicate a recurring bill. Plaid
+// uses these for insurance, telecom, and similar fixed obligations.
+const RECURRING_BILL_PFC_DETAILED_TOKENS = [
+  "INSURANCE",
+  "MORTGAGE",
+  "RENT",
+  "UTILITIES",
+  "TELEPHONE",
+  "INTERNET",
+  "CABLE",
+];
+
+// Descriptor keywords that indicate a recurring bill even when Plaid's
+// PFC tag is missing or wrong. Conservative — avoid generic tokens
+// that overlap with restaurants, retail, etc.
+const RECURRING_BILL_DESCRIPTOR = /\b(electric|electrical|hydro|hydro[\s-]?quebec|gas\s+(co|company|utility)|water\s+(util|board)|sewer|utility|utilities|mortgage|home\s+loan|auto\s+loan|car\s+loan|student\s+loan|loan\s+pmt|loan\s+payment|insurance|premium|wireless\s+pmt|t-?mobile|verizon|at&t|att\s+wireless|cox\s+communications|comcast|xfinity|spectrum|cable\s+co|broadband|internet\s+(svc|service)|isp\s+payment|hoa\s+dues|srp\s+(electric|power)|southwest\s+gas|state\s+farm|geico|allstate|progressive|rocket\s+mortgage|ally\s+auto|childcare|daycare)\b/i;
+
+// Buy-now-pay-later (BNPL) installment plan descriptors. These look
+// like clean recurring streams (fixed cadence, fixed amount) but each
+// installment is tied to a one-time purchase, not a cancellable
+// subscription — the user can't cut Afterpay the way they can cut
+// Netflix. Force these to review so they don't sit in the same
+// bucket as actual subscriptions.
+const BNPL_DESCRIPTOR =
+  /\b(afterpay|klarna|affirm|sezzle|zip\s?pay|quadpay|paypal\s+pay\s+in\s+4|laybuy|installment(s)?|pay\s+in\s+(4|three|four))\b/i;
+
+function isRecurringBillSignal(input: ClassifyInput): boolean {
+  const pfcPrimary = (input.pfcPrimary ?? "").toUpperCase();
+  if (RECURRING_BILL_PFC_PRIMARIES.has(pfcPrimary)) return true;
+  const pfcDetailed = (input.pfcDetailed ?? "").toUpperCase();
+  for (const tok of RECURRING_BILL_PFC_DETAILED_TOKENS) {
+    if (pfcDetailed.includes(tok)) return true;
+  }
+  const text = `${input.merchantName ?? ""} ${input.descriptor ?? ""}`;
+  return RECURRING_BILL_DESCRIPTOR.test(text);
+}
+
+// Stand-alone CV computation for the classifier's confirm path. The
+// existing Gate B also computes CV but its result is shadow-only; this
+// is the decision-grade value.
+function classifierCv(recent?: number[]): number | null {
+  if (!recent || recent.length < 2) return null;
+  return coefficientOfVariation(recent);
+}
+
 export async function classifyStream(
   input: ClassifyInput,
   llm?: LlmCallback
@@ -415,6 +509,87 @@ export async function classifyStream(
       classification: "needs_review",
       score: b.score,
       signals: [...shadowSignals, "charity_override"],
+    };
+  }
+
+  // ─── Math-decisive confirm path (v4) ────────────────────────────
+  //
+  // The cadence math has already proven recurrence by the time we
+  // reach this point. The decision left is "is the recurrence
+  // genuine?" The LLM is the right tool for that ONLY when amount
+  // stability is ambiguous. When the math is decisive — very low CV
+  // or a clear recurring-bill signal with stable amounts — trust the
+  // math and confirm without bothering the LLM.
+  //
+  // Fix 1: protects SRP / Southwest Gas / Mesa Water / Cox /
+  //        Rocket Mortgage / Ally / State Farm from getting
+  //        downgraded when the LLM answers "not a subscription"
+  //        based on a narrow streaming-only mental model.
+  // Fix 2: utilities + loans + insurance are confirmable when
+  //        cv is reasonably stable, regardless of LLM.
+  const cv = classifierCv(input.recentChargeCents);
+  const chargeCount = input.recentChargeCents?.length ?? 0;
+  const cvDecisive = cv !== null && cv < CV_DECISIVE;
+  const cvStable = cv !== null && cv < CV_STABLE;
+  const isCurated = input.isCuratedMerchant === true;
+  const isRecurringBill = isRecurringBillSignal(input);
+
+  // BNPL force-review. Afterpay / Klarna / Affirm / Sezzle look like
+  // textbook recurring streams (fixed cadence, fixed amount) but
+  // they're installment plans tied to a one-time purchase, not
+  // cancellable subscriptions. Surface them so the user sees them,
+  // never auto-confirm — they don't belong in the "what can I cut"
+  // bucket.
+  if (BNPL_DESCRIPTOR.test(text)) {
+    return {
+      decision: "review",
+      classification: "needs_review",
+      score: b.score,
+      signals: [...shadowSignals, "bnpl_installment_review"],
+    };
+  }
+
+  // cvDecisive auto-confirm requires at least 3 charges. Two
+  // near-identical fares 30 days apart (e.g. Lyft rides at $14.50 and
+  // $14.65) hit cv<0.02 by coincidence — with only 2 data points
+  // we can't tell a coincidence from a real subscription. ≥3 charges
+  // is the floor for treating low CV as decisive evidence.
+  const CV_DECISIVE_MIN_CHARGES = 3;
+  if (cvDecisive && chargeCount >= CV_DECISIVE_MIN_CHARGES) {
+    return {
+      decision: "confirm",
+      classification: "confirmed",
+      score: b.score,
+      signals: [
+        ...shadowSignals,
+        "math_confirmed:cv_decisive",
+        `cv:${cv!.toFixed(3)}`,
+        `n:${chargeCount}`,
+      ],
+    };
+  }
+  if (isRecurringBill && cvStable) {
+    return {
+      decision: "confirm",
+      classification: "confirmed",
+      score: b.score,
+      signals: [
+        ...shadowSignals,
+        "math_confirmed:recurring_bill",
+        `cv:${cv!.toFixed(3)}`,
+      ],
+    };
+  }
+  if (isCurated && cvStable) {
+    return {
+      decision: "confirm",
+      classification: "confirmed",
+      score: b.score,
+      signals: [
+        ...shadowSignals,
+        "math_confirmed:curated_stable",
+        `cv:${cv!.toFixed(3)}`,
+      ],
     };
   }
 
@@ -466,11 +641,62 @@ export async function classifyStream(
   const confSignal = `llm_conf:${conf.toFixed(2)}`;
 
   if (isSub && conf >= CLASSIFY_CONFIRM_FLOOR) {
+    // v5 — tightened independent-signal requirement. The LLM saying
+    // "yes" with high confidence still isn't enough on its own; we
+    // now also reject the case where amount variance is too high for
+    // a subscription-grade catalog merchant. Conditions:
+    //
+    //   • curated subscription-grade merchant AND (1 charge OR
+    //     stable cv) — single-hit registry rescues confirm (cv null)
+    //     and multi-hit stable amounts confirm. Multi-hit with high
+    //     amount variance (Amazon Prime $117–$237 from product
+    //     purchases bleeding into the membership stream) routes to
+    //     review instead.
+    //   • mathematically decisive recurrence AND ≥3 charges — kills
+    //     2-fare coincidences (Lyft case) while preserving real
+    //     low-cv streams (Netflix, Spotify) at any reasonable history.
+    //   • recurring_bill descriptor pattern + stable cv — covers
+    //     utilities, loans, insurance, mortgage payments.
+    //
+    // This kills the four false positives from transactions2:
+    //   - Amazon (catalog "other", isCurated=false) → no signal
+    //   - Amazon Prime (catalog streaming, isCurated=true but
+    //     cvStable=false at cv 0.20) → no signal
+    //   - Lyft (isCurated=false, cvDecisive but len=2) → no signal
+    //   - Costco Gas / Amazon Marketplace pattern from earlier work
+    //     remains gated as before.
+    const hasIndependentSignal =
+      (isCurated && (cv === null || cvStable)) ||
+      (cvDecisive && chargeCount >= CV_DECISIVE_MIN_CHARGES) ||
+      (isRecurringBill && cvStable);
+    if (hasIndependentSignal) {
+      return {
+        decision: "confirm",
+        classification: "confirmed",
+        score: b.score,
+        signals: [
+          ...shadowSignals,
+          "llm_confirmed",
+          confSignal,
+          tierSignal,
+          reasonSignal,
+          cv !== null ? `cv:${cv.toFixed(3)}` : "cv:na",
+        ],
+        llm: llmResp,
+      };
+    }
     return {
-      decision: "confirm",
-      classification: "confirmed",
+      decision: "review",
+      classification: "needs_review",
       score: b.score,
-      signals: [...shadowSignals, "llm_confirmed", confSignal, tierSignal, reasonSignal],
+      signals: [
+        ...shadowSignals,
+        "llm_yes_no_independent_signal",
+        confSignal,
+        tierSignal,
+        reasonSignal,
+        cv !== null ? `cv:${cv.toFixed(3)}` : "cv:na",
+      ],
       llm: llmResp,
     };
   }

@@ -100,7 +100,7 @@ export function InboxDemo() {
             <span className="text-[13px] font-medium text-brand">Live demo</span>
             <span className="inline-flex items-center gap-1.5 rounded-full border border-hairline bg-white px-2.5 py-1 text-[11px] font-medium text-ink-body">
               <span className="h-1.5 w-1.5 rounded-full bg-accent" />
-              Sample data · Pre-launch preview
+              Sample data · Beta
             </span>
           </div>
           <h2 className="mt-2 text-[40px] md:text-[56px] font-display font-bold tracking-[-0.03em] leading-[1.05] text-ink">

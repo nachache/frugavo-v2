@@ -1,0 +1,28 @@
+{
+  "name": "Restaurants, groceries, gas — should NOT detect",
+  "description": "Non-subscription transactions that happen frequently. The detector may form streams; the classifier MUST reject them (no recurring identity beyond raw frequency).",
+  "as_of": "2026-05-25",
+  "expected": {
+    "min_streams": 0,
+    "must_detect": []
+  },
+  "transactions": [
+    { "date": "2026-01-05", "descriptor": "STARBUCKS #4421",        "amount": -6.45 },
+    { "date": "2026-01-12", "descriptor": "STARBUCKS #4421",        "amount": -7.10 },
+    { "date": "2026-01-19", "descriptor": "STARBUCKS #2218",        "amount": -5.95 },
+    { "date": "2026-01-26", "descriptor": "STARBUCKS #4421",        "amount": -8.25 },
+    { "date": "2026-02-02", "descriptor": "STARBUCKS #4421",        "amount": -6.85 },
+    { "date": "2026-02-09", "descriptor": "STARBUCKS #4421",        "amount": -7.40 },
+
+    { "date": "2026-01-03", "descriptor": "SHELL STATION 1108",     "amount": -52.40 },
+    { "date": "2026-01-17", "descriptor": "SHELL STATION 0921",     "amount": -48.10 },
+    { "date": "2026-01-31", "descriptor": "SHELL STATION 1108",     "amount": -55.80 },
+    { "date": "2026-02-14", "descriptor": "SHELL STATION 0921",     "amount": -49.20 },
+    { "date": "2026-02-28", "descriptor": "SHELL STATION 1108",     "amount": -53.40 },
+
+    { "date": "2026-01-08", "descriptor": "WHOLE FOODS MARKET",     "amount": -84.20 },
+    { "date": "2026-01-22", "descriptor": "WHOLE FOODS MARKET",     "amount": -91.30 },
+    { "date": "2026-02-05", "descriptor": "WHOLE FOODS MARKET",     "amount": -77.50 },
+    { "date": "2026-02-19", "descriptor": "WHOLE FOODS MARKET",     "amount": -88.40 }
+  ]
+}

@@ -1,0 +1,24 @@
+{
+  "name": "Descriptor drift across months",
+  "description": "Same merchant posts under multiple raw descriptors. Engine must collapse via merchant_key into one stream.",
+  "as_of": "2026-05-25",
+  "expected": {
+    "min_streams": 2,
+    "must_detect": ["Apple", "Adobe"]
+  },
+  "transactions": [
+    { "date": "2025-12-03", "descriptor": "APPLE.COM/BILL",        "amount": -2.99 },
+    { "date": "2026-01-03", "descriptor": "APPLE.COM/BILL 800-275",  "amount": -2.99 },
+    { "date": "2026-02-03", "descriptor": "Apple Services",          "amount": -2.99 },
+    { "date": "2026-03-03", "descriptor": "APPLE.COM/BILL CA",       "amount": -2.99 },
+    { "date": "2026-04-03", "descriptor": "Apple.com/bill #44218",   "amount": -2.99 },
+    { "date": "2026-05-03", "descriptor": "APPLE COM BILL 800275",   "amount": -2.99 },
+
+    { "date": "2025-12-15", "descriptor": "ADOBE   *CREATIVE CLD",   "amount": -54.99 },
+    { "date": "2026-01-15", "descriptor": "ADOBE *CREATIVECLOUD",    "amount": -54.99 },
+    { "date": "2026-02-15", "descriptor": "ADOBE CREATIVE CLOUD",    "amount": -54.99 },
+    { "date": "2026-03-15", "descriptor": "Adobe Inc",               "amount": -54.99 },
+    { "date": "2026-04-15", "descriptor": "ADOBE *INC SAN JOSE",     "amount": -54.99 },
+    { "date": "2026-05-15", "descriptor": "ADOBE.COM/CC",            "amount": -54.99 }
+  ]
+}

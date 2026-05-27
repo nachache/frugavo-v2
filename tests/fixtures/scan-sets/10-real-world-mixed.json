@@ -1,0 +1,54 @@
+{
+  "name": "Realistic 6-month statement — mixed signal",
+  "description": "Closest thing to a real bank export: subscriptions, restaurants, utilities, transfers, one-off purchases, and the same merchant under multiple descriptors. Validates the whole pipeline end-to-end.",
+  "as_of": "2026-05-25",
+  "expected": {
+    "min_streams": 5,
+    "must_detect": ["Netflix", "Spotify", "iCloud", "Audible", "Verizon"]
+  },
+  "transactions": [
+    { "date": "2025-12-01", "descriptor": "NETFLIX.COM",            "amount": -15.49 },
+    { "date": "2026-01-01", "descriptor": "NETFLIX.COM",            "amount": -15.49 },
+    { "date": "2026-02-01", "descriptor": "NETFLIX.COM",            "amount": -15.49 },
+    { "date": "2026-03-01", "descriptor": "NETFLIX.COM",            "amount": -15.49 },
+    { "date": "2026-04-01", "descriptor": "NETFLIX.COM",            "amount": -15.49 },
+
+    { "date": "2025-12-04", "descriptor": "Spotify USA Inc",        "amount": -10.99 },
+    { "date": "2026-01-04", "descriptor": "SPOTIFY USA",            "amount": -10.99 },
+    { "date": "2026-02-04", "descriptor": "SPOTIFY USA INC",        "amount": -10.99 },
+    { "date": "2026-03-04", "descriptor": "SPOTIFY USA",            "amount": -10.99 },
+    { "date": "2026-04-04", "descriptor": "SPOTIFY USA",            "amount": -10.99 },
+
+    { "date": "2025-12-07", "descriptor": "APPLE.COM/BILL",         "amount": -2.99 },
+    { "date": "2026-01-07", "descriptor": "APPLE.COM/BILL 800-275", "amount": -2.99 },
+    { "date": "2026-02-07", "descriptor": "Apple iCloud",           "amount": -2.99 },
+    { "date": "2026-03-07", "descriptor": "APPLE.COM/BILL",         "amount": -2.99 },
+    { "date": "2026-04-07", "descriptor": "APPLE.COM/BILL",         "amount": -2.99 },
+
+    { "date": "2025-12-11", "descriptor": "AUDIBLE*WK4221",         "amount": -14.95 },
+    { "date": "2026-01-11", "descriptor": "AUDIBLE*88291",          "amount": -14.95 },
+    { "date": "2026-02-11", "descriptor": "AUDIBLE.COM/BILL",       "amount": -14.95 },
+    { "date": "2026-03-11", "descriptor": "AUDIBLE*KQ221",          "amount": -14.95 },
+
+    { "date": "2025-12-22", "descriptor": "VERIZON WIRELESS PMT",   "amount": -84.50 },
+    { "date": "2026-01-22", "descriptor": "VERIZON WIRELESS PMT",   "amount": -84.50 },
+    { "date": "2026-02-22", "descriptor": "VERIZON WIRELESS",       "amount": -84.50 },
+    { "date": "2026-03-22", "descriptor": "VERIZON WIRELESS PMT",   "amount": -84.50 },
+
+    { "date": "2025-12-05", "descriptor": "TRADER JOE'S #421",      "amount": -68.40 },
+    { "date": "2025-12-19", "descriptor": "TRADER JOE'S #421",      "amount": -72.10 },
+    { "date": "2026-01-09", "descriptor": "TRADER JOE'S #421",      "amount": -84.20 },
+    { "date": "2026-01-23", "descriptor": "TRADER JOE'S #421",      "amount": -76.80 },
+    { "date": "2026-02-06", "descriptor": "TRADER JOE'S #421",      "amount": -71.90 },
+    { "date": "2026-02-20", "descriptor": "TRADER JOE'S #421",      "amount": -82.50 },
+    { "date": "2026-03-06", "descriptor": "TRADER JOE'S #421",      "amount": -77.30 },
+
+    { "date": "2026-01-14", "descriptor": "AMAZON.COM*4Q21P",       "amount": -45.99 },
+    { "date": "2026-02-08", "descriptor": "AMAZON.COM*KK888",       "amount": -129.00 },
+    { "date": "2026-03-18", "descriptor": "AMAZON.COM*1RX22",       "amount": -22.40 },
+
+    { "date": "2025-12-15", "descriptor": "TRANSFER TO SAVINGS",    "amount": -1000.00, "pfc_primary": "TRANSFER_OUT", "pfc_detailed": "TRANSFER_OUT_ACCOUNT_TRANSFER" },
+    { "date": "2026-01-15", "descriptor": "TRANSFER TO SAVINGS",    "amount": -1000.00, "pfc_primary": "TRANSFER_OUT", "pfc_detailed": "TRANSFER_OUT_ACCOUNT_TRANSFER" },
+    { "date": "2026-02-15", "descriptor": "TRANSFER TO SAVINGS",    "amount": -1000.00, "pfc_primary": "TRANSFER_OUT", "pfc_detailed": "TRANSFER_OUT_ACCOUNT_TRANSFER" }
+  ]
+}

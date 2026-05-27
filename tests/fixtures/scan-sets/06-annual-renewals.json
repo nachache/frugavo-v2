@@ -1,0 +1,20 @@
+{
+  "name": "Annual renewals (2 charges, ~365 days apart)",
+  "description": "Annual subscriptions only post twice in 2 years. Engine must accept ANNUALLY band at min_occurrences=2.",
+  "as_of": "2026-05-25",
+  "expected": {
+    "min_streams": 2,
+    "must_detect": ["1Password", "Squarespace"]
+  },
+  "transactions": [
+    { "date": "2024-06-12", "descriptor": "1PASSWORD",            "amount": -59.88 },
+    { "date": "2025-06-12", "descriptor": "1Password",            "amount": -59.88 },
+    { "date": "2026-05-15", "descriptor": "1Password.com",        "amount": -59.88 },
+
+    { "date": "2024-03-04", "descriptor": "SQUARESPACE INC",      "amount": -216.00 },
+    { "date": "2025-03-04", "descriptor": "SQUARESPACE INC.",     "amount": -216.00 },
+
+    { "date": "2025-09-10", "descriptor": "NYTIMES *NYTIMES",     "amount": -25.00 },
+    { "date": "2026-03-10", "descriptor": "NYTIMES *NYTIMES",     "amount": -25.00 }
+  ]
+}

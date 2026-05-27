@@ -1,0 +1,903 @@
+{
+  "name": "AZ Family of 5 \u2014 3-Month Statement",
+  "description": "Synthetic bank transactions for a 5-person Mesa, AZ household (Feb\u2013Apr 2026). Tests recurring-stream detection across subscriptions, utilities, and fixed loans amid noisy groceries/dining/retail.",
+  "as_of": "2026-05-25",
+  "expected": {
+    "min_streams": 16,
+    "must_detect": [
+      "Netflix",
+      "Spotify",
+      "Disney Plus",
+      "Amazon Prime",
+      "YouTube Premium",
+      "EOS Fitness",
+      "iCloud",
+      "Chegg",
+      "SRP Electric",
+      "Southwest Gas",
+      "City of Mesa Water",
+      "Cox",
+      "T-Mobile",
+      "Rocket Mortgage",
+      "State Farm",
+      "Ally Auto"
+    ]
+  },
+  "transactions": [
+    {
+      "date": "2026-02-01",
+      "descriptor": "NETFLIX.COM",
+      "amount": -24.99
+    },
+    {
+      "date": "2026-02-01",
+      "descriptor": "ROCKET MORTGAGE PMT",
+      "amount": -2150.0
+    },
+    {
+      "date": "2026-02-02",
+      "descriptor": "EOS FITNESS MEMBERSHIP",
+      "amount": -49.98
+    },
+    {
+      "date": "2026-02-02",
+      "descriptor": "TRADER JOES #281",
+      "amount": -132.05
+    },
+    {
+      "date": "2026-02-02",
+      "descriptor": "TARGET #1462 MESA",
+      "amount": -125.69
+    },
+    {
+      "date": "2026-02-02",
+      "descriptor": "TARGET #1462 MESA",
+      "amount": -100.79
+    },
+    {
+      "date": "2026-02-02",
+      "descriptor": "AMAZON.COM*MKTPL",
+      "amount": -75.72
+    },
+    {
+      "date": "2026-02-03",
+      "descriptor": "SRP ELECTRIC ONLINE PMT",
+      "amount": -168.85
+    },
+    {
+      "date": "2026-02-03",
+      "descriptor": "AMAZON.COM*MKTPL",
+      "amount": -114.63
+    },
+    {
+      "date": "2026-02-04",
+      "descriptor": "SOUTHWEST GAS WEB PMT",
+      "amount": -44.76
+    },
+    {
+      "date": "2026-02-04",
+      "descriptor": "WALMART SUPERCENTER",
+      "amount": -57.44
+    },
+    {
+      "date": "2026-02-05",
+      "descriptor": "SPOTIFY USA",
+      "amount": -16.99
+    },
+    {
+      "date": "2026-02-05",
+      "descriptor": "OLD NAVY #5521",
+      "amount": -57.1
+    },
+    {
+      "date": "2026-02-06",
+      "descriptor": "DIRECT DEP DESERT VALLEY MED PAYROLL",
+      "amount": 2458.7
+    },
+    {
+      "date": "2026-02-06",
+      "descriptor": "ALLY AUTO LOAN PMT",
+      "amount": -489.0
+    },
+    {
+      "date": "2026-02-06",
+      "descriptor": "SHELL OIL CHANDLER",
+      "amount": -59.47
+    },
+    {
+      "date": "2026-02-07",
+      "descriptor": "DIRECT DEP MARICOPA CO SCHOOLS PAY",
+      "amount": 1853.5
+    },
+    {
+      "date": "2026-02-08",
+      "descriptor": "DISNEY PLUS",
+      "amount": -15.99
+    },
+    {
+      "date": "2026-02-08",
+      "descriptor": "SPROUTS FARMERS MKT",
+      "amount": -235.1
+    },
+    {
+      "date": "2026-02-08",
+      "descriptor": "CHICK-FIL-A #02817",
+      "amount": -14.68
+    },
+    {
+      "date": "2026-02-08",
+      "descriptor": "CHICK-FIL-A #02817",
+      "amount": -34.37
+    },
+    {
+      "date": "2026-02-08",
+      "descriptor": "PETSMART #1140",
+      "amount": -30.22
+    },
+    {
+      "date": "2026-02-09",
+      "descriptor": "MARICOPA CO SCHOOL LUNCH",
+      "amount": -22.38
+    },
+    {
+      "date": "2026-02-10",
+      "descriptor": "CITY OF MESA WATER UTIL",
+      "amount": -100.1
+    },
+    {
+      "date": "2026-02-10",
+      "descriptor": "TRADER JOES #281",
+      "amount": -163.23
+    },
+    {
+      "date": "2026-02-11",
+      "descriptor": "SPROUTS FARMERS MKT",
+      "amount": -72.47
+    },
+    {
+      "date": "2026-02-11",
+      "descriptor": "YMCA EAST VALLEY",
+      "amount": -65.97
+    },
+    {
+      "date": "2026-02-12",
+      "descriptor": "AMAZON PRIME MEMBERSHIP",
+      "amount": -14.99
+    },
+    {
+      "date": "2026-02-12",
+      "descriptor": "COSTCO WHSE #1019 TEMPE",
+      "amount": -93.85
+    },
+    {
+      "date": "2026-02-13",
+      "descriptor": "FRYS FOOD #0421 MESA",
+      "amount": -112.36
+    },
+    {
+      "date": "2026-02-13",
+      "descriptor": "SHELL OIL CHANDLER",
+      "amount": -59.45
+    },
+    {
+      "date": "2026-02-13",
+      "descriptor": "PANDA EXPRESS #1882",
+      "amount": -42.17
+    },
+    {
+      "date": "2026-02-14",
+      "descriptor": "COX COMMUNICATIONS INTERNET",
+      "amount": -99.99
+    },
+    {
+      "date": "2026-02-14",
+      "descriptor": "GREAT CLIPS #4420",
+      "amount": -18.53
+    },
+    {
+      "date": "2026-02-15",
+      "descriptor": "YOUTUBE PREMIUM GOOGLE",
+      "amount": -22.99
+    },
+    {
+      "date": "2026-02-15",
+      "descriptor": "COSTCO GAS TEMPE",
+      "amount": -72.96
+    },
+    {
+      "date": "2026-02-16",
+      "descriptor": "T-MOBILE AUTOPAY",
+      "amount": -185.0
+    },
+    {
+      "date": "2026-02-16",
+      "descriptor": "CHICK-FIL-A #02817",
+      "amount": -84.28
+    },
+    {
+      "date": "2026-02-16",
+      "descriptor": "PEI WEI ASIAN",
+      "amount": -28.67
+    },
+    {
+      "date": "2026-02-17",
+      "descriptor": "DOMINOS PIZZA #6610",
+      "amount": -17.44
+    },
+    {
+      "date": "2026-02-17",
+      "descriptor": "THE HOME DEPOT #0463",
+      "amount": -20.65
+    },
+    {
+      "date": "2026-02-17",
+      "descriptor": "AMAZON.COM*MKTPL",
+      "amount": -141.4
+    },
+    {
+      "date": "2026-02-18",
+      "descriptor": "ICLOUD+ APPLE.COM/BILL",
+      "amount": -2.99
+    },
+    {
+      "date": "2026-02-18",
+      "descriptor": "PEI WEI ASIAN",
+      "amount": -18.01
+    },
+    {
+      "date": "2026-02-18",
+      "descriptor": "FILIBERTOS MEXICAN",
+      "amount": -63.61
+    },
+    {
+      "date": "2026-02-19",
+      "descriptor": "FILIBERTOS MEXICAN",
+      "amount": -53.9
+    },
+    {
+      "date": "2026-02-19",
+      "descriptor": "OLD NAVY #5521",
+      "amount": -100.0
+    },
+    {
+      "date": "2026-02-20",
+      "descriptor": "DIRECT DEP DESERT VALLEY MED PAYROLL",
+      "amount": 2396.75
+    },
+    {
+      "date": "2026-02-21",
+      "descriptor": "DIRECT DEP MARICOPA CO SCHOOLS PAY",
+      "amount": 1881.25
+    },
+    {
+      "date": "2026-02-22",
+      "descriptor": "CHEGG STUDY SUBSCRIPTION",
+      "amount": -19.95
+    },
+    {
+      "date": "2026-02-23",
+      "descriptor": "FRYS FOOD #0421 MESA",
+      "amount": -50.98
+    },
+    {
+      "date": "2026-02-24",
+      "descriptor": "ZELLE TO J MARTINEZ",
+      "amount": -150.0
+    },
+    {
+      "date": "2026-02-25",
+      "descriptor": "STATE FARM AUTO INS",
+      "amount": -212.45
+    },
+    {
+      "date": "2026-02-25",
+      "descriptor": "SPROUTS FARMERS MKT",
+      "amount": -62.03
+    },
+    {
+      "date": "2026-02-27",
+      "descriptor": "STARBUCKS #7724",
+      "amount": -26.68
+    },
+    {
+      "date": "2026-02-28",
+      "descriptor": "SPROUTS FARMERS MKT",
+      "amount": -155.16
+    },
+    {
+      "date": "2026-02-28",
+      "descriptor": "SAFEWAY #1573 GILBERT",
+      "amount": -211.83
+    },
+    {
+      "date": "2026-02-28",
+      "descriptor": "CIRCLE K #4471",
+      "amount": -43.5
+    },
+    {
+      "date": "2026-02-28",
+      "descriptor": "CIRCLE K #4471",
+      "amount": -62.49
+    },
+    {
+      "date": "2026-02-28",
+      "descriptor": "DUTCH BROS COFFEE",
+      "amount": -83.22
+    },
+    {
+      "date": "2026-02-28",
+      "descriptor": "GREAT CLIPS #4420",
+      "amount": -55.43
+    },
+    {
+      "date": "2026-03-01",
+      "descriptor": "NETFLIX.COM",
+      "amount": -24.99
+    },
+    {
+      "date": "2026-03-01",
+      "descriptor": "ROCKET MORTGAGE PMT",
+      "amount": -2150.0
+    },
+    {
+      "date": "2026-03-02",
+      "descriptor": "EOS FITNESS MEMBERSHIP",
+      "amount": -49.98
+    },
+    {
+      "date": "2026-03-02",
+      "descriptor": "SPROUTS FARMERS MKT",
+      "amount": -120.63
+    },
+    {
+      "date": "2026-03-02",
+      "descriptor": "CHICK-FIL-A #02817",
+      "amount": -12.73
+    },
+    {
+      "date": "2026-03-03",
+      "descriptor": "SRP ELECTRIC ONLINE PMT",
+      "amount": -244.02
+    },
+    {
+      "date": "2026-03-03",
+      "descriptor": "IN-N-OUT BURGER",
+      "amount": -25.86
+    },
+    {
+      "date": "2026-03-03",
+      "descriptor": "FILIBERTOS MEXICAN",
+      "amount": -29.72
+    },
+    {
+      "date": "2026-03-04",
+      "descriptor": "SOUTHWEST GAS WEB PMT",
+      "amount": -45.49
+    },
+    {
+      "date": "2026-03-04",
+      "descriptor": "DUTCH BROS COFFEE",
+      "amount": -35.64
+    },
+    {
+      "date": "2026-03-05",
+      "descriptor": "SPOTIFY USA",
+      "amount": -16.99
+    },
+    {
+      "date": "2026-03-06",
+      "descriptor": "DIRECT DEP DESERT VALLEY MED PAYROLL",
+      "amount": 2475.2
+    },
+    {
+      "date": "2026-03-06",
+      "descriptor": "ALLY AUTO LOAN PMT",
+      "amount": -489.0
+    },
+    {
+      "date": "2026-03-06",
+      "descriptor": "SHELL OIL CHANDLER",
+      "amount": -38.12
+    },
+    {
+      "date": "2026-03-06",
+      "descriptor": "AMC THEATRES MESA",
+      "amount": -59.13
+    },
+    {
+      "date": "2026-03-07",
+      "descriptor": "DIRECT DEP MARICOPA CO SCHOOLS PAY",
+      "amount": 1944.74
+    },
+    {
+      "date": "2026-03-07",
+      "descriptor": "TRADER JOES #281",
+      "amount": -94.33
+    },
+    {
+      "date": "2026-03-07",
+      "descriptor": "WALGREENS #6612",
+      "amount": -32.13
+    },
+    {
+      "date": "2026-03-08",
+      "descriptor": "DISNEY PLUS",
+      "amount": -15.99
+    },
+    {
+      "date": "2026-03-09",
+      "descriptor": "WALMART SUPERCENTER",
+      "amount": -166.59
+    },
+    {
+      "date": "2026-03-10",
+      "descriptor": "CITY OF MESA WATER UTIL",
+      "amount": -98.04
+    },
+    {
+      "date": "2026-03-10",
+      "descriptor": "HOBBY LOBBY #421",
+      "amount": -60.06
+    },
+    {
+      "date": "2026-03-11",
+      "descriptor": "CIRCLE K #4471",
+      "amount": -48.57
+    },
+    {
+      "date": "2026-03-12",
+      "descriptor": "AMAZON PRIME MEMBERSHIP",
+      "amount": -14.99
+    },
+    {
+      "date": "2026-03-12",
+      "descriptor": "SAFEWAY #1573 GILBERT",
+      "amount": -114.56
+    },
+    {
+      "date": "2026-03-12",
+      "descriptor": "AMAZON.COM*MKTPL",
+      "amount": -145.65
+    },
+    {
+      "date": "2026-03-12",
+      "descriptor": "VENMO PAYMENT",
+      "amount": -65.0
+    },
+    {
+      "date": "2026-03-13",
+      "descriptor": "SPROUTS FARMERS MKT",
+      "amount": -235.95
+    },
+    {
+      "date": "2026-03-13",
+      "descriptor": "THE HOME DEPOT #0463",
+      "amount": -114.1
+    },
+    {
+      "date": "2026-03-14",
+      "descriptor": "COX COMMUNICATIONS INTERNET",
+      "amount": -99.99
+    },
+    {
+      "date": "2026-03-14",
+      "descriptor": "DOMINOS PIZZA #6610",
+      "amount": -75.38
+    },
+    {
+      "date": "2026-03-14",
+      "descriptor": "MARICOPA CO SCHOOL LUNCH",
+      "amount": -23.95
+    },
+    {
+      "date": "2026-03-15",
+      "descriptor": "YOUTUBE PREMIUM GOOGLE",
+      "amount": -22.99
+    },
+    {
+      "date": "2026-03-16",
+      "descriptor": "T-MOBILE AUTOPAY",
+      "amount": -185.0
+    },
+    {
+      "date": "2026-03-16",
+      "descriptor": "FILIBERTOS MEXICAN",
+      "amount": -50.06
+    },
+    {
+      "date": "2026-03-16",
+      "descriptor": "DUTCH BROS COFFEE",
+      "amount": -22.85
+    },
+    {
+      "date": "2026-03-18",
+      "descriptor": "ICLOUD+ APPLE.COM/BILL",
+      "amount": -2.99
+    },
+    {
+      "date": "2026-03-20",
+      "descriptor": "DIRECT DEP DESERT VALLEY MED PAYROLL",
+      "amount": 2501.67
+    },
+    {
+      "date": "2026-03-20",
+      "descriptor": "TRADER JOES #281",
+      "amount": -75.54
+    },
+    {
+      "date": "2026-03-20",
+      "descriptor": "AMAZON.COM*MKTPL",
+      "amount": -23.14
+    },
+    {
+      "date": "2026-03-21",
+      "descriptor": "DIRECT DEP MARICOPA CO SCHOOLS PAY",
+      "amount": 1862.17
+    },
+    {
+      "date": "2026-03-21",
+      "descriptor": "TRADER JOES #281",
+      "amount": -151.16
+    },
+    {
+      "date": "2026-03-22",
+      "descriptor": "CHEGG STUDY SUBSCRIPTION",
+      "amount": -19.95
+    },
+    {
+      "date": "2026-03-22",
+      "descriptor": "SPROUTS FARMERS MKT",
+      "amount": -207.2
+    },
+    {
+      "date": "2026-03-22",
+      "descriptor": "COSTCO GAS TEMPE",
+      "amount": -65.67
+    },
+    {
+      "date": "2026-03-23",
+      "descriptor": "CVS PHARMACY #08841",
+      "amount": -48.28
+    },
+    {
+      "date": "2026-03-24",
+      "descriptor": "SAFEWAY #1573 GILBERT",
+      "amount": -74.03
+    },
+    {
+      "date": "2026-03-24",
+      "descriptor": "COSTCO GAS TEMPE",
+      "amount": -72.99
+    },
+    {
+      "date": "2026-03-24",
+      "descriptor": "DOMINOS PIZZA #6610",
+      "amount": -26.95
+    },
+    {
+      "date": "2026-03-25",
+      "descriptor": "STATE FARM AUTO INS",
+      "amount": -212.45
+    },
+    {
+      "date": "2026-03-25",
+      "descriptor": "FRYS FOOD #0421 MESA",
+      "amount": -86.89
+    },
+    {
+      "date": "2026-03-25",
+      "descriptor": "QUIKTRIP #0388",
+      "amount": -56.28
+    },
+    {
+      "date": "2026-03-25",
+      "descriptor": "AMAZON.COM*MKTPL",
+      "amount": -13.42
+    },
+    {
+      "date": "2026-03-29",
+      "descriptor": "IN-N-OUT BURGER",
+      "amount": -75.05
+    },
+    {
+      "date": "2026-03-30",
+      "descriptor": "TRADER JOES #281",
+      "amount": -169.01
+    },
+    {
+      "date": "2026-03-30",
+      "descriptor": "WALGREENS #6612",
+      "amount": -43.05
+    },
+    {
+      "date": "2026-03-31",
+      "descriptor": "YMCA EAST VALLEY",
+      "amount": -58.65
+    },
+    {
+      "date": "2026-04-01",
+      "descriptor": "NETFLIX.COM",
+      "amount": -24.99
+    },
+    {
+      "date": "2026-04-01",
+      "descriptor": "ROCKET MORTGAGE PMT",
+      "amount": -2150.0
+    },
+    {
+      "date": "2026-04-01",
+      "descriptor": "DUTCH BROS COFFEE",
+      "amount": -28.69
+    },
+    {
+      "date": "2026-04-02",
+      "descriptor": "EOS FITNESS MEMBERSHIP",
+      "amount": -49.98
+    },
+    {
+      "date": "2026-04-02",
+      "descriptor": "GREAT CLIPS #4420",
+      "amount": -44.17
+    },
+    {
+      "date": "2026-04-03",
+      "descriptor": "DIRECT DEP DESERT VALLEY MED PAYROLL",
+      "amount": 2421.73
+    },
+    {
+      "date": "2026-04-03",
+      "descriptor": "SRP ELECTRIC ONLINE PMT",
+      "amount": -282.37
+    },
+    {
+      "date": "2026-04-04",
+      "descriptor": "DIRECT DEP MARICOPA CO SCHOOLS PAY",
+      "amount": 1854.17
+    },
+    {
+      "date": "2026-04-04",
+      "descriptor": "SOUTHWEST GAS WEB PMT",
+      "amount": -38.22
+    },
+    {
+      "date": "2026-04-04",
+      "descriptor": "THE HOME DEPOT #0463",
+      "amount": -52.2
+    },
+    {
+      "date": "2026-04-05",
+      "descriptor": "SPOTIFY USA",
+      "amount": -16.99
+    },
+    {
+      "date": "2026-04-05",
+      "descriptor": "COSTCO WHSE #1019 TEMPE",
+      "amount": -138.73
+    },
+    {
+      "date": "2026-04-05",
+      "descriptor": "WALGREENS #6612",
+      "amount": -54.83
+    },
+    {
+      "date": "2026-04-06",
+      "descriptor": "ALLY AUTO LOAN PMT",
+      "amount": -489.0
+    },
+    {
+      "date": "2026-04-06",
+      "descriptor": "STARBUCKS #7724",
+      "amount": -44.08
+    },
+    {
+      "date": "2026-04-07",
+      "descriptor": "COSTCO WHSE #1019 TEMPE",
+      "amount": -213.77
+    },
+    {
+      "date": "2026-04-07",
+      "descriptor": "DOMINOS PIZZA #6610",
+      "amount": -18.93
+    },
+    {
+      "date": "2026-04-07",
+      "descriptor": "CVS PHARMACY #08841",
+      "amount": -42.95
+    },
+    {
+      "date": "2026-04-08",
+      "descriptor": "DISNEY PLUS",
+      "amount": -15.99
+    },
+    {
+      "date": "2026-04-09",
+      "descriptor": "SAFEWAY #1573 GILBERT",
+      "amount": -90.34
+    },
+    {
+      "date": "2026-04-09",
+      "descriptor": "ATM WITHDRAWAL FEE",
+      "amount": -3.5
+    },
+    {
+      "date": "2026-04-09",
+      "descriptor": "ATM CASH WITHDRAWAL",
+      "amount": -200.0
+    },
+    {
+      "date": "2026-04-10",
+      "descriptor": "CITY OF MESA WATER UTIL",
+      "amount": -105.4
+    },
+    {
+      "date": "2026-04-10",
+      "descriptor": "THE HOME DEPOT #0463",
+      "amount": -78.6
+    },
+    {
+      "date": "2026-04-11",
+      "descriptor": "SAFEWAY #1573 GILBERT",
+      "amount": -170.47
+    },
+    {
+      "date": "2026-04-12",
+      "descriptor": "AMAZON PRIME MEMBERSHIP",
+      "amount": -14.99
+    },
+    {
+      "date": "2026-04-13",
+      "descriptor": "TRADER JOES #281",
+      "amount": -131.93
+    },
+    {
+      "date": "2026-04-13",
+      "descriptor": "SPROUTS FARMERS MKT",
+      "amount": -84.99
+    },
+    {
+      "date": "2026-04-13",
+      "descriptor": "IN-N-OUT BURGER",
+      "amount": -20.84
+    },
+    {
+      "date": "2026-04-14",
+      "descriptor": "COX COMMUNICATIONS INTERNET",
+      "amount": -99.99
+    },
+    {
+      "date": "2026-04-15",
+      "descriptor": "YOUTUBE PREMIUM GOOGLE",
+      "amount": -22.99
+    },
+    {
+      "date": "2026-04-16",
+      "descriptor": "T-MOBILE AUTOPAY",
+      "amount": -185.0
+    },
+    {
+      "date": "2026-04-16",
+      "descriptor": "CIRCLE K #4471",
+      "amount": -42.03
+    },
+    {
+      "date": "2026-04-16",
+      "descriptor": "DOMINOS PIZZA #6610",
+      "amount": -24.67
+    },
+    {
+      "date": "2026-04-17",
+      "descriptor": "DIRECT DEP DESERT VALLEY MED PAYROLL",
+      "amount": 2387.17
+    },
+    {
+      "date": "2026-04-17",
+      "descriptor": "QUIKTRIP #0388",
+      "amount": -43.5
+    },
+    {
+      "date": "2026-04-18",
+      "descriptor": "DIRECT DEP MARICOPA CO SCHOOLS PAY",
+      "amount": 1920.75
+    },
+    {
+      "date": "2026-04-18",
+      "descriptor": "ICLOUD+ APPLE.COM/BILL",
+      "amount": -2.99
+    },
+    {
+      "date": "2026-04-18",
+      "descriptor": "COSTCO WHSE #1019 TEMPE",
+      "amount": -93.5
+    },
+    {
+      "date": "2026-04-18",
+      "descriptor": "IN-N-OUT BURGER",
+      "amount": -83.58
+    },
+    {
+      "date": "2026-04-18",
+      "descriptor": "WALGREENS #6612",
+      "amount": -104.98
+    },
+    {
+      "date": "2026-04-18",
+      "descriptor": "WALGREENS #6612",
+      "amount": -153.63
+    },
+    {
+      "date": "2026-04-19",
+      "descriptor": "WALMART SUPERCENTER",
+      "amount": -217.97
+    },
+    {
+      "date": "2026-04-19",
+      "descriptor": "YMCA EAST VALLEY",
+      "amount": -49.38
+    },
+    {
+      "date": "2026-04-22",
+      "descriptor": "CHEGG STUDY SUBSCRIPTION",
+      "amount": -19.95
+    },
+    {
+      "date": "2026-04-25",
+      "descriptor": "STATE FARM AUTO INS",
+      "amount": -212.45
+    },
+    {
+      "date": "2026-04-25",
+      "descriptor": "QUIKTRIP #0388",
+      "amount": -57.42
+    },
+    {
+      "date": "2026-04-25",
+      "descriptor": "CIRCLE K #4471",
+      "amount": -59.56
+    },
+    {
+      "date": "2026-04-26",
+      "descriptor": "CHICK-FIL-A #02817",
+      "amount": -27.4
+    },
+    {
+      "date": "2026-04-26",
+      "descriptor": "DOMINOS PIZZA #6610",
+      "amount": -30.25
+    },
+    {
+      "date": "2026-04-26",
+      "descriptor": "TARGET #1462 MESA",
+      "amount": -113.52
+    },
+    {
+      "date": "2026-04-28",
+      "descriptor": "COSTCO GAS TEMPE",
+      "amount": -68.3
+    },
+    {
+      "date": "2026-04-28",
+      "descriptor": "CHICK-FIL-A #02817",
+      "amount": -42.56
+    },
+    {
+      "date": "2026-04-28",
+      "descriptor": "CHICK-FIL-A #02817",
+      "amount": -11.95
+    },
+    {
+      "date": "2026-04-29",
+      "descriptor": "AMAZON.COM*MKTPL",
+      "amount": -124.85
+    },
+    {
+      "date": "2026-04-30",
+      "descriptor": "FILIBERTOS MEXICAN",
+      "amount": -20.97
+    },
+    {
+      "date": "2026-04-30",
+      "descriptor": "MARICOPA CO SCHOOL LUNCH",
+      "amount": -86.91
+    }
+  ]
+}

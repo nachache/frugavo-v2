@@ -1,0 +1,24 @@
+{
+  "name": "Usage-based billing with ±30% amount drift",
+  "description": "OpenAI / AWS / n8n style: same merchant, monthly cadence, but amount swings month to month. drift_usd=0.25 must keep these in one stream.",
+  "as_of": "2026-05-25",
+  "expected": {
+    "min_streams": 2,
+    "must_detect": ["OpenAI"]
+  },
+  "transactions": [
+    { "date": "2025-12-05", "descriptor": "OPENAI *CHATGPT",      "amount": -20.00 },
+    { "date": "2026-01-05", "descriptor": "OPENAI *CHATGPT",      "amount": -24.50 },
+    { "date": "2026-02-05", "descriptor": "OPENAI *CHATGPT",      "amount": -18.10 },
+    { "date": "2026-03-05", "descriptor": "OPENAI *CHATGPT",      "amount": -25.40 },
+    { "date": "2026-04-05", "descriptor": "OPENAI *CHATGPT",      "amount": -22.00 },
+    { "date": "2026-05-05", "descriptor": "OPENAI *CHATGPT",      "amount": -19.80 },
+
+    { "date": "2025-12-10", "descriptor": "AMAZON WEB SERVICES",   "amount": -114.20 },
+    { "date": "2026-01-10", "descriptor": "AMAZON WEB SERVICES",   "amount": -98.50 },
+    { "date": "2026-02-10", "descriptor": "AMAZON WEB SERVICES",   "amount": -127.85 },
+    { "date": "2026-03-10", "descriptor": "AMAZON WEB SERVICES",   "amount": -105.40 },
+    { "date": "2026-04-10", "descriptor": "AMAZON WEB SERVICES",   "amount": -119.99 },
+    { "date": "2026-05-10", "descriptor": "AMAZON WEB SERVICES",   "amount": -108.75 }
+  ]
+}

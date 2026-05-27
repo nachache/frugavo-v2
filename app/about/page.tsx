@@ -23,9 +23,10 @@ export default function AboutPage() {
             We&rsquo;re building the subscription killer.
           </h1>
           <p className="mt-6 font-editorialBody text-[19px] leading-relaxed text-ink-body">
-            Frugavo is a pre-launch consumer service that helps people in the
-            United States and Canada find recurring charges in their inbox and
-            bank account, and cancel the ones they no longer want.
+            Frugavo is a consumer service, currently in beta, that helps
+            people in the United States and Canada find recurring charges
+            in their inbox and bank account, and cancel the ones they no
+            longer want.
           </p>
 
           <Section title="Why we exist">
@@ -71,10 +72,11 @@ export default function AboutPage() {
 
           <Section title="Where we are">
             <p>
-              The product is in pre-launch. The website you&rsquo;re reading
-              is a preview — animated dashboard, sample brands, illustrative
-              savings figures. Real users are joining the waitlist. When the
-              product is ready, we invite people off the list in batches.
+              The product is in beta. The marketing pages on this site use
+              animated dashboards, sample brands, and illustrative savings
+              figures, but the app itself is live: it connects to real
+              banks via Plaid, runs a real scan, and writes real
+              subscriptions you can act on.
             </p>
             <p>
               If you&rsquo;d like to be among the first, the waitlist is on

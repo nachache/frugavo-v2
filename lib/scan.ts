@@ -25,7 +25,7 @@ import {
   type ClassifyInput,
   type LlmClassifyResponse,
 } from "./classify";
-import { normalizeDescriptor } from "./merchant-normalize";
+import { normalizeDescriptor, isSubscriptionGradeCategory } from "./merchant-normalize";
 import type { SnapshotRow } from "./types/snapshot";
 import { SCANNER_VERSION, ENGINE_SIGNATURE } from "./scanner-version";
 import { subscriptionKey } from "./subscription-key";
@@ -520,6 +520,16 @@ async function processDetectedStream(args: {
     // Claude prompt with the canonical identity from the resolver.
     canonicalMerchantKey: stream.merchant_key, // already canonical after Stage 2.5
     cadenceBand: stream.frequency,
+    // v5 — true ONLY when the catalog hit also has a subscription-
+    // grade category (streaming, software, news, cloud_storage,
+    // education, fitness, gaming, insurance, telecom). Catalog hits
+    // for retail (amazon → "other") or food_delivery brands prove
+    // identity but are NOT evidence that the charge is the
+    // subscription fee — those merchants emit recurring purchases,
+    // not membership fees.
+    isCuratedMerchant:
+      catalogHit.catalog_key !== null &&
+      isSubscriptionGradeCategory(catalogHit.category),
   };
 
   const verdict = await classifyStream(classifyInput, cachedClassify);
@@ -1106,7 +1116,10 @@ async function resolveAndPersistCanonicalKeys(args: {
   // gracefully by leaving those descriptors unresolved (they keep
   // their legacy merchant_key). The scan continues.
   if (needsLlm.length > 0) {
-    const llmIdentities = await resolveDescriptors(needsLlm);
+    // Pass userId so any high-confidence verdict promoted into the
+    // global merchant_resolutions table records who seeded it (audit
+    // trail for revocations).
+    const llmIdentities = await resolveDescriptors(needsLlm, userId);
     for (const [k, v] of llmIdentities) identities.set(k, v);
     const stillUnresolved = needsLlm.filter((d) => !identities.has(d));
     if (stillUnresolved.length > 0) {
@@ -1328,6 +1341,14 @@ async function fetchPlaidRecurringEnrichment(
           outliers: [],
           pfc_primary: s.personal_finance_category?.primary ?? null,
           pfc_detailed: s.personal_finance_category?.detailed ?? null,
+          // v5 — Plaid-synthesized fallback streams default to
+          // discretionary (the engine's tier default). If a real
+          // fixed-commitment signal lives in the descriptor, the
+          // classifier downstream still sees it via the descriptor
+          // regex applied at confirm time.
+          tier: "discretionary",
+          rescued: false,
+          rescue_reason: null,
         });
       }
     } catch (e) {

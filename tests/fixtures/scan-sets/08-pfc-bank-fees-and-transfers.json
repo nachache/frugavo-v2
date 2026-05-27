@@ -1,0 +1,23 @@
+{
+  "name": "PFC denylist — bank fees, transfers, taxes",
+  "description": "Gate A must reject these even though they look recurring. Validates that PFC primary tags TRANSFER_OUT / BANK_FEES / TAX gate before the classifier runs.",
+  "as_of": "2026-05-25",
+  "expected": {
+    "min_streams": 0,
+    "must_detect": []
+  },
+  "transactions": [
+    { "date": "2025-12-01", "descriptor": "BANK MAINTENANCE FEE",  "amount": -12.00, "pfc_primary": "BANK_FEES",   "pfc_detailed": "BANK_FEES_ACCOUNT_MAINTENANCE_FEE" },
+    { "date": "2026-01-01", "descriptor": "BANK MAINTENANCE FEE",  "amount": -12.00, "pfc_primary": "BANK_FEES",   "pfc_detailed": "BANK_FEES_ACCOUNT_MAINTENANCE_FEE" },
+    { "date": "2026-02-01", "descriptor": "BANK MAINTENANCE FEE",  "amount": -12.00, "pfc_primary": "BANK_FEES",   "pfc_detailed": "BANK_FEES_ACCOUNT_MAINTENANCE_FEE" },
+    { "date": "2026-03-01", "descriptor": "BANK MAINTENANCE FEE",  "amount": -12.00, "pfc_primary": "BANK_FEES",   "pfc_detailed": "BANK_FEES_ACCOUNT_MAINTENANCE_FEE" },
+
+    { "date": "2025-12-15", "descriptor": "TRANSFER TO SAVINGS",   "amount": -500.00, "pfc_primary": "TRANSFER_OUT", "pfc_detailed": "TRANSFER_OUT_ACCOUNT_TRANSFER" },
+    { "date": "2026-01-15", "descriptor": "TRANSFER TO SAVINGS",   "amount": -500.00, "pfc_primary": "TRANSFER_OUT", "pfc_detailed": "TRANSFER_OUT_ACCOUNT_TRANSFER" },
+    { "date": "2026-02-15", "descriptor": "TRANSFER TO SAVINGS",   "amount": -500.00, "pfc_primary": "TRANSFER_OUT", "pfc_detailed": "TRANSFER_OUT_ACCOUNT_TRANSFER" },
+    { "date": "2026-03-15", "descriptor": "TRANSFER TO SAVINGS",   "amount": -500.00, "pfc_primary": "TRANSFER_OUT", "pfc_detailed": "TRANSFER_OUT_ACCOUNT_TRANSFER" },
+
+    { "date": "2025-12-20", "descriptor": "PROPERTY TAX QUARTERLY","amount": -845.00, "pfc_primary": "GENERAL_SERVICES", "pfc_detailed": "GENERAL_SERVICES_TAX_PAYMENT" },
+    { "date": "2026-03-20", "descriptor": "PROPERTY TAX QUARTERLY","amount": -845.00, "pfc_primary": "GENERAL_SERVICES", "pfc_detailed": "GENERAL_SERVICES_TAX_PAYMENT" }
+  ]
+}
