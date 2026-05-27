@@ -1,30 +1,34 @@
 /**
  * npx tsx scripts/backfill-brand-verdicts.ts
  *
- * One-time backfill: seeds the global `brand_verdicts` table with the
- * 134 entries in lib/data/merchant-catalog.json. Without this, every
- * Frugavo scan would trigger a Claude call for known merchants like
- * Netflix and Spotify even though we already know they're subscription
- * brands.
+ * Microscopic safety-denylist seed for brand_verdicts.
  *
- * Idempotent — upserts on merchant_key, so running it twice produces
- * the same end state. Safe to re-run after catalog edits to push new
- * entries.
+ * INTENTIONAL NON-GOALS:
+ * - Does NOT seed the 134-entry merchant catalog. Those merchants get
+ *   classified by Claude at runtime on first sighting. The catalog
+ *   was hand-curated by category; that's exactly the brittle heuristic
+ *   layer we're escaping. Letting Claude judge per-descriptor (Netflix
+ *   = always, "APPLE.COM/BILL 1234" = sometimes, "DOORDASH ORDER" =
+ *   never) is the moat.
+ * - Does NOT infer subscription_likelihood from category. Category is
+ *   too coarse — DoorDash is "food_delivery" but DashPass is a sub
+ *   and a one-off meal isn't. Only Claude has the context.
  *
- * Mapping logic:
- *   • subscription_likelihood derived from category:
- *     - 'always' for streaming, software, news, cloud_storage,
- *       gaming, fitness, education, insurance, telecom, utilities,
- *       phone_internet (categories where every charge IS the sub)
- *     - 'sometimes' for billers that wrap multiple products
- *       (apple, google, paypal, stripe, square), and for the few
- *       'other' / 'health' / 'food_delivery' catalog entries where
- *       the brand sells both subs and one-offs.
- *     - 'never' for the bank_fees category (interest charges,
- *       overdraft fees — recurring but not subscriptions).
- *   • decided_by = 'catalog'
- *   • model_version + prompt_version = null (this isn't a Claude
- *     verdict)
+ * WHAT THIS SEEDS:
+ *   A tiny safety floor — descriptor patterns that should NEVER reach
+ *   Claude because they're definitionally non-subscription bank
+ *   infrastructure. Marked decided_by='manual_admin' so the source is
+ *   obvious in the audit trail.
+ *
+ *   - ATM withdrawals
+ *   - Wire transfers
+ *   - Payroll / direct deposits
+ *   - Bank fees (overdraft, NSF, maintenance, interest, late fees)
+ *   - Tax payments (IRS / CRA)
+ *   - Check deposits
+ *
+ *   Idempotent — upserts on merchant_key, safe to re-run after
+ *   denylist edits.
  *
  * Required env:
  *   NEXT_PUBLIC_SUPABASE_URL
@@ -35,8 +39,6 @@
  */
 
 import { createClient } from "@supabase/supabase-js";
-import { readFileSync } from "fs";
-import { resolve } from "path";
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -52,126 +54,164 @@ if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
 // ──────────────────────────────────────────────────────────────────────
-// Category → subscription_likelihood mapping.
+// Safety denylist. Each entry is a canonical merchant_key that the
+// normalizer is likely to produce for bank-infrastructure descriptors.
+// All seeded as likelihood='never' so the engine skips Claude AND
+// excludes them from any subscription surface.
 //
-// Conservative defaults — when in doubt, mark 'sometimes' so the
-// doubt detection layer asks the user rather than silently confirming.
-// 'always' is reserved for categories where literally every charge
-// from the brand IS the subscription fee.
+// Keep this list TINY. The mistake to avoid is rebuilding a brittle
+// heuristic taxonomy. If you find yourself adding "category" rules
+// here, stop — that's Claude's job.
 // ──────────────────────────────────────────────────────────────────────
 
-const ALWAYS_CATEGORIES = new Set([
-  "streaming",
-  "software",
-  "news",
-  "cloud_storage",
-  "gaming",
-  "fitness",
-  "education",
-  "insurance",
-  "telecom",
-  "utilities",
-  "phone_internet",
-]);
-
-const NEVER_CATEGORIES = new Set([
-  "bank_fees",
-]);
-
-// Known billers/passthroughs in the existing catalog. These wrap
-// multiple products and need user resolution per charge.
-const ALWAYS_SOMETIMES_KEYS = new Set([
-  "apple",
-  "google",
-  "google_play",
-  "paypal",
-  "stripe",
-  "square",
-  "amazon",
-]);
-
-function likelihoodFor(
-  key: string,
-  category: string
-): "always" | "sometimes" | "never" {
-  if (ALWAYS_SOMETIMES_KEYS.has(key)) return "sometimes";
-  if (NEVER_CATEGORIES.has(category)) return "never";
-  if (ALWAYS_CATEGORIES.has(category)) return "always";
-  // Default for any category we haven't explicitly classified
-  // (health, food_delivery, retail, transportation, other, etc.) —
-  // safe to ask the user.
-  return "sometimes";
-}
-
-type CatalogMerchant = {
-  key: string;
-  display: string;
+type DenylistEntry = {
+  merchant_key: string;
+  display_name: string;
   category: string;
-  aliases?: string[];
-  domains?: string[];
+  reasoning: string;
 };
 
-type Catalog = {
-  merchants: CatalogMerchant[];
-};
+const DENYLIST: DenylistEntry[] = [
+  // Bank infrastructure — never subscriptions.
+  {
+    merchant_key: "atm_withdrawal",
+    display_name: "ATM withdrawal",
+    category: "bank_infrastructure",
+    reasoning: "Cash withdrawal, not a merchant charge.",
+  },
+  {
+    merchant_key: "cash_withdrawal",
+    display_name: "Cash withdrawal",
+    category: "bank_infrastructure",
+    reasoning: "Cash withdrawal, not a merchant charge.",
+  },
+  {
+    merchant_key: "wire_transfer",
+    display_name: "Wire transfer",
+    category: "bank_infrastructure",
+    reasoning: "Direct bank-to-bank transfer, not a subscription.",
+  },
+  {
+    merchant_key: "check_deposit",
+    display_name: "Check deposit",
+    category: "bank_infrastructure",
+    reasoning: "Check deposit, not a merchant charge.",
+  },
+  {
+    merchant_key: "payroll",
+    display_name: "Payroll deposit",
+    category: "bank_infrastructure",
+    reasoning: "Employer payroll, not a subscription.",
+  },
+  {
+    merchant_key: "direct_deposit",
+    display_name: "Direct deposit",
+    category: "bank_infrastructure",
+    reasoning: "Incoming direct deposit, not a subscription.",
+  },
+
+  // Bank fees — recurring but definitionally not subscriptions.
+  {
+    merchant_key: "overdraft_fee",
+    display_name: "Overdraft fee",
+    category: "bank_fees",
+    reasoning: "Bank fee, not a subscription.",
+  },
+  {
+    merchant_key: "nsf_fee",
+    display_name: "NSF fee",
+    category: "bank_fees",
+    reasoning: "Bank fee, not a subscription.",
+  },
+  {
+    merchant_key: "maintenance_fee",
+    display_name: "Account maintenance fee",
+    category: "bank_fees",
+    reasoning: "Bank fee, not a subscription.",
+  },
+  {
+    merchant_key: "interest_charge",
+    display_name: "Interest charge",
+    category: "bank_fees",
+    reasoning: "Interest on credit, not a subscription.",
+  },
+  {
+    merchant_key: "late_fee",
+    display_name: "Late fee",
+    category: "bank_fees",
+    reasoning: "Bank fee, not a subscription.",
+  },
+  {
+    merchant_key: "wire_fee",
+    display_name: "Wire fee",
+    category: "bank_fees",
+    reasoning: "Bank fee for wire transfer.",
+  },
+  {
+    merchant_key: "foreign_transaction_fee",
+    display_name: "Foreign transaction fee",
+    category: "bank_fees",
+    reasoning: "Bank fee on foreign-currency charges.",
+  },
+
+  // Tax / government — recurring obligations, not subscriptions.
+  {
+    merchant_key: "irs_payment",
+    display_name: "IRS payment",
+    category: "government",
+    reasoning: "Tax payment to IRS.",
+  },
+  {
+    merchant_key: "cra_payment",
+    display_name: "CRA payment",
+    category: "government",
+    reasoning: "Tax payment to Canada Revenue Agency.",
+  },
+  {
+    merchant_key: "state_tax_payment",
+    display_name: "State tax payment",
+    category: "government",
+    reasoning: "State or provincial tax payment.",
+  },
+];
 
 async function main() {
-  const catalogPath = resolve(__dirname, "..", "lib", "data", "merchant-catalog.json");
-  const raw = readFileSync(catalogPath, "utf8");
-  const catalog = JSON.parse(raw) as Catalog;
+  // eslint-disable-next-line no-console
+  console.log(`[backfill] seeding ${DENYLIST.length} safety denylist entries`);
 
-  if (!Array.isArray(catalog.merchants)) {
+  const nowIso = new Date().toISOString();
+  const rows = DENYLIST.map((entry) => ({
+    merchant_key: entry.merchant_key,
+    display_name: entry.display_name,
+    category: entry.category,
+    subscription_likelihood: "never" as const,
+    domain: null,
+    decided_by: "manual_admin" as const,
+    decided_at: nowIso,
+    model_version: null,
+    prompt_version: null,
+    reasoning: entry.reasoning,
+    confidence_score: 1.0, // safety denylist is high-certainty by definition
+    raw_descriptor_samples: [],
+    updated_at: nowIso,
+  }));
+
+  const { error } = await supabase
+    .from("brand_verdicts")
+    .upsert(rows, { onConflict: "merchant_key" });
+
+  if (error) {
     // eslint-disable-next-line no-console
-    console.error("[backfill] merchant-catalog.json has no merchants array");
+    console.error("[backfill] failed", error);
     process.exit(2);
   }
 
   // eslint-disable-next-line no-console
-  console.log(`[backfill] processing ${catalog.merchants.length} merchants`);
-
-  const rows = catalog.merchants.map((m) => {
-    const likelihood = likelihoodFor(m.key, m.category);
-    return {
-      merchant_key: m.key,
-      display_name: m.display,
-      category: m.category,
-      subscription_likelihood: likelihood,
-      domain: (m.domains && m.domains[0]) || null,
-      decided_by: "catalog" as const,
-      decided_at: new Date().toISOString(),
-      model_version: null,
-      prompt_version: null,
-      raw_descriptor_samples: m.aliases ?? [],
-      updated_at: new Date().toISOString(),
-    };
-  });
-
-  // Bulk upsert in chunks to avoid PostgREST request-size limits.
-  const CHUNK = 100;
-  let written = 0;
-  for (let i = 0; i < rows.length; i += CHUNK) {
-    const slice = rows.slice(i, i + CHUNK);
-    const { error } = await supabase
-      .from("brand_verdicts")
-      .upsert(slice, { onConflict: "merchant_key" });
-    if (error) {
-      // eslint-disable-next-line no-console
-      console.error("[backfill] chunk failed", { i, error });
-      process.exit(3);
-    }
-    written += slice.length;
-  }
-
-  // Summary by likelihood for sanity-check.
-  const summary = rows.reduce<Record<string, number>>((acc, r) => {
-    acc[r.subscription_likelihood] = (acc[r.subscription_likelihood] ?? 0) + 1;
-    return acc;
-  }, {});
-
+  console.log(`[backfill] wrote ${rows.length} rows. All marked likelihood='never', decided_by='manual_admin'.`);
   // eslint-disable-next-line no-console
-  console.log(`[backfill] wrote ${written} rows`);
-  // eslint-disable-next-line no-console
-  console.log("[backfill] likelihood distribution:", summary);
+  console.log(
+    "[backfill] Eyeball pass: SELECT merchant_key, display_name, category FROM brand_verdicts ORDER BY merchant_key;"
+  );
 }
 
 main().catch((e) => {

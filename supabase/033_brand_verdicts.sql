@@ -51,6 +51,13 @@ create table if not exists public.brand_verdicts (
   decided_at              timestamptz not null default now(),
   model_version           text null,
   prompt_version          integer null,
+  -- Claude-only fields. NULL when decided_by='catalog' or
+  -- 'manual_admin'. reasoning is a short string explaining the
+  -- verdict (audit + future prompt tuning); confidence_score is
+  -- Claude's self-reported certainty 0..1 (lower = more weight on
+  -- user resolution downstream).
+  reasoning               text null,
+  confidence_score        numeric null,
   -- Examples of raw descriptors we've seen that resolved to this
   -- merchant_key. Useful for QA + future prompt tuning. Bounded —
   -- callers should keep the array at ~10 entries via array_remove +

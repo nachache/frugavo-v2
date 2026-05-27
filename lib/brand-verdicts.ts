@@ -68,6 +68,12 @@ export type BrandVerdict = {
   decided_at: string;
   model_version: string | null;
   prompt_version: number | null;
+  // Claude-only audit fields. NULL when decided_by isn't 'claude'.
+  // reasoning is a short string for QA + prompt tuning;
+  // confidence_score is Claude's self-reported certainty 0..1 that
+  // downstream callers can weight against the engine cadence math.
+  reasoning: string | null;
+  confidence_score: number | null;
 };
 
 export type LookupArgs = {
@@ -126,7 +132,7 @@ export async function getBrandVerdict(
     const { data } = await supabaseAdmin
       .from("brand_verdicts")
       .select(
-        "merchant_key, display_name, category, subscription_likelihood, domain, decided_by, decided_at, model_version, prompt_version"
+        "merchant_key, display_name, category, subscription_likelihood, domain, decided_by, decided_at, model_version, prompt_version, reasoning, confidence_score"
       )
       .eq("merchant_key", merchant_key)
       .maybeSingle();
@@ -164,6 +170,8 @@ export async function getBrandVerdict(
         decided_at: fromClaude.decided_at,
         model_version: fromClaude.model_version,
         prompt_version: fromClaude.prompt_version,
+        reasoning: fromClaude.reasoning,
+        confidence_score: fromClaude.confidence_score,
         raw_descriptor_samples: [descriptor],
         updated_at: new Date().toISOString(),
       },
@@ -205,7 +213,7 @@ export async function getBrandVerdictsBulk(
     const { data } = await supabaseAdmin
       .from("brand_verdicts")
       .select(
-        "merchant_key, display_name, category, subscription_likelihood, domain, decided_by, decided_at, model_version, prompt_version"
+        "merchant_key, display_name, category, subscription_likelihood, domain, decided_by, decided_at, model_version, prompt_version, reasoning, confidence_score"
       )
       .in("merchant_key", keys);
     for (const row of data ?? []) {
@@ -237,25 +245,29 @@ export async function getBrandVerdictsBulk(
 // Claude call. Temp 0, JSON schema output, pinned model.
 // ──────────────────────────────────────────────────────────────────────
 
-const SYSTEM_PROMPT = `You are a financial classifier. Given a bank transaction descriptor and an optional Plaid category tag, identify the merchant brand and classify whether that brand is a recurring-subscription brand.
+const SYSTEM_PROMPT = `You are a financial classifier. Given a bank transaction descriptor and an optional Plaid category tag, identify the merchant brand and classify whether THIS DESCRIPTOR represents a recurring subscription.
 
 Respond with ONLY a JSON object in this exact schema:
 
 {
-  "merchant_key": string,           // canonical lowercase slug, no spaces (e.g. "netflix", "anthropic", "apple")
-  "display_name": string,           // brand name as a human would write it (e.g. "Netflix", "Anthropic", "Apple")
+  "merchant_key": string,           // canonical lowercase slug, no spaces. Include product-level signals when present (e.g. "netflix", "anthropic", "apple_icloud", "amazon_prime", "doordash_dashpass")
+  "display_name": string,           // brand + product as a human would write it (e.g. "Netflix", "Apple iCloud", "DoorDash DashPass")
   "category": string,               // one of: streaming, software, news, fitness, cloud_storage, gaming, telecom, utilities, education, insurance, food_delivery, retail, transportation, financial_services, other
   "subscription_likelihood": string,// one of: "always" | "sometimes" | "never"
-  "domain": string | null           // primary domain if you know it (e.g. "netflix.com"), else null
+  "domain": string | null,          // primary domain if you know it (e.g. "netflix.com"), else null
+  "reasoning": string,              // ONE short sentence explaining the verdict (max 140 chars). Cited by audit + future tuning.
+  "confidence_score": number        // 0.0 to 1.0. Your self-assessed certainty in this verdict.
 }
 
 CRITICAL RULES for subscription_likelihood:
 
-- "always" — pure subscription brand. EVERY charge from this brand is a recurring subscription. Examples: Netflix, Spotify, Anthropic, ChatGPT, NordVPN, Audible, Notion, Linear, Vercel.
-- "sometimes" — mixed brand. Some charges are subscriptions, some are one-off purchases. Examples: Apple (iCloud sub vs movie rental), Amazon (Prime sub vs purchases), Google (One sub vs Play purchases), PayPal (passthrough — anything), Stripe (passthrough), Square (passthrough).
-- "never" — pure one-off retailer. Charges are never recurring subscriptions. Examples: Starbucks, McDonald's, Uber, Lyft, Shell, Exxon, Walmart, Target, restaurants, gas stations.
+- "always" — every charge that matches THIS descriptor pattern is a recurring subscription. Examples: Netflix, Spotify, Anthropic, "APPLE.COM/BILL ICLOUD", "DOORDASH*DASHPASS", "AMAZON PRIME".
+- "sometimes" — the descriptor is genuinely ambiguous. Could be a sub, could be a one-off. The user must resolve. Examples: "APPLE.COM/BILL 866-712-7753" (could be iCloud OR a movie rental), "DOORDASH*1234" (could be DashPass OR an order), generic "AMAZON.COM*M12345" (could be Prime OR a purchase).
+- "never" — this descriptor pattern is never a subscription. Examples: "DOORDASH ORDER 5678" (one-off meal), "UBER TRIP 12345" (one-off ride), "STARBUCKS 4567" (coffee), "SHELL #1234" (gas), "ATM WITHDRAWAL", "WIRE TRANSFER".
 
-Do not invent merchants. If you cannot confidently identify the brand from the descriptor, output your best guess for display_name, set category to "other", and set subscription_likelihood to "sometimes" (the safe default that triggers user confirmation).
+KEY PRINCIPLE: judge the DESCRIPTOR, not the brand alone. DoorDash sells DashPass (always) AND one-off meals (never) AND ambiguous wrapped charges (sometimes). Apple sells iCloud (always) AND movie rentals (never) AND ambiguous bill wrappers (sometimes). If the descriptor names a specific product (DashPass, iCloud, Prime, Audible), use that. If the descriptor is the brand alone with a noise suffix, classify as "sometimes" unless context strongly suggests one-off (e.g. "ORDER", "TRIP", "PURCHASE", numeric POS suffixes).
+
+Do not invent merchants. If you can't confidently identify the brand, output your best guess for display_name, set category to "other", set subscription_likelihood to "sometimes", confidence_score ≤ 0.5, and explain the uncertainty in reasoning.
 
 Respond with ONLY the JSON object. No markdown, no commentary, no code fences.`;
 
@@ -291,7 +303,8 @@ async function askClaude(
     const parsed = JSON.parse(raw) as Partial<BrandVerdict>;
 
     // Validate the response shape rigorously — Claude misses produce
-    // crash-loops if we trust the response without checking.
+    // crash-loops if we trust the response without checking. Every
+    // required field gets a type check + range check where applicable.
     if (
       typeof parsed.merchant_key !== "string" ||
       !parsed.merchant_key ||
@@ -299,7 +312,11 @@ async function askClaude(
       typeof parsed.category !== "string" ||
       (parsed.subscription_likelihood !== "always" &&
         parsed.subscription_likelihood !== "sometimes" &&
-        parsed.subscription_likelihood !== "never")
+        parsed.subscription_likelihood !== "never") ||
+      typeof parsed.reasoning !== "string" ||
+      typeof parsed.confidence_score !== "number" ||
+      parsed.confidence_score < 0 ||
+      parsed.confidence_score > 1
     ) {
       // eslint-disable-next-line no-console
       console.warn("[brand-verdicts] Claude returned malformed verdict", parsed);
@@ -319,6 +336,10 @@ async function askClaude(
       decided_at: new Date().toISOString(),
       model_version: MODEL,
       prompt_version: PROMPT_VERSION,
+      // Cap reasoning at the prompt's stated max to defend against
+      // future prompt changes that don't update this validator.
+      reasoning: parsed.reasoning.slice(0, 280),
+      confidence_score: parsed.confidence_score,
     };
   } catch (e) {
     // eslint-disable-next-line no-console
