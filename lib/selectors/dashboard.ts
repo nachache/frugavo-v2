@@ -309,14 +309,39 @@ export async function buildDashboardData(
     .limit(1)
     .maybeSingle();
 
-  const burn = computeBurnRate(subs, charges, asOf);
-  const ai = computeAiSpend(subs, charges, asOf);
+  // ─── Chart + insight sync ─────────────────────────────────────────
+  //
+  // Build a Set of subscription_ids the user CURRENTLY treats as
+  // active subs (after override pre-pass). Filter the raw charges
+  // array down to charges linked to those subs only, then pass the
+  // filtered set to every downstream calculation that aggregates
+  // money flow — chart, money leaks, shock insights, AI spend.
+  //
+  // Without this, marking a sub as "not a sub" hid it from the
+  // total + sub count but its historical charges still pumped the
+  // monthly-spend chart. Now chart, donut, total, list, AI stack,
+  // and money leaks all agree on what counts.
+  const visibleSubIds = new Set(
+    subs
+      .filter(
+        (s) =>
+          s.recurring_type === "confirmed_subscription" ||
+          s.recurring_type === "recurring_bill"
+      )
+      .map((s) => s.id as string)
+  );
+  const visibleCharges = charges.filter((c) =>
+    visibleSubIds.has(c.subscription_id)
+  );
+
+  const burn = computeBurnRate(subs, visibleCharges, asOf);
+  const ai = computeAiSpend(subs, visibleCharges, asOf);
   const categories = computeCategoryTotals(subs);
   const top = computeTopSubscriptions(subs, 5);
   const topBills = computeTopBills(subs, 10);
   const shock = computeShockInsights({
     subs,
-    charges,
+    charges: visibleCharges,
     asOf,
     burn,
     aiSpend: ai,
@@ -335,8 +360,8 @@ export async function buildDashboardData(
     totalMonthlyCents: burn.monthly_cents,
     totalSubCount: burn.active_subscription_count,
   });
-  const moneyLeaks = computeMoneyLeaks({ subs, charges, asOf });
-  const chart12mo = computeMonthlySpendSeries(charges, asOf);
+  const moneyLeaks = computeMoneyLeaks({ subs, charges: visibleCharges, asOf });
+  const chart12mo = computeMonthlySpendSeries(visibleCharges, asOf);
   // Spending-patterns accordion input. Commerce tier only.
   const recurringCommerce = computeRecurringCommerce(subs, 25);
 

@@ -365,17 +365,42 @@ function Sparkline({ data: dataRaw }: { data: MonthBucket[] }) {
       <svg
         viewBox={`0 0 ${W} ${H}`}
         preserveAspectRatio="none"
-        className="w-full h-20 md:h-28 touch-none"
+        className="w-full h-24 md:h-32 touch-none"
         onPointerMove={handleMove}
         onPointerLeave={() => setHover(null)}
         onPointerDown={handleMove}
       >
         <defs>
+          {/* Richer gradient — three stops give the area more depth
+              without losing the airy feel. */}
           <linearGradient id="ovsk-fill-v2" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="var(--brand-green)" stopOpacity="0.20" />
+            <stop offset="0%" stopColor="var(--brand-green)" stopOpacity="0.28" />
+            <stop offset="60%" stopColor="var(--brand-green)" stopOpacity="0.08" />
             <stop offset="100%" stopColor="var(--brand-green)" stopOpacity="0" />
           </linearGradient>
         </defs>
+
+        {/* Subtle horizontal baseline ladder — three faint lines at
+            25/50/75% give the eye a sense of magnitude without
+            shouting. preserveAspectRatio is none so we use percent
+            positions on raw SVG coords. */}
+        {[0.25, 0.5, 0.75].map((pct) => {
+          const y = PAD + (H - 2 * PAD) * pct;
+          return (
+            <line
+              key={pct}
+              x1={PAD}
+              x2={W - PAD}
+              y1={y}
+              y2={y}
+              stroke="#0a0a0a"
+              strokeOpacity="0.04"
+              strokeWidth="1"
+              vectorEffect="non-scaling-stroke"
+            />
+          );
+        })}
+
         <path
           d={fillD}
           fill="url(#ovsk-fill-v2)"
@@ -385,7 +410,7 @@ function Sparkline({ data: dataRaw }: { data: MonthBucket[] }) {
           d={pathD}
           fill="none"
           stroke="var(--brand-green)"
-          strokeWidth="1.5"
+          strokeWidth="2.4"
           vectorEffect="non-scaling-stroke"
           strokeLinecap="round"
           strokeLinejoin="round"
@@ -395,6 +420,20 @@ function Sparkline({ data: dataRaw }: { data: MonthBucket[] }) {
             animation: "sparkDraw 0.9s cubic-bezier(0.16, 1, 0.3, 1) 0.1s forwards",
           }}
         />
+
+        {/* End-of-line emphasis — small filled dot at the latest
+            data point pulses gently to read as "this is now". */}
+        {points.length > 0 && (
+          <circle
+            cx={points[points.length - 1].x}
+            cy={points[points.length - 1].y}
+            r="5"
+            fill="var(--brand-green)"
+            vectorEffect="non-scaling-stroke"
+            style={{ animation: "sparkPulse 2.2s ease-in-out infinite" }}
+          />
+        )}
+
         {h && (
           <>
             <line
@@ -406,21 +445,25 @@ function Sparkline({ data: dataRaw }: { data: MonthBucket[] }) {
               strokeWidth="1"
               strokeDasharray="3 3"
               vectorEffect="non-scaling-stroke"
-              opacity="0.3"
+              opacity="0.35"
             />
             <circle
               cx={h.x}
               cy={h.y}
-              r="4"
+              r="6"
               fill="#fafafa"
               stroke="var(--brand-green)"
-              strokeWidth="2.5"
+              strokeWidth="2.8"
               vectorEffect="non-scaling-stroke"
             />
           </>
         )}
         <style>{`
           @keyframes sparkDraw { to { stroke-dashoffset: 0; } }
+          @keyframes sparkPulse {
+            0%, 100% { opacity: 1; r: 5; }
+            50% { opacity: 0.55; r: 6.5; }
+          }
         `}</style>
       </svg>
       {/* Month labels — absolute-positioned at the same x-percentage
