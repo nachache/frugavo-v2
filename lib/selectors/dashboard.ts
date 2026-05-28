@@ -231,7 +231,55 @@ export async function buildDashboardData(
   // Dedupe key: normalize merchant_name (lowercase, strip spaces +
   // punctuation) + amount_cents bucket. When duplicates exist, keep
   // the most-recently-updated row.
-  const subs = dedupeByMerchantAndAmount(subsRaw);
+  const subsDeduped = dedupeByMerchantAndAmount(subsRaw);
+
+  // ─── User-override pre-pass ───────────────────────────────────────
+  //
+  // Fetch user_overrides FIRST and inject their effect into each
+  // subscription's recurring_type BEFORE feeding into computeBurnRate
+  // / heroSubscriptions / category / personality / chart / everything.
+  //
+  // Without this, the OverviewCard's monthly total would only count
+  // engine-confirmed subscriptions — user confirms via "Keep" or
+  // "Real sub" (Quick Checks) wouldn't change the headline number
+  // until the next scan re-classified the row. This was the
+  // "I clicked Keep but the dashboard didn't update" bug.
+  //
+  // Mapping:
+  //   override='confirmed'        → recurring_type='confirmed_subscription' (counts in)
+  //   override='not_subscription' → recurring_type='uncertain_recurring' (filtered out)
+  //   override='not_recurring'    → recurring_type='uncertain_recurring' (filtered out)
+  //   override='cancelled'        → leave recurring_type; ActionCenter handles pruning
+  //   no override                 → leave as engine-assigned
+  const { data: earlyOverrideRows } = await supabaseAdmin
+    .from("user_overrides")
+    .select("merchant_key, override_type")
+    .eq("user_id", userId);
+  const earlyOverrideByMerchant = new Map<string, string>();
+  for (const row of (earlyOverrideRows ?? []) as Array<{
+    merchant_key: string;
+    override_type: string;
+  }>) {
+    earlyOverrideByMerchant.set(row.merchant_key, row.override_type);
+  }
+  const subs = subsDeduped.map((s) => {
+    if (!s.merchant_key) return s;
+    const ov = earlyOverrideByMerchant.get(s.merchant_key);
+    if (!ov) return s;
+    if (ov === "confirmed") {
+      return {
+        ...s,
+        recurring_type: "confirmed_subscription" as const,
+      };
+    }
+    if (ov === "not_subscription" || ov === "not_recurring") {
+      return {
+        ...s,
+        recurring_type: "uncertain_recurring" as const,
+      };
+    }
+    return s;
+  });
 
   const charges: LedgerCharge[] = [];
   let offset = 0;

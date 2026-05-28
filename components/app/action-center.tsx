@@ -48,7 +48,11 @@ import { annualCents, monthlyEquivalentCents, type SubLike } from "@/lib/subscri
 import type { ActionItem } from "@/lib/selectors/dashboard";
 import { SHOW_BILLS_SURFACE } from "@/lib/feature-flags";
 
-type Tab = "worth" | "watching" | "pruned" | "hidden" | "all";
+// 'worth' tab removed — confirms flow directly via Quick Checks
+// + the row-level Keep / Not a sub buttons, no intermediate
+// 'worth a look' triage bucket. Legacy 'worth' values from saved
+// preferences are migrated to 'watching' on hydration.
+type Tab = "watching" | "pruned" | "hidden" | "all";
 type Sort = "price" | "age" | "category";
 const PAGE_SIZE = 20;
 
@@ -107,7 +111,7 @@ export function ActionCenter({
 }: Props) {
   const isBills = mode === "bills";
   const router = useRouter();
-  const [tab, setTab] = useState<Tab>("worth");
+  const [tab, setTab] = useState<Tab>("watching");
   const [sort, setSort] = useState<Sort>("price");
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const [cancelTarget, setCancelTarget] = useState<SubLike | null>(null);
@@ -135,7 +139,13 @@ export function ActionCenter({
           action_center_tab?: Tab;
           action_center_sort?: Sort;
         };
-        if (p.action_center_tab) setTab(p.action_center_tab);
+        if (p.action_center_tab) {
+          // Migrate legacy 'worth' (removed) → 'watching'.
+          const t = (p.action_center_tab as unknown as string) === "worth"
+            ? "watching"
+            : p.action_center_tab;
+          setTab(t as Tab);
+        }
         if (p.action_center_sort) setSort(p.action_center_sort);
       })
       .catch(() => {
@@ -175,15 +185,13 @@ export function ActionCenter({
   );
 
   const tabList =
-    tab === "worth"
-      ? worth_a_look
-      : tab === "watching"
-        ? watching
-        : tab === "pruned"
-          ? pruned
-          : tab === "hidden"
-            ? hidden
-            : all;
+    tab === "watching"
+      ? watching
+      : tab === "pruned"
+        ? pruned
+        : tab === "hidden"
+          ? hidden
+          : all;
 
   const sorted = useMemo(() => {
     const arr = [...tabList];
@@ -216,7 +224,7 @@ export function ActionCenter({
 
   function postFeedback(
     subscription_id: string,
-    override_type: "confirmed" | "cancelled",
+    override_type: "confirmed" | "cancelled" | "not_subscription" | "not_recurring",
     extra?: { force_tier?: "confirmed_subscription" | "recurring_bill" }
   ) {
     startTransition(async () => {
@@ -235,6 +243,10 @@ export function ActionCenter({
 
   function onKeep(item: ActionItem) {
     postFeedback(item.subscription_id, "confirmed");
+  }
+
+  function onNotASub(item: ActionItem) {
+    postFeedback(item.subscription_id, "not_subscription");
   }
 
   function onCancelClick(item: ActionItem) {
@@ -284,21 +296,14 @@ export function ActionCenter({
         <h2 className="font-display text-[20px] md:text-[24px] font-bold tracking-[-0.01em] text-ink leading-tight">
           {isBills ? "Your bills" : "Your subscriptions"}
         </h2>
-        {potential_yearly_savings_cents > 0 && worth_a_look.length > 0 && (
-          <div className="text-right">
-            <div className="text-[18px] md:text-[22px] font-display font-bold tabular-nums text-ink leading-none">
-              up to {fmt(potential_yearly_savings_cents, { withCents: false })}/yr
-            </div>
-            <div className="mt-1 text-[11px] md:text-[12px] text-ink-muted">
-              in potential savings
-            </div>
-          </div>
-        )}
+        {/* 'up to $X/yr potential savings' chip removed — the
+            Worth a look tab it referenced is gone. Curation now
+            happens via Quick Checks (above) + per-row Keep / Not
+            a sub / Cancel actions. */}
       </div>
 
       <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-b border-hairline">
         <div className="flex items-center gap-1 -mb-px overflow-x-auto">
-          <TabBtn active={tab === "worth"} onClick={() => changeTab("worth")} label="Worth a look" shortLabel="New" count={worth_a_look.length} icon="sparkles" />
           <TabBtn active={tab === "watching"} onClick={() => changeTab("watching")} label="Watching" shortLabel="Watch" count={watching.length} icon="eye" />
           <TabBtn active={tab === "pruned"} onClick={() => changeTab("pruned")} label="Pruned" shortLabel="Pruned" count={pruned.length} icon="scissors" />
           {hidden.length > 0 && (
@@ -321,6 +326,7 @@ export function ActionCenter({
                 tab={tab}
                 onCancel={() => onCancelClick(item)}
                 onKeep={() => onKeep(item)}
+                onNotASub={() => onNotASub(item)}
                 onReclassify={() => onReclassify(item)}
                 isBills={isBills}
                 isPaid={isPaid}
@@ -442,6 +448,7 @@ function Row({
   tab,
   onCancel,
   onKeep,
+  onNotASub,
   onReclassify,
   isBills,
   isPaid,
@@ -450,6 +457,7 @@ function Row({
   tab: Tab;
   onCancel: () => void;
   onKeep: () => void;
+  onNotASub: () => void;
   onReclassify: () => void;
   isBills: boolean;
   isPaid: boolean;
@@ -538,7 +546,7 @@ function Row({
           </div>
         </div>
 
-        {tab === "worth" || tab === "all" ? (
+        {tab === "watching" || tab === "all" ? (
           <div className="hidden md:flex items-center gap-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
             {/* Per dashboard critic: 4 action buttons × N rows = 36
                 decisions on screen. Surface ONE primary action
@@ -561,6 +569,7 @@ function Row({
             <RowOverflow
               isBills={isBills}
               onKeep={onKeep}
+              onNotASub={onNotASub}
               onReclassify={onReclassify}
             />
           </div>
@@ -586,10 +595,12 @@ function Row({
 function RowOverflow({
   isBills,
   onKeep,
+  onNotASub,
   onReclassify,
 }: {
   isBills: boolean;
   onKeep: () => void;
+  onNotASub: () => void;
   onReclassify: () => void;
 }) {
   const [open, setOpen] = useState(false);
@@ -628,6 +639,19 @@ function RowOverflow({
             >
               <Check size={13} strokeWidth={2.2} />
               Keep
+            </button>
+          )}
+          {!isBills && (
+            <button
+              type="button"
+              onClick={() => {
+                setOpen(false);
+                onNotASub();
+              }}
+              className="w-full flex items-center gap-2 px-3 py-2 text-[13px] text-ink hover:bg-ink/[0.04] rounded-lg transition text-left"
+            >
+              <X size={13} strokeWidth={2.2} />
+              Not a sub
             </button>
           )}
           {SHOW_BILLS_SURFACE && (
@@ -676,15 +700,13 @@ function Tag({
 
 function EmptyTab({ tab }: { tab: Tab }) {
   const msg =
-    tab === "worth"
-      ? "Nothing to review — everything in your list has a decision."
-      : tab === "watching"
-        ? "Subscriptions you keep will appear here."
-        : tab === "pruned"
-          ? "Subscriptions you cancel will appear here."
-          : tab === "hidden"
-            ? "Subscriptions you mark as not a subscription will appear here, dimmed."
-            : "No subscriptions detected yet. Re-scan after Plaid syncs more transactions.";
+    tab === "watching"
+      ? "Subscriptions you confirm or keep will appear here."
+      : tab === "pruned"
+        ? "Subscriptions you cancel will appear here."
+        : tab === "hidden"
+          ? "Subscriptions you mark as not a sub will appear here, dimmed."
+          : "No subscriptions detected yet. Re-scan after Plaid syncs more transactions.";
   return <div className="py-8 text-center text-[13px] text-ink-muted">{msg}</div>;
 }
 
