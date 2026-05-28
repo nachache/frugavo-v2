@@ -1822,6 +1822,33 @@ async function writeShadowDoubt(args: {
   if (!supabaseAdmin) return null;
   const { userId, subscriptionId, merchantKey, promptKind, confidence } = args;
 
+  // SHORT-CIRCUIT: user has ALREADY decided on this merchant via a
+  // prior Quick Check, ActionCenter button, or feedback form. Skip
+  // creating a doubt entirely so re-scans never re-prompt for things
+  // the user has already answered.
+  //
+  // override_type values that mean "I've decided":
+  //   confirmed         → user said yes it's a sub
+  //   not_subscription  → user said no it's not
+  //   not_recurring     → user said it's a one-off
+  //   cancelled         → user cancelled it
+  // wrong_amount / wrong_cadence are NOT terminal — they refine
+  // detection without resolving the "is this a sub" question.
+  if (merchantKey) {
+    const { data: existingOverride } = await supabaseAdmin
+      .from("user_overrides")
+      .select("override_type")
+      .eq("user_id", userId)
+      .eq("merchant_key", merchantKey)
+      .maybeSingle();
+    const terminalOverride =
+      existingOverride?.override_type &&
+      ["confirmed", "not_subscription", "not_recurring", "cancelled"].includes(
+        existingOverride.override_type as string
+      );
+    if (terminalOverride) return null;
+  }
+
   // Read existing row to know whether we're creating or updating —
   // doubt_prompts_log only gets a 'created' event on first insert.
   // Also short-circuits if the doubt is already resolved or silenced
