@@ -26,6 +26,11 @@ type ChangeRow = {
   merchant_name: string;
   category: string;
   monthly_equivalent_cents: number;
+  // Server-side enrichment — distinguishes a genuinely new sub
+  // from one we just happened to see for the first time (Plaid
+  // backfill, fresh second bank, etc). Drives the row label.
+  first_seen_kind?: "new" | "first_seen" | "unknown";
+  first_charge_at?: string | null;
 };
 
 type PriceChange = ChangeRow & {
@@ -137,11 +142,12 @@ export function WhatChangedCard() {
         {newSubs.map((s) => (
           <ChangeRowItem
             key={`new-${s.plaid_stream_id}`}
-            type="new"
+            type={s.first_seen_kind === "first_seen" ? "first_seen" : "new"}
             merchant={s.merchant_name}
             category={s.category}
             amountCents={s.monthly_equivalent_cents}
             streamId={s.plaid_stream_id}
+            firstChargeAt={s.first_charge_at}
           />
         ))}
         {priceUp.map((p) => (
@@ -188,19 +194,30 @@ function ChangeRowItem({
   amountCents,
   deltaPct,
   streamId,
+  firstChargeAt,
 }: {
-  type: "new" | "removed" | "price_up" | "price_down";
+  // 'new' vs 'first_seen' is the key fix: a row that's appearing
+  // for the first time in the diff because Plaid finally delivered
+  // older transactions is NOT a new subscription, it's a sub we just
+  // started tracking. Label honestly.
+  type: "new" | "first_seen" | "removed" | "price_up" | "price_down";
   merchant: string;
   category: string;
   amountCents: number;
   deltaPct?: number;
   streamId: string;
+  firstChargeAt?: string | null;
 }) {
   const cfg = {
     new: {
       dot: "bg-brand",
       icon: <PlusIcon />,
       label: "New subscription",
+    },
+    first_seen: {
+      dot: "bg-ink/30",
+      icon: <EyeIcon />,
+      label: "Newly visible",
     },
     removed: {
       dot: "bg-ink-muted",
@@ -243,7 +260,12 @@ function ChangeRowItem({
           {merchant}
         </div>
         <div className="text-[12px] md:text-[13px] text-ink-muted">
-          {cfg.label} · {prettyCategory(category)}
+          {cfg.label}
+          {type === "first_seen" && firstChargeAt
+            ? ` since ${fmtDate(firstChargeAt)}`
+            : ""}
+          {" · "}
+          {prettyCategory(category)}
         </div>
       </div>
       <div className="text-right shrink-0">
@@ -290,6 +312,17 @@ function PlusIcon() {
     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       <line x1="12" y1="5" x2="12" y2="19" />
       <line x1="5" y1="12" x2="19" y2="12" />
+    </svg>
+  );
+}
+
+// Eye icon — used to mark a row as "first time we noticed this",
+// versus the plus icon which means "this stream truly started billing".
+function EyeIcon() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7-10-7-10-7z" />
+      <circle cx="12" cy="12" r="3" />
     </svg>
   );
 }

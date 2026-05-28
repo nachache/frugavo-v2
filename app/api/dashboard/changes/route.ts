@@ -29,6 +29,19 @@ type ChangeRow = {
   merchant_name: string;
   category: string;
   monthly_equivalent_cents: number;
+  // Distinguishes 'genuinely new' (started billing recently) from
+  // 'newly visible' (Plaid finally delivered older transactions or
+  // this is the user's first scan). Without it, every first-time
+  // sync shows up as "New subscription" which is misleading.
+  //   'new'         — first ever charge less than NEW_THRESHOLD_DAYS old
+  //   'first_seen'  — older charges exist; this is the first time we
+  //                   observed it
+  //   'unknown'     — no charge history available to classify
+  first_seen_kind?: "new" | "first_seen" | "unknown";
+  // ISO date of the earliest charge ever recorded for this stream,
+  // used to populate first_seen_kind. Optional so older snapshots
+  // without enrichment still parse.
+  first_charge_at?: string | null;
 };
 
 type PriceChange = ChangeRow & {
@@ -140,6 +153,77 @@ export async function GET() {
       category: p.category,
       monthly_equivalent_cents: p.monthly_equivalent_cents,
     });
+  }
+
+  // ─── New-sub enrichment ─────────────────────────────────────────
+  //
+  // For each "new" row, look up the earliest charge ever observed
+  // for the underlying subscription. Plaid backfills historical
+  // transactions asynchronously, and the user's first scan vs.
+  // second scan often diff dramatically — meaning a sub that has
+  // been billing for years appears as "New" the first time it's
+  // picked up. Differentiating lets us write the honest label
+  // ("Newly visible" instead of "New subscription").
+  if (newSubs.length > 0) {
+    // Resolve subscription_ids for the plaid_stream_ids in newSubs.
+    // The scan_snapshots payload uses plaid_stream_id, but the
+    // charges table is keyed by subscription_id. Bridge via the
+    // subscriptions.plaid_stream_id column.
+    const streamIds = newSubs.map((n) => n.plaid_stream_id);
+    const { data: subRows } = await supabaseAdmin
+      .from("subscriptions")
+      .select("id, plaid_stream_id")
+      .eq("user_id", user.id)
+      .in("plaid_stream_id", streamIds);
+    const subIdByStream = new Map<string, string>();
+    for (const r of (subRows ?? []) as Array<{
+      id: string;
+      plaid_stream_id: string | null;
+    }>) {
+      if (r.plaid_stream_id) subIdByStream.set(r.plaid_stream_id, r.id);
+    }
+    const subIds = Array.from(subIdByStream.values());
+
+    const firstByStream = new Map<string, string>();
+    if (subIds.length > 0) {
+      // Aggregate min(posted_date) per subscription. Supabase's PG
+      // RPC isn't wired here so do a single bulk read and reduce
+      // client-side — cheap because charges per user are bounded.
+      const { data: chargeRows } = await supabaseAdmin
+        .from("subscription_charges")
+        .select("subscription_id, posted_date")
+        .eq("user_id", user.id)
+        .in("subscription_id", subIds)
+        .order("posted_date", { ascending: true });
+      for (const c of (chargeRows ?? []) as Array<{
+        subscription_id: string;
+        posted_date: string;
+      }>) {
+        // Build reverse map subId → streamId so we can write back
+        // keyed by streamId for the front-end.
+        // (Computed lazily on first hit.)
+        if (!firstByStream.has(c.subscription_id)) {
+          firstByStream.set(c.subscription_id, c.posted_date);
+        }
+      }
+    }
+
+    const NEW_THRESHOLD_DAYS = 45;
+    const now = Date.now();
+    for (const row of newSubs) {
+      const subId = subIdByStream.get(row.plaid_stream_id);
+      const firstDate = subId ? firstByStream.get(subId) : undefined;
+      if (!firstDate) {
+        row.first_seen_kind = "unknown";
+        row.first_charge_at = null;
+        continue;
+      }
+      const ageDays =
+        (now - new Date(firstDate).getTime()) / (1000 * 60 * 60 * 24);
+      row.first_charge_at = firstDate;
+      row.first_seen_kind =
+        ageDays <= NEW_THRESHOLD_DAYS ? "new" : "first_seen";
+    }
   }
 
   const sumMonthly = (rows: SnapshotRow[]) =>

@@ -133,6 +133,13 @@ export function IdentityHero({
         {healthScore ? (
           <div className="mt-3">
             <HealthScorePill score={healthScore} />
+            {/* Short interpretation — the score on its own is just a
+                number; the one-line summary tells the user what it
+                means right now (e.g. "Diversified, predictable
+                monthly cost." or "2 subscriptions look forgotten"). */}
+            <p className="mt-1.5 text-[12px] md:text-[12.5px] text-ink-muted leading-snug max-w-[420px]">
+              {healthScore.summary}
+            </p>
           </div>
         ) : null}
       </div>

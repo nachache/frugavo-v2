@@ -8,6 +8,7 @@ import { TimezoneCapture } from "@/components/app/timezone-capture";
 import { IdentityHero } from "@/components/app/identity-hero";
 import { OverviewCard } from "@/components/app/overview-card";
 import { ActionCenter } from "@/components/app/action-center";
+import { RenewingSoonCard } from "@/components/app/renewing-soon-card";
 import { WhatChangedCard } from "@/components/app/what-changed-card";
 import { UncertainPromptCards } from "@/components/app/uncertain-prompt-cards";
 import { ActivateProtectionCard } from "@/components/app/activate-protection-card";
@@ -524,6 +525,19 @@ export default async function AppHome({
                   category: s.category,
                   monthly_cents: s.amount_cents,
                 }))}
+            />
+          )}
+
+          {/* Renewing soon — small dedicated card for predicted
+              charges in the next 14 days. Self-hides when there's
+              nothing in the window. Predictive copy only — "expected
+              in ~N days", never "will charge". */}
+          {activeTab === "subscriptions" && (
+            <RenewingSoonCard
+              items={[
+                ...data.actions.worth_a_look,
+                ...data.actions.watching,
+              ]}
             />
           )}
 
