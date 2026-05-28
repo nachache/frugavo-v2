@@ -15,6 +15,11 @@ import type { Personality } from "@/lib/personality";
 
 type Props = {
   monthlySubCents: number;
+  // Active confirmed subscription count — drives the live numbers
+  // strip below the personality copy. Updates every router.refresh
+  // so the user sees the card respond to every Keep / Not a sub
+  // action in real time.
+  subCount: number;
   personality: Personality;
   // Public profile slug. When present, ShareButtons attaches the
   // canonical /u/<slug> URL to navigator.share so social platforms
@@ -39,6 +44,7 @@ function fmt(c: number): string {
 
 export function IdentityHero({
   monthlySubCents,
+  subCount,
   personality,
   publicSlug,
   firstName,
@@ -99,6 +105,23 @@ export function IdentityHero({
         </div>
         <div className="mt-3 text-[15px] md:text-[16.5px] text-ink-body leading-relaxed">
           {personality.sub}
+        </div>
+
+        {/* Live numbers strip — ticks on every router.refresh after
+            a Keep / Not a sub / cancel action. Gives the user
+            visible proof the personality data is responding to
+            their decisions, even when the archetype LABEL doesn't
+            flip (category mix unchanged). */}
+        <div className="mt-4 inline-flex items-center gap-2 rounded-full bg-canvas/60 border border-hairline/60 px-3 py-1.5 text-[12.5px] md:text-[13px] text-ink-body tabular-nums">
+          <span className="font-medium text-ink">
+            {subCount.toLocaleString("en-US")}
+          </span>
+          <span className="text-ink-muted">
+            confirmed {subCount === 1 ? "sub" : "subs"}
+          </span>
+          <span className="text-ink-muted/40">·</span>
+          <span className="font-medium text-ink">{fmt(monthlySubCents)}</span>
+          <span className="text-ink-muted">/mo</span>
         </div>
       </div>
 

@@ -563,6 +563,7 @@ export default async function AppHome({
               <div className="lg:col-span-7">
                 <IdentityHero
                   monthlySubCents={data.monthly.sub_only_cents}
+                  subCount={data.monthly.sub_only_count}
                   personality={data.personality}
                   publicSlug={publicSlug}
                   firstName={user.firstName ?? null}
