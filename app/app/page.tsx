@@ -471,6 +471,7 @@ export default async function AppHome({
               topSubscription={topSubWithDomain}
               moneyLeaks={data.money_leaks}
               shockInsights={data.shock_insights}
+              concentration={data.concentration}
               allSubscriptions={data.subscriptions
                 .filter(
                   (s) =>
@@ -571,6 +572,7 @@ export default async function AppHome({
                     data.monthly.sub_only_count > 0 &&
                     data.monthly.sub_only_cents > 0
                   }
+                  healthScore={data.health_score}
                 />
               </div>
               <div className="lg:col-span-5">

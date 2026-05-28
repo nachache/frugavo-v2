@@ -487,8 +487,16 @@ function Row({
             >
               {item.merchant_name}
             </span>
-            {/* Tags hidden on phone — they fight for horizontal space. */}
+            {/* Behavioral badges + legacy tags. Hidden on phone — they
+                fight for horizontal space. New dynamic badges render
+                first (price increased, likely forgotten, etc) since
+                they carry more signal than the legacy ranking tags. */}
             <span className="hidden sm:contents">
+              {(item.badges ?? []).map((b) => (
+                <BadgeChip key={b.kind} tone={b.tone} title={b.detail}>
+                  {b.label}
+                </BadgeChip>
+              ))}
               {item.tags.map((t) => (
                 <Tag key={t} kind={t === "Biggest line item" ? "primary" : "subtle"}>
                   {t}
@@ -579,7 +587,7 @@ function Row({
           href={`/app/subscriptions/${item.subscription_id}`}
           className="inline-flex items-center gap-1 h-7 md:h-8 px-2.5 md:px-3 rounded-full border border-hairline bg-surface group-hover:bg-ink/[0.04] text-ink text-[11.5px] md:text-[12px] font-medium transition"
         >
-          <span className="hidden sm:inline">Review</span>
+          <span className="hidden sm:inline">Analyze</span>
           <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
             <polyline points="9 18 15 12 9 6" />
           </svg>
@@ -691,6 +699,41 @@ function Tag({
       : "bg-accent/10 text-accent border-accent/20";
   return (
     <span
+      className={`inline-flex items-center rounded-full border px-1.5 h-5 text-[10px] md:text-[11px] font-medium leading-none ${cls}`}
+    >
+      {children}
+    </span>
+  );
+}
+
+// BadgeChip — tone-coded behavioral signal. Renders next to the
+// merchant name. detail is exposed via the title attribute so a hover
+// gives the user the underlying math (e.g. "Latest charge $14.99 vs
+// median $12.99"). Visual rules:
+//   danger    — soft red, used for price_increased + unusual_billing
+//   attention — soft amber, used for likely_forgotten / annual_trap
+//   positive  — soft brand green, essential / stable_for_n_months
+//   neutral   — quiet hairline, detected_recently / high_yearly_impact
+function BadgeChip({
+  children,
+  tone,
+  title,
+}: {
+  children: React.ReactNode;
+  tone: "positive" | "neutral" | "attention" | "danger";
+  title?: string;
+}) {
+  const cls =
+    tone === "danger"
+      ? "bg-danger/10 text-danger border-danger/20"
+      : tone === "attention"
+        ? "bg-accent/10 text-accent border-accent/20"
+        : tone === "positive"
+          ? "bg-brand/10 text-brand border-brand/20"
+          : "bg-ink/[0.04] text-ink-body border-hairline";
+  return (
+    <span
+      title={title}
       className={`inline-flex items-center rounded-full border px-1.5 h-5 text-[10px] md:text-[11px] font-medium leading-none ${cls}`}
     >
       {children}

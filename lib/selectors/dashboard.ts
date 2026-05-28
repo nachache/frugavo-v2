@@ -32,6 +32,15 @@ import {
 } from "@/lib/insights";
 import { computePersonality, type Personality } from "@/lib/personality";
 import { computeMoneyLeaks, type MoneyLeak } from "@/lib/money-leaks";
+import {
+  computeConcentrationInsight,
+  type ConcentrationInsight,
+} from "@/lib/intelligence/concentration";
+import { computeBadges, type Badge } from "@/lib/intelligence/badges";
+import {
+  computeHealthScore,
+  type HealthScore,
+} from "@/lib/intelligence/health-score";
 import catalog from "@/lib/data/merchant-catalog.json";
 
 // ───────────────────────────────────────────────────────────────────
@@ -82,6 +91,8 @@ export type DashboardData = {
 
   // ─── Identity ─────────────────────────────────────────────────────
   personality: Personality;
+  health_score: HealthScore;
+  concentration: ConcentrationInsight;
 
   // ─── Action center tabs ──────────────────────────────────────────
   // Source of truth is user_overrides.override_type:
@@ -158,6 +169,9 @@ export type ActionItem = {
   // Echo of the active override so the UI knows which tab this item
   // belongs in without re-deriving from user_decision.
   override_type: string | null;
+  // Dynamic behavioral badges (price increased, likely forgotten,
+  // annual trap, essential, stable for N months, etc). Up to 2.
+  badges: Badge[];
 };
 
 // Dedupe subscription rows that point at the same real merchant.
@@ -569,6 +583,40 @@ export async function buildDashboardData(
     );
   const staleTaggedIds = new Set(staleQualifiers.slice(0, 3).map((q) => q.sub.id));
 
+  // Rank by YEARLY equivalent for the high_yearly_impact badge.
+  // baseActions already monthly-sorted; mirror it as yearly for clarity.
+  const yearlyRankedIds = new Map<string, number>();
+  [...baseActions]
+    .sort((a, b) => b.monthly * 12 - a.monthly * 12)
+    .forEach(({ sub: s }, idx) => {
+      yearlyRankedIds.set(s.id, idx + 1);
+    });
+
+  // Duplicate detection — same category + similar normalized merchant
+  // name = candidates for "possible duplicate". We compare the two
+  // tokenized merchant names; if either is a prefix of the other or
+  // they share a meaningful 4+ char token, flag both.
+  const normName = (name: string): string =>
+    (name ?? "").toLowerCase().replace(/[^a-z0-9]+/g, "");
+  const dupByMerchant = new Map<string, string>();
+  for (let i = 0; i < baseActions.length; i++) {
+    const a = baseActions[i].sub;
+    if (!a.merchant_name || dupByMerchant.has(a.id)) continue;
+    const na = normName(a.merchant_name);
+    for (let j = i + 1; j < baseActions.length; j++) {
+      const b = baseActions[j].sub;
+      if (a.category !== b.category) continue;
+      const nb = normName(b.merchant_name);
+      if (na.length >= 4 && nb.length >= 4) {
+        if (na.startsWith(nb) || nb.startsWith(na)) {
+          dupByMerchant.set(a.id, b.merchant_name);
+          dupByMerchant.set(b.id, a.merchant_name);
+          break;
+        }
+      }
+    }
+  }
+
   const allActions: ActionItem[] = baseActions.map(({ sub: s, monthly: m }) => {
     const tags: string[] = [];
     if (biggestIds.has(s.id)) tags.push("Biggest line item");
@@ -578,6 +626,21 @@ export async function buildDashboardData(
     const ov = s.merchant_key ? overrideByMerchant.get(s.merchant_key) ?? null : null;
     const paidRecent = paidBySub.get(s.id) ?? 0;
     const monthsObs = Math.min(12, monthsBySub.get(s.id)?.size ?? 0);
+    const yearlyRank = yearlyRankedIds.get(s.id);
+    const badges = computeBadges({
+      sub: {
+        id: s.id,
+        merchant_name: s.merchant_name,
+        category: s.category,
+        amount_cents: s.amount_cents,
+        frequency: s.frequency,
+        last_charged_at: s.last_charged_at,
+      },
+      charges,
+      yearlyRank: yearlyRank && yearlyRank <= 3 ? yearlyRank : undefined,
+      duplicateOfMerchant: dupByMerchant.get(s.id) ?? null,
+      asOf,
+    });
     return {
       subscription_id: s.id,
       merchant_name: s.merchant_name,
@@ -600,6 +663,7 @@ export async function buildDashboardData(
       reason: leakReasonById.get(s.id) ?? null,
       tags,
       override_type: ov,
+      badges,
     };
   });
 
@@ -662,6 +726,40 @@ export async function buildDashboardData(
     .filter((a) => !inWatching(a) && !inPruned(a) && !inHidden(a))
     .sort((a, b) => b.monthly_cents - a.monthly_cents);
 
+  // ─── Intelligence layer (concentration + health score) ───────────
+  // Concentration over subscription-only category totals — the
+  // donut already shows those, so the insight headline mirrors it.
+  const concentration = computeConcentrationInsight(subscriptionCats);
+
+  // Engagement signal — count distinct override actions in the last
+  // 30 days. This is the "you've been actively reviewing" proxy that
+  // feeds the engagement factor of the health score.
+  let overrideCount = 0;
+  {
+    const thirtyAgo = new Date(asOf);
+    thirtyAgo.setDate(thirtyAgo.getDate() - 30);
+    const { count } = await supabaseAdmin
+      .from("user_overrides")
+      .select("*", { count: "exact", head: true })
+      .eq("user_id", userId)
+      .gte("created_at", thirtyAgo.toISOString());
+    overrideCount = count ?? 0;
+  }
+
+  const healthScore = computeHealthScore({
+    subs: subs.map((s) => ({
+      id: s.id,
+      amount_cents: s.amount_cents,
+      frequency: s.frequency,
+      last_charged_at: s.last_charged_at,
+      category: s.category,
+    })),
+    charges: visibleCharges,
+    categories: subscriptionCats,
+    overrideCount,
+    asOf,
+  });
+
   // Same bucket logic, bills tier only.
   const billWatching: ActionItem[] = billActions
     .filter(inWatching)
@@ -706,6 +804,8 @@ export async function buildDashboardData(
     shock_insights: shock,
     money_leaks: moneyLeaks,
     personality,
+    health_score: healthScore,
+    concentration,
     actions: {
       worth_a_look,
       watching,

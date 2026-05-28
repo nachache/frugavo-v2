@@ -12,6 +12,7 @@ import { useState } from "react";
 import { Share2 } from "lucide-react";
 import { ShareButtons } from "./share-buttons";
 import type { Personality } from "@/lib/personality";
+import type { HealthScore } from "@/lib/intelligence/health-score";
 
 type Props = {
   monthlySubCents: number;
@@ -36,6 +37,10 @@ type Props = {
   // skeleton instead — single rule across SharePanel + IdentityHero
   // so the two surfaces can never disagree.
   hasData: boolean;
+  // Subscription Health Score (300..850). Renders as a small pill
+  // under the live numbers strip when present. Methodology lives in
+  // lib/intelligence/health-score.ts.
+  healthScore?: HealthScore | null;
 };
 
 function fmt(c: number): string {
@@ -49,6 +54,7 @@ export function IdentityHero({
   publicSlug,
   firstName,
   hasData,
+  healthScore,
 }: Props) {
   const greeting = firstName ? `Hey ${firstName} —` : "Here's your card —";
   const [shareOpen, setShareOpen] = useState(false);
@@ -123,6 +129,12 @@ export function IdentityHero({
           <span className="font-medium text-ink">{fmt(monthlySubCents)}</span>
           <span className="text-ink-muted">/mo</span>
         </div>
+
+        {healthScore ? (
+          <div className="mt-3">
+            <HealthScorePill score={healthScore} />
+          </div>
+        ) : null}
       </div>
 
       {/* Share — single button, expands to the picker on click.
@@ -166,6 +178,47 @@ export function IdentityHero({
           )}
         </div>
       </div>
+    </div>
+  );
+}
+
+// HealthScorePill — credit-score-style 300..850 chip with a tiny
+// inline progress fill. Tone is calm, observational. Tooltip exposes
+// the per-factor breakdown for users who want to understand why.
+function HealthScorePill({ score }: { score: HealthScore }) {
+  const min = 300;
+  const max = 850;
+  const pct = Math.max(0, Math.min(1, (score.score - min) / (max - min)));
+  const bandColor =
+    score.band === "excellent" || score.band === "strong"
+      ? "var(--color-brand, #10b981)"
+      : score.band === "healthy"
+        ? "var(--color-ink, #0f172a)"
+        : score.band === "fair"
+          ? "var(--color-amber, #f59e0b)"
+          : "var(--color-danger, #dc2626)";
+  const tooltip =
+    `Diversification ${score.factors.diversification} · ` +
+    `Stability ${score.factors.stability} · ` +
+    `Engagement ${score.factors.engagement} · ` +
+    `Recency ${score.factors.recencyDrift}`;
+  return (
+    <div
+      className="inline-flex items-center gap-2.5 rounded-full bg-canvas/60 border border-hairline/60 px-3 py-1.5 text-[12.5px] md:text-[13px] tabular-nums"
+      title={tooltip}
+    >
+      <span className="text-ink-muted">Health</span>
+      <span className="font-medium text-ink">{score.score}</span>
+      <span
+        className="inline-block h-1.5 w-12 rounded-full bg-ink/10 overflow-hidden"
+        aria-hidden="true"
+      >
+        <span
+          className="block h-full rounded-full transition-[width] duration-700 ease-out"
+          style={{ width: `${Math.round(pct * 100)}%`, background: bandColor }}
+        />
+      </span>
+      <span className="text-ink-muted">{score.bandLabel}</span>
     </div>
   );
 }

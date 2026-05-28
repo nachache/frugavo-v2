@@ -25,6 +25,7 @@ import type {
   TopSubscription,
 } from "@/lib/insights";
 import type { MoneyLeak } from "@/lib/money-leaks";
+import type { ConcentrationInsight } from "@/lib/intelligence/concentration";
 import { MerchantLogo } from "./merchant-logo";
 
 type Props = {
@@ -60,6 +61,11 @@ type Props = {
     category: string;
     monthly_cents: number;
   }[];
+  // Interpretation line that sits under the donut: instead of the
+  // generic "5 categories" the donut center used to print, this is
+  // a one-line meaning ("Telecom dominates", "Mostly essentials",
+  // "Spending diversified"). Computed once server-side.
+  concentration?: ConcentrationInsight | null;
 };
 
 const DONUT_COLORS = [
@@ -93,6 +99,7 @@ export function OverviewCard({
   shockInsights,
   mode = "combined",
   allSubscriptions = [],
+  concentration = null,
 }: Props) {
   // Donut click → category drill-down. When set, a list of subs
   // matching that category appears below the donut/legend.
@@ -159,6 +166,14 @@ export function OverviewCard({
               setActiveCategory((prev) => (prev === c ? null : c))
             }
           />
+          {/* Concentration interpretation — replaces the generic
+              "5 categories" SaaS placeholder. One headline, one
+              short fact, tone-coded color rail. Sits between the
+              legend and the drill-down so it's always visible
+              without competing with the slice click affordance. */}
+          {concentration && (
+            <ConcentrationLine insight={concentration} />
+          )}
           {/* Drill-down list — shows the subs in the clicked
               category. Click the same slice again to close. */}
           {activeCategory && (
@@ -949,6 +964,30 @@ function InsightRow({
     );
   }
   return body;
+}
+
+// One-line interpretation under the donut. Tone is communicated by a
+// small left rail color — calm by default, soft amber on attention.
+function ConcentrationLine({ insight }: { insight: ConcentrationInsight }) {
+  const rail =
+    insight.tone === "attention"
+      ? "border-l-2 border-l-accent"
+      : insight.tone === "positive"
+        ? "border-l-2 border-l-brand"
+        : "border-l-2 border-l-hairline";
+  return (
+    <div
+      className={`w-full max-w-[240px] mt-1 rounded-r-md bg-canvas/30 px-3 py-2 animate-fadeUp ${rail}`}
+      style={{ animationDelay: "0.5s", animationFillMode: "both" }}
+    >
+      <div className="text-[12.5px] md:text-[13px] font-medium text-ink leading-snug">
+        {insight.headline}
+      </div>
+      <div className="mt-0.5 text-[11px] text-ink-muted leading-snug">
+        {insight.detail}
+      </div>
+    </div>
+  );
 }
 
 function prettyCategory(cat: string): string {
