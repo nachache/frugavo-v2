@@ -74,28 +74,32 @@ export function ActivateProtectionCard({ variant }: { variant: Variant }) {
 
   return (
     <div className="rounded-2xl border border-hairline bg-surface p-5 md:p-6 animate-fadeUp">
-      <div className="flex items-start justify-between gap-4 flex-wrap">
-        <div className="min-w-0 flex-1 max-w-[640px]">
+      {/* Stack vertically on mobile (text gets full width), side by
+          side on md+ where there's room. Previous flex-wrap squeezed
+          the body into a narrow left column under the CTA on phones,
+          causing it to wrap every 3-4 words. */}
+      <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4 md:gap-6">
+        <div className="min-w-0 md:flex-1 md:max-w-[640px]">
           <span className="text-[11.5px] md:text-[12px] font-medium uppercase tracking-[0.1em] text-ink-muted">
             {copy.label}
           </span>
-          <h2 className="mt-2 font-display text-[18px] md:text-[22px] font-semibold tracking-[-0.015em] leading-[1.2] text-ink">
+          <h2 className="mt-2 font-display text-[19px] md:text-[22px] font-semibold tracking-[-0.015em] leading-[1.2] text-ink">
             {copy.headline}
           </h2>
           <p className="mt-2 text-[14px] leading-relaxed text-ink-body">
             {copy.body}
           </p>
         </div>
-        <div className="shrink-0 flex flex-col items-end gap-1.5">
+        <div className="shrink-0 flex flex-col items-stretch md:items-end gap-1.5">
           <button
             type="button"
             onClick={activate}
             disabled={loading}
-            className="inline-flex h-10 md:h-11 items-center gap-2 rounded-full bg-ink px-4 md:px-5 text-[13.5px] md:text-[14px] font-medium text-canvas hover:bg-ink/85 transition disabled:opacity-60 disabled:cursor-wait"
+            className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-ink px-5 text-[14px] font-medium text-canvas hover:bg-ink/85 transition disabled:opacity-60 disabled:cursor-wait whitespace-nowrap"
           >
             {loading ? "Opening…" : copy.cta}
           </button>
-          <span className="text-[11.5px] text-ink-muted">
+          <span className="text-[11.5px] text-ink-muted text-center md:text-right">
             {copy.subline}
           </span>
         </div>
