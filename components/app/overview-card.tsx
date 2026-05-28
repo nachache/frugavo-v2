@@ -270,7 +270,12 @@ function CountUp({
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
   }, [targetCents, start]);
-  return <>{fmtBig(shown)}</>;
+  // Hero number is shown as whole dollars — $163.91 → $164. The
+  // cents tend to look noisy on a 60-pixel display ($163.91/mo
+  // visually reads less clean than $164/mo, and the precision is
+  // false anyway — monthly cost shifts up/down with each new charge).
+  // Per-row amounts in the Action Center keep their cents.
+  return <>{fmtRound(shown)}</>;
 }
 
 // ─── Sparkline (smooth curve, soft fill) ───────────────────────────

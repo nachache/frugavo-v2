@@ -40,7 +40,18 @@ type Status =
 
 const OAUTH_TOKEN_KEY = "frugavo:plaid:link_token";
 
-export function ConnectBankButton() {
+export function ConnectBankButton({
+  variant = "hero",
+  compactLabel = "Connect another account",
+}: {
+  // 'hero'    — first-connect /app/connect CTA. Big shadowed pill with
+  //             "Free scan" eyebrow and "Takes about 30 seconds." subline.
+  // 'compact' — inline secondary affordance for use INSIDE other UI
+  //             (e.g. settings page after one bank is already connected).
+  //             No eyebrow / subline; smaller height; uses compactLabel.
+  variant?: "hero" | "compact";
+  compactLabel?: string;
+} = {}) {
   const router = useRouter();
   const [linkToken, setLinkToken] = useState<string | null>(null);
   // Default to "idle" rather than "loading". The link-token fetch
@@ -207,6 +218,7 @@ export function ConnectBankButton() {
   // cinematic progress the /app/scanning page already runs. Keep the
   // button visually quiet between Plaid modal close and the
   // navigation to /app/scanning.
+  const idleLabel = variant === "compact" ? compactLabel : "Scan my subscriptions";
   const label =
     status === "connecting"
       ? "Opening secure bank login…"
@@ -214,7 +226,59 @@ export function ConnectBankButton() {
         ? "Connecting your bank…"
         : status === "queued"
           ? "Preparing your scan…"
-          : "Scan my subscriptions";
+          : idleLabel;
+
+  // Compact variant — used inside settings page next to an existing
+  // banks list, where the heavy first-connect CTA would dominate.
+  // Smaller pill, no eyebrow/sub copy, plus icon prefix that reads as
+  // "add" rather than "scan".
+  if (variant === "compact") {
+    return (
+      <div className="flex flex-col items-start gap-1.5">
+        <button
+          onClick={() => {
+            if (ready && linkToken && status !== "queued") {
+              setStatus("connecting");
+              open();
+            } else {
+              setStatus("queued");
+            }
+          }}
+          disabled={disabled}
+          className="group inline-flex h-10 items-center justify-center gap-2 rounded-full bg-ink px-4 text-[13px] font-medium text-canvas hover:bg-ink/85 transition disabled:opacity-60 disabled:cursor-not-allowed"
+        >
+          {(status === "queued" || status === "exchanging" || status === "connecting") ? (
+            <Loader2 size={13} className="animate-spin" />
+          ) : (
+            <svg
+              width="13"
+              height="13"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.4"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <line x1="12" y1="5" x2="12" y2="19" />
+              <line x1="5" y1="12" x2="19" y2="12" />
+            </svg>
+          )}
+          <span>{label}</span>
+        </button>
+        {errorMessage && (
+          <p
+            className="inline-flex items-center gap-1.5 text-[12px] text-danger"
+            role="alert"
+          >
+            <ShieldCheck size={12} />
+            {errorMessage}
+          </p>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col items-start">
