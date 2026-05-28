@@ -8,6 +8,8 @@ import {
 } from "@/components/app/danger-zone";
 import { SoundToggle } from "@/components/app/sound-toggle";
 import { BillingPanel } from "@/components/app/settings-billing-panel";
+import { AddBankButton } from "@/components/app/add-bank-button";
+import { getEntitlement } from "@/lib/billing/entitlements";
 
 // /app/settings — minimal account + connection management.
 // Real disconnect, billing, and data-export controls land in week 5.
@@ -31,6 +33,14 @@ export default async function SettingsPage() {
     : { data: [] };
 
   const email = user.emailAddresses[0]?.emailAddress ?? "";
+
+  // Paid-tier gate for "Add another bank". trialing, active, and
+  // cancelled-but-still-active all count as paid.
+  const entitlement = await getEntitlement(user.id);
+  const isPaid =
+    entitlement.entitlement_state === "active" ||
+    entitlement.entitlement_state === "trialing" ||
+    entitlement.entitlement_state === "cancelled_active";
 
   return (
     <section className="container-page py-8 md:py-12 max-w-[720px]">
@@ -93,6 +103,14 @@ export default async function SettingsPage() {
             .
           </p>
         )}
+
+        {/* Multi-bank connect — paid feature. Free users see an
+            upgrade prompt; paid users get the live Plaid Link flow
+            inline. Encouraged because connecting bank + credit card
+            issuer separately dramatically improves sub recall. */}
+        {items && items.length > 0 ? (
+          <AddBankButton isPaid={isPaid} />
+        ) : null}
       </Section>
 
       <Section title="Preferences">
