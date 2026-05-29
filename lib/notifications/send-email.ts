@@ -19,7 +19,10 @@
 // catch (e) { record('failed', e.message) }` rather than throw.
 
 export type SendEmailInput = {
-  to: string;
+  // Resend accepts either a single address or an array of up to 50.
+  // Exposing both so ops paths (signup pings, alerts) can fan out
+  // to multiple inboxes in a single API call.
+  to: string | string[];
   subject: string;
   html: string;
   text?: string;

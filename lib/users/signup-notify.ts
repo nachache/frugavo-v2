@@ -1,15 +1,40 @@
-// Send a one-time internal notification to hello@frugavo.com when a
-// new user first lands on the dashboard. Used by /app/page.tsx —
-// after the app_users upsert it calls maybeNotifySignup(), which is
-// a no-op if the user was already notified.
+// Send a one-time signup notification when a new user first lands on
+// the dashboard. Used by /app/page.tsx — after the app_users upsert
+// it calls maybeNotifySignup(), which is a no-op if the user was
+// already notified.
 //
-// Why a separate module: the dashboard page is already long, and
-// this concern (ops alerting) is independent of dashboard rendering.
+// Three independent channels, all best-effort:
+//
+//   1. hello@frugavo.com — the canonical ops mailbox.
+//   2. OPS_NOTIFY_EMAILS (env) — comma-separated personal addresses
+//      that get the same email. Set this to your real inbox so the
+//      ping reaches you whether or not hello@ forwards correctly.
+//   3. SLACK_OPS_WEBHOOK_URL (env) — optional Slack incoming webhook.
+//      When set, posts a compact JSON message so you get a real-time
+//      notification in your phone / desktop Slack the moment a signup
+//      lands.
+//
+// All three fan out from the SAME reservation pass; the dispatch row
+// (signup_notified_at) is stamped exactly once per user. If any
+// channel fails, the others still run — none of them block dashboard
+// render and none of them prevent the row from being stamped.
 
 import { supabaseAdmin } from "@/lib/supabase";
 import { sendEmail } from "@/lib/notifications/send-email";
 
-const NOTIFY_TO = "hello@frugavo.com";
+const PRIMARY_NOTIFY_TO = "hello@frugavo.com";
+
+function extraEmailRecipients(): string[] {
+  return (process.env.OPS_NOTIFY_EMAILS ?? "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
+function slackWebhookUrl(): string | null {
+  const url = (process.env.SLACK_OPS_WEBHOOK_URL ?? "").trim();
+  return url.startsWith("https://hooks.slack.com/") ? url : null;
+}
 
 export async function maybeNotifySignup(args: {
   clerkUserId: string;
@@ -65,8 +90,16 @@ export async function maybeNotifySignup(args: {
   const text = lines.join("\n");
   const html = `<pre style="font-family: ui-monospace, monospace; font-size: 13px; line-height: 1.55;">${escapeHtml(text)}</pre>`;
 
+  // ── Channel 1+2: email recipients ──────────────────────────────
+  // Single Resend call to the primary + any OPS_NOTIFY_EMAILS extras.
+  // Treating it as one send keeps Resend logs tidy and means a single
+  // failure path to log if it fails.
+  const allEmailRecipients: string[] = [
+    PRIMARY_NOTIFY_TO,
+    ...extraEmailRecipients(),
+  ];
   const result = await sendEmail({
-    to: NOTIFY_TO,
+    to: allEmailRecipients,
     subject,
     html,
     text,
@@ -76,9 +109,43 @@ export async function maybeNotifySignup(args: {
   if (!result.ok) {
     // eslint-disable-next-line no-console
     console.error(
-      "[signup-notify] send failed (non-fatal)",
+      "[signup-notify] email send failed (non-fatal)",
       result.error
     );
+  }
+
+  // ── Channel 3: Slack webhook ───────────────────────────────────
+  // Compact one-block message with the same info as the email body.
+  // Posts in parallel; Slack failures never affect email delivery
+  // and never block the dashboard render.
+  const slackUrl = slackWebhookUrl();
+  if (slackUrl) {
+    try {
+      const slackText =
+        `:tada: *New Frugavo signup*\n` +
+        `*Email:* ${args.email ?? "_none on Clerk_"}\n` +
+        `*Name:* ${fullName}\n` +
+        `*Clerk id:* \`${args.clerkUserId}\``;
+      const res = await fetch(slackUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: slackText }),
+      });
+      if (!res.ok) {
+        // eslint-disable-next-line no-console
+        console.error(
+          "[signup-notify] slack post failed (non-fatal)",
+          res.status,
+          await res.text().catch(() => "")
+        );
+      }
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.error(
+        "[signup-notify] slack post threw (non-fatal)",
+        e instanceof Error ? e.message : String(e)
+      );
+    }
   }
 }
 
