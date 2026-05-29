@@ -27,6 +27,7 @@ import type {
 import type { MoneyLeak } from "@/lib/money-leaks";
 import type { ConcentrationInsight } from "@/lib/intelligence/concentration";
 import { MerchantLogo } from "./merchant-logo";
+import { InsightFeedbackChip } from "./insight-feedback-chip";
 
 type Props = {
   monthly: {
@@ -980,6 +981,12 @@ function ConcentrationLine({ insight }: { insight: ConcentrationInsight }) {
       : insight.tone === "positive"
         ? "border-l-2 border-l-brand"
         : "border-l-2 border-l-hairline";
+  // Stable insight_key for the feedback chip — the category that
+  // dominates the insight + a coarse tone bucket. Same headline for
+  // the same user across renders maps to the same key, so a vote
+  // sticks. If the user's spend pattern flips (e.g. telecom →
+  // streaming dominates), the key changes and a fresh chip appears.
+  const insightKey = `concentration:${insight.tone}:${slugifyHeadline(insight.headline)}`;
   return (
     <div
       className={`w-full max-w-[240px] mt-1 rounded-r-md bg-canvas/30 px-3 py-2 animate-fadeUp ${rail}`}
@@ -991,8 +998,28 @@ function ConcentrationLine({ insight }: { insight: ConcentrationInsight }) {
       <div className="mt-0.5 text-[11px] text-ink-muted leading-snug">
         {insight.detail}
       </div>
+      {/* Feedback chip — minimal, only shows on hover/focus to keep
+          the calm aesthetic. Once voted, never appears again for
+          this insight_key on this device. */}
+      <div className="mt-2 flex justify-end opacity-60 hover:opacity-100 focus-within:opacity-100 transition-opacity">
+        <InsightFeedbackChip
+          insightKind="concentration"
+          insightKey={insightKey}
+        />
+      </div>
     </div>
   );
+}
+
+// Stable, compact slug from an insight headline. Used as part of the
+// insight_key so re-renders produce the same key for the same
+// insight text.
+function slugifyHeadline(s: string): string {
+  return s
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .slice(0, 48);
 }
 
 function prettyCategory(cat: string): string {

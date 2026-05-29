@@ -12,6 +12,7 @@ import { RenewingSoonCard } from "@/components/app/renewing-soon-card";
 import { WhatChangedCard } from "@/components/app/what-changed-card";
 import { DashboardSessionPinger } from "@/components/app/dashboard-session-pinger";
 import { InstallPwaChip } from "@/components/app/install-pwa-chip";
+import { FounderFeedbackChip } from "@/components/app/founder-feedback-chip";
 import { UncertainPromptCards } from "@/components/app/uncertain-prompt-cards";
 import { ActivateProtectionCard } from "@/components/app/activate-protection-card";
 import { BillingStatusBanner } from "@/components/app/billing-status-banner";
@@ -702,6 +703,19 @@ export default async function AppHome({
               </div>
             )}
           </section>
+
+          {/* Footer strip — quiet line giving the user one calm
+              affordance to talk to the founder. Lives at the very
+              bottom so it never competes with primary content; reads
+              as "I know where to find this when I need it" rather
+              than a follow-me-around chat widget. */}
+          <div className="pt-6 mt-2 border-t border-hairline/60 flex items-center justify-between gap-3 flex-wrap">
+            <p className="text-[11.5px] text-ink-muted leading-relaxed max-w-[480px]">
+              Frugavo is in early access. If something confuses or surprises
+              you, tell us — every note shapes what we build next.
+            </p>
+            <FounderFeedbackChip />
+          </div>
         </>
       )}
     </section>
