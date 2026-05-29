@@ -1,9 +1,11 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter, Inter_Tight, Fraunces, Newsreader } from "next/font/google";
 import { GoogleAnalytics } from "@next/third-parties/google";
 import { ClerkProvider } from "@clerk/nextjs";
 import { GaDebug } from "@/components/shared/ga-debug";
 import { ConsentBanner, ConsentGate } from "@/components/shared/consent";
+import { SwRegister } from "@/components/shared/sw-register";
+import { StandaloneModeClass } from "@/components/shared/standalone-mode-class";
 import "./globals.css";
 
 // next/font self-hosts the typefaces — no runtime CDN call.
@@ -54,7 +56,41 @@ export const metadata: Metadata = {
       "Frugavo watches your subscriptions every day so you don't have to. Trial alerts, price-hike alerts, unusual charge alerts. 7 days free.",
   },
   // Favicon is auto-served by Next.js from app/icon.png (App Router
-  // file convention). No explicit `icons` entry needed.
+  // file convention). The PWA / Apple touch icons are wired below.
+  icons: {
+    // 180×180 Apple touch icon — used by iOS Safari when the user
+    // taps "Add to Home Screen." Without it, iOS falls back to a
+    // low-quality screenshot of the page, which looks broken.
+    apple: "/icons/apple-touch-icon.png",
+  },
+  appleWebApp: {
+    // Enables the iOS PWA mode: tapping the home-screen icon opens
+    // Frugavo without Safari chrome. statusBarStyle "default" keeps
+    // the ink-on-light style on light mode; we manage the actual
+    // status-bar inset via CSS env(safe-area-inset-top).
+    capable: true,
+    title: "Frugavo",
+    statusBarStyle: "default",
+  },
+  // Web App Manifest is auto-discovered from app/manifest.ts via
+  // the Next.js App Router file convention.
+};
+
+// Viewport — exported separately per Next 14 conventions. The two
+// pieces that matter for the PWA story:
+//   • viewportFit "cover" extends the layout under iOS notch / home
+//     indicator. We then use env(safe-area-inset-*) in globals.css to
+//     keep content out of the unsafe zones.
+//   • themeColor matches the manifest theme so the Android status
+//     bar tints to the same ink tone in both browser and installed
+//     PWA contexts.
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  // Allow zoom for accessibility; never disable user-scalable.
+  maximumScale: 5,
+  viewportFit: "cover",
+  themeColor: "#0F172A",
 };
 
 export default function RootLayout({
@@ -99,6 +135,10 @@ export default function RootLayout({
         {/* Consent banner — shows until the user picks Accept or Decline.
             Decision persists in localStorage. */}
         <ConsentBanner />
+
+        {/* PWA service-worker registration. No-op in dev. */}
+        <SwRegister />
+        <StandaloneModeClass />
       </body>
 
       {/* GA4 — only renders when (a) the Measurement ID is configured and

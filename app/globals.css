@@ -201,3 +201,66 @@
     scroll-behavior: auto !important;
   }
 }
+
+/* ─── PWA / mobile chrome ─────────────────────────────────────────
+   Safe-area padding for installed PWA mode + edge-to-edge browsers.
+   viewport-fit=cover (set in app/layout.tsx) extends the page under
+   the iOS notch and home indicator; these utilities pull content
+   back into the safe zone.
+
+   .safe-area-padded — adds inset-aware top/bottom padding to a
+   page-level scroll container.
+   .safe-area-top    — top only (header strip, fixed nav).
+   .safe-area-bottom — bottom only (footer / sticky CTA).
+
+   The is-standalone class is mounted by components/shared/standalone-
+   mode-class.tsx the moment matchMedia("(display-mode: standalone)")
+   reports true. Use it to differentiate installed-PWA chrome from
+   regular browser chrome (e.g. add bottom padding to clear iOS home
+   indicator only when running standalone).
+ */
+@layer utilities {
+  .safe-area-padded {
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+  .safe-area-top {
+    padding-top: env(safe-area-inset-top);
+  }
+  .safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  /* Standalone-mode-only utilities — tiny shims so installed PWA
+     screens get a touch of extra breathing room around the iOS
+     status bar / home indicator without affecting in-browser
+     sessions. Layered defensively: pages opt in by adding the
+     standalone-padding-{top|bottom} classes. */
+  .is-standalone .standalone-padding-top {
+    padding-top: max(env(safe-area-inset-top), 12px);
+  }
+  .is-standalone .standalone-padding-bottom {
+    padding-bottom: max(env(safe-area-inset-bottom), 12px);
+  }
+
+  /* Disable pull-to-refresh + browser bounce inside the installed
+     PWA — the dashboard is a long scrollable list, and the
+     rubber-band feels off when paired with our custom refresh /
+     re-scan affordances. Only applies in standalone mode. */
+  .is-standalone {
+    overscroll-behavior-y: contain;
+  }
+}
+
+/* Display-mode media queries — let any component opt in with
+   @media (display-mode: standalone) { ... }. We keep one small
+   global rule here: hide elements that are explicitly tagged as
+   "in-browser-only" (e.g. the install chip itself once the user
+   is already inside the installed PWA). */
+@media (display-mode: standalone) {
+  .browser-only {
+    display: none !important;
+  }
+}

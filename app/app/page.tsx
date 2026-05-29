@@ -11,6 +11,7 @@ import { ActionCenter } from "@/components/app/action-center";
 import { RenewingSoonCard } from "@/components/app/renewing-soon-card";
 import { WhatChangedCard } from "@/components/app/what-changed-card";
 import { DashboardSessionPinger } from "@/components/app/dashboard-session-pinger";
+import { InstallPwaChip } from "@/components/app/install-pwa-chip";
 import { UncertainPromptCards } from "@/components/app/uncertain-prompt-cards";
 import { ActivateProtectionCard } from "@/components/app/activate-protection-card";
 import { BillingStatusBanner } from "@/components/app/billing-status-banner";
@@ -391,6 +392,15 @@ export default async function AppHome({
         lastScannedAt={latestScanFinishedAt}
         isPaid={isPaid}
       />
+
+      {/* Install-to-home-screen affordance — only renders for users
+          who have had a meaningful first session AND aren't already
+          running standalone. Calm, dismissible, never aggressive. */}
+      <div className="-mt-2 flex justify-end browser-only">
+        <InstallPwaChip
+          alreadyEngaged={!!userRow?.dashboard_first_session_at}
+        />
+      </div>
 
       {/* ProtectionStatusPill (Protected since…) moved to Layer 3
           per the IA restructure. Not allowed to compete with the
