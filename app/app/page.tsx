@@ -14,6 +14,7 @@ import { DashboardSessionPinger } from "@/components/app/dashboard-session-pinge
 import { InstallPwaChip } from "@/components/app/install-pwa-chip";
 import { FounderFeedbackChip } from "@/components/app/founder-feedback-chip";
 import { AppIntro } from "@/components/app/app-intro";
+import { InstallFrugavoRow } from "@/components/app/install-frugavo-row";
 import { UncertainPromptCards } from "@/components/app/uncertain-prompt-cards";
 import { ActivateProtectionCard } from "@/components/app/activate-protection-card";
 import { BillingStatusBanner } from "@/components/app/billing-status-banner";
@@ -746,17 +747,28 @@ export default async function AppHome({
             )}
           </section>
 
-          {/* Footer strip — quiet line giving the user one calm
-              affordance to talk to the founder. Lives at the very
-              bottom so it never competes with primary content; reads
-              as "I know where to find this when I need it" rather
-              than a follow-me-around chat widget. */}
-          <div className="pt-6 mt-2 border-t border-hairline/60 flex items-center justify-between gap-3 flex-wrap">
-            <p className="text-[11.5px] text-ink-muted leading-relaxed max-w-[480px]">
-              Frugavo is in early access. If something confuses or surprises
-              you, tell us — every note shapes what we build next.
-            </p>
-            <FounderFeedbackChip />
+          {/* Footer band — three calm affordances at the bottom of
+              the dashboard, each in its own quiet row. The footer
+              never competes with primary content; reads as "I know
+              where these live when I need them" rather than a
+              chat-widget pile. */}
+          <div className="pt-6 mt-2 border-t border-hairline/60 space-y-4">
+            {/* Row 1 — install Frugavo. Self-detects platform and
+                renders the right affordance (Android Chrome native
+                install button, iOS Safari Share guide, desktop hint,
+                or installed-pill if already installed). */}
+            <InstallFrugavoRow />
+
+            {/* Row 2 — talk to Nabil. Calm, one-line invitation +
+                the founder feedback chip. */}
+            <div className="pt-4 border-t border-hairline/60 flex items-center justify-between gap-3 flex-wrap">
+              <p className="text-[11.5px] text-ink-muted leading-relaxed max-w-[480px]">
+                Frugavo is in early access. If something confuses or
+                surprises you, tell us — every note shapes what we
+                build next.
+              </p>
+              <FounderFeedbackChip />
+            </div>
           </div>
         </>
       )}

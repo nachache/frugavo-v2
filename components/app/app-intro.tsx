@@ -10,13 +10,14 @@ import { useEffect, useState } from "react";
 //   t=0      mark fades up + slight scale
 //   t=180ms  "Hi, {Name}." fades in
 //   t=320ms  subtitle ("Here's your subscription analysis.") fades in
-//   t=1750ms whole overlay starts to dissolve
-//   t=2200ms unmount
+//   t=920ms  subtitle finishes its fade-in (0.6s animation completes)
+//   t=2900ms whole overlay starts to dissolve
+//   t=3400ms unmount
 //
-// The hold between subtitle-in (t≈920ms when its 0.6s animation
-// finishes) and dissolve-start (t=1750ms) gives the user about
-// 830ms to actually read the greeting — long enough for a calm
-// moment, short enough that it never feels like a loading screen.
+// The hold between subtitle settling (t≈920ms) and dissolve-start
+// (t=2900ms) gives the user ~2 full seconds with the greeting clearly
+// visible — enough to read, register the personalization, and
+// emotionally land before the dashboard arrives.
 //
 // One-shot per browser session (sessionStorage). Returning to the
 // dashboard later in the same tab does NOT replay it — the feeling
@@ -30,8 +31,8 @@ type Props = {
 };
 
 const SESSION_KEY = "frugavo:app-intro-shown";
-const INTRO_DURATION_MS = 2200;
-const DISSOLVE_START_MS = 1750;
+const INTRO_DURATION_MS = 3400;
+const DISSOLVE_START_MS = 2900;
 
 export function AppIntro({ firstName }: Props) {
   const [phase, setPhase] = useState<"hidden" | "visible" | "dissolving">(
