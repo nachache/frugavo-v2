@@ -71,7 +71,14 @@ const ITEMS: {
   },
 ];
 
-export function MobileBottomNav() {
+type Props = {
+  // Number of active monitoring alerts. Renders a small dot on the
+  // Alerts tab when ≥ 1, and a count badge when ≥ 2. Zero = no
+  // badge at all (avoids drawing attention when there's nothing).
+  alertsUnread?: number;
+};
+
+export function MobileBottomNav({ alertsUnread = 0 }: Props) {
   const pathname = usePathname() ?? "";
 
   // Only render on /app and its subroutes — keep the marketing pages
@@ -102,6 +109,11 @@ export function MobileBottomNav() {
         {ITEMS.map((item) => {
           const Icon = item.icon;
           const active = item.match(pathname);
+          // Badge only renders on the Alerts tab when there's
+          // actually something unread. We use a dot for 1, a count
+          // for ≥ 2 (capped at 9+). Position sits at the top-right
+          // of the icon pill.
+          const showBadge = item.href === "/app/alerts" && alertsUnread > 0;
           return (
             <li key={item.href}>
               <Link
@@ -118,7 +130,7 @@ export function MobileBottomNav() {
                   className={cn(
                     // Slack-style active pill: soft ink wash behind the
                     // icon. Sizes generously to read as a tap target.
-                    "inline-flex items-center justify-center w-10 h-9 rounded-full transition-all duration-200",
+                    "relative inline-flex items-center justify-center w-10 h-9 rounded-full transition-all duration-200",
                     active ? "bg-ink/[0.07]" : "bg-transparent"
                   )}
                 >
@@ -127,6 +139,25 @@ export function MobileBottomNav() {
                     strokeWidth={active ? 2.4 : 2}
                     aria-hidden="true"
                   />
+                  {showBadge && (
+                    <span
+                      className={cn(
+                        "absolute -top-0.5 -right-1 inline-flex items-center justify-center rounded-full bg-danger text-canvas font-semibold tabular-nums leading-none ring-2 ring-surface",
+                        alertsUnread > 1
+                          ? "min-w-[18px] h-[18px] px-1 text-[10px]"
+                          : "w-2.5 h-2.5"
+                      )}
+                      aria-label={`${alertsUnread} unread ${
+                        alertsUnread === 1 ? "alert" : "alerts"
+                      }`}
+                    >
+                      {alertsUnread > 1
+                        ? alertsUnread > 9
+                          ? "9+"
+                          : alertsUnread
+                        : null}
+                    </span>
+                  )}
                 </span>
                 <span
                   className={cn(

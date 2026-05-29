@@ -1,8 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { UserButton } from "@clerk/nextjs";
+import { currentUser } from "@clerk/nextjs/server";
 import { Wordmark } from "@/components/shared/wordmark";
 import { MobileBottomNav } from "@/components/app/mobile-nav";
+import { AmbientBackdrop } from "@/components/app/ambient-backdrop";
+import { supabaseAdmin } from "@/lib/supabase";
 
 export const metadata: Metadata = {
   title: "Frugavo · Your subscriptions",
@@ -13,14 +16,36 @@ export const metadata: Metadata = {
 // already verified the session by the time this renders. Anyone hitting
 // /app/anything without a session has been redirected to /sign-in.
 
-export default function AppLayout({
+export default async function AppLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  // Compute the alerts unread count once for the bottom nav badge.
+  // Best-effort: failures collapse to 0 so the layout never breaks
+  // on a Supabase blip. The query is cheap (count-only head).
+  let alertsUnread = 0;
+  try {
+    const user = await currentUser();
+    if (user && supabaseAdmin) {
+      const { count } = await supabaseAdmin
+        .from("monitoring_alerts")
+        .select("*", { count: "exact", head: true })
+        .eq("user_id", user.id)
+        .eq("status", "active");
+      alertsUnread = count ?? 0;
+    }
+  } catch {
+    /* swallow — non-fatal */
+  }
+
   return (
-    <div className="min-h-screen bg-canvas flex flex-col">
-      <header className="sticky top-0 z-40 bg-canvas/95 backdrop-blur-md shadow-[0_1px_0_rgba(10,10,10,0.06)]">
+    <div className="min-h-screen bg-canvas flex flex-col relative">
+      {/* Ambient organic shapes — drifting cream + brand-green +
+          amber blobs behind everything. Calm, low-opacity, slow
+          motion. Renders for every /app/* route. */}
+      <AmbientBackdrop />
+      <header className="sticky top-0 z-40 bg-canvas/85 backdrop-blur-md shadow-[0_1px_0_rgba(10,10,10,0.06)]">
         <div className="container-page flex h-[64px] items-center justify-between">
           <Link href="/app" aria-label="Frugavo home">
             <Wordmark />
@@ -45,7 +70,7 @@ export default function AppLayout({
       {/* Bottom padding on mobile so content doesn't hide behind the
           fixed bottom nav (~64px tall + safe-area inset). */}
       <main className="flex-1 pb-20 md:pb-0">{children}</main>
-      <MobileBottomNav />
+      <MobileBottomNav alertsUnread={alertsUnread} />
     </div>
   );
 }

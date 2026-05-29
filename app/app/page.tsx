@@ -776,9 +776,18 @@ export default async function AppHome({
 //   - Short, observational, calm
 //   - No "Section 1 / Section 2" numbering
 //   - Slight ink-muted tone so it never competes with content
+//
+// The eyebrow is sticky: as the user scrolls past it, it pins to the
+// top of the viewport (just below the layout header) and stays
+// visible until the next eyebrow scrolls into the pin position and
+// pushes it out. Gives the page Slack-style "you are in this zone"
+// orientation without taking screen real estate.
 function SectionEyebrow({ label }: { label: string }) {
   return (
-    <div className="pt-1 -mb-3 md:-mb-4">
+    <div
+      className="sticky z-20 pt-2 pb-1 -mb-3 md:-mb-4 bg-canvas/85 backdrop-blur-sm"
+      style={{ top: "64px" }} // matches layout header height
+    >
       <span className="text-[10.5px] md:text-[11px] font-semibold uppercase tracking-[0.14em] text-ink-muted">
         {label}
       </span>

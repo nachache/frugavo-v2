@@ -140,6 +140,52 @@
     animation: drawIn 0.9s cubic-bezier(0.16, 1, 0.3, 1) both;
   }
 
+  /* Window-like card chrome.
+     Inspired by Slack's panel separation + macOS window depth.
+     Applied automatically to every dashboard card that uses the
+     `rounded-2xl border border-hairline bg-surface` pattern via the
+     CSS rule below. Three layered effects:
+       1. A soft top inner-highlight (1px white-alpha) at the very
+          top so the card reads as "lit from above" like a glass
+          window.
+       2. A more present outer shadow that lifts the card off the
+          ambient backdrop without being heavy.
+       3. A 0.4px hairline border that's just barely visible — same
+          neutrality as before but with the depth from #1 and #2.
+     The rule targets .card-window if a card opts in explicitly.
+     Cards that don't add the class keep the old flat look. */
+  .card-window {
+    box-shadow:
+      inset 0 1px 0 0 rgba(255, 255, 255, 0.6),
+      0 1px 2px -1px rgba(10, 10, 10, 0.08),
+      0 12px 28px -16px rgba(10, 10, 10, 0.12),
+      0 2px 6px -2px rgba(10, 10, 10, 0.04);
+    transition:
+      box-shadow 240ms cubic-bezier(0.16, 1, 0.3, 1),
+      transform 240ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .card-window:hover {
+    box-shadow:
+      inset 0 1px 0 0 rgba(255, 255, 255, 0.7),
+      0 1px 2px -1px rgba(10, 10, 10, 0.08),
+      0 22px 40px -18px rgba(10, 10, 10, 0.16),
+      0 4px 10px -2px rgba(10, 10, 10, 0.06);
+  }
+
+  /* Spring physics — adds a subtle press-down effect on tap. Use on
+     any interactive element that should feel tactile (cards, tabs,
+     row actions). Transitions both scale and shadow so the press
+     feels grounded rather than floating. */
+  .press-spring {
+    transition:
+      transform 180ms cubic-bezier(0.16, 1, 0.3, 1),
+      box-shadow 180ms cubic-bezier(0.16, 1, 0.3, 1);
+    transform-origin: center;
+  }
+  .press-spring:active {
+    transform: scale(0.985);
+  }
+
   /* Stagger cascade. Wrap a dashboard section in `.stagger-N` and
      any descendant carrying `.animate-fadeUp` (typically the card's
      own outer div) receives a `N * 80ms` animation-delay. Used by
@@ -296,6 +342,31 @@
   .is-standalone {
     overscroll-behavior-y: contain;
   }
+}
+
+/* View transitions between routes.
+   Modern Chromium browsers support the View Transitions API natively
+   for cross-document navigation; we enable it via the @view-transition
+   declaration below. The pseudo-elements are tuned to a soft 220ms
+   crossfade instead of the harsh default. Safari (and any browser
+   that doesn't implement the API) gracefully falls back to the
+   instant cut, which is also fine — no broken visual state. */
+@view-transition {
+  navigation: auto;
+}
+::view-transition-old(root) {
+  animation: 220ms cubic-bezier(0.16, 1, 0.3, 1) both fr-view-fade-out;
+}
+::view-transition-new(root) {
+  animation: 280ms cubic-bezier(0.16, 1, 0.3, 1) both fr-view-fade-in;
+}
+@keyframes fr-view-fade-out {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}
+@keyframes fr-view-fade-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
 /* Display-mode media queries — let any component opt in with

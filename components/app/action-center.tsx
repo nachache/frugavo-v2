@@ -279,7 +279,7 @@ export function ActionCenter({
   }
 
   return (
-    <div className="rounded-2xl border border-hairline bg-surface p-4 md:p-7 animate-fadeUp">
+    <div className="card-window rounded-2xl border border-hairline bg-surface p-4 md:p-7 animate-fadeUp">
       <CancelCelebration
         annualSaved={celebrate?.annualSaved ?? 0}
         merchant={celebrate?.merchant ?? ""}
@@ -466,7 +466,7 @@ function Row({
   const pruned = tab === "pruned" || item.override_type === "cancelled";
 
   return (
-    <div className={["group flex items-center gap-2.5 md:gap-4 py-2.5 md:py-4 -mx-2 px-2 rounded-lg transition", muted ? "opacity-50" : "hover:bg-ink/[0.03]"].join(" ")}>
+    <div className={["press-spring group flex items-center gap-2.5 md:gap-4 py-2.5 md:py-4 -mx-2 px-2 rounded-lg transition", muted ? "opacity-50" : "hover:bg-ink/[0.03]"].join(" ")}>
       <Link
         href={`/app/subscriptions/${item.subscription_id}`}
         className="flex items-center gap-2.5 md:gap-4 flex-1 min-w-0"

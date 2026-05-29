@@ -22,7 +22,7 @@ import { Sparkles } from "lucide-react";
 
 export function FounderAccessCard() {
   return (
-    <div className="rounded-2xl border border-hairline bg-surface p-5 md:p-7 animate-fadeUp">
+    <div className="card-window rounded-2xl border border-hairline bg-surface p-5 md:p-7 animate-fadeUp">
       <div className="flex items-start gap-3 md:gap-4">
         <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-brand/15 shrink-0">
           <Sparkles size={18} className="text-brand" strokeWidth={2.2} />

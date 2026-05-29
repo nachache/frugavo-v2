@@ -122,7 +122,7 @@ export function OverviewCard({
   return (
     <div
       ref={cardRef}
-      className="rounded-2xl border border-hairline bg-surface p-4 md:p-7 animate-fadeUp"
+      className="card-window rounded-2xl border border-hairline bg-surface p-4 md:p-7 animate-fadeUp"
     >
       {/* Top row: stats | donut | insights */}
       <div className="grid grid-cols-1 lg:grid-cols-[1.1fr_280px_1.2fr] gap-5 md:gap-6 lg:gap-8 items-start">

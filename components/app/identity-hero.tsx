@@ -74,7 +74,7 @@ export function IdentityHero({
     // Reduced outer padding (was p-4 md:p-6 → p-3 md:p-4) and removed
     // the card's max-width cap. The SVG card now fills its column so
     // the SVG fonts inside aren't shrunk into illegibility on desktop.
-    <div className="rounded-2xl border border-hairline bg-surface p-3 md:p-4 animate-fadeUp overflow-hidden h-full flex flex-col">
+    <div className="card-window rounded-2xl border border-hairline bg-surface p-3 md:p-4 animate-fadeUp overflow-hidden h-full flex flex-col">
       {/* Identity SVG preview — full width of the column for desktop
           readability. The card still maintains its aspect ratio so it
           looks the same at any width. */}
@@ -243,7 +243,7 @@ function IdentityHeroSkeleton({
   firstName?: string | null;
 }) {
   return (
-    <div className="rounded-2xl border border-hairline bg-surface p-3 md:p-4 animate-fadeUp overflow-hidden h-full flex flex-col">
+    <div className="card-window rounded-2xl border border-hairline bg-surface p-3 md:p-4 animate-fadeUp overflow-hidden h-full flex flex-col">
       <div className="rounded-2xl overflow-hidden border border-hairline bg-ink/[0.04] aspect-[1080/1350] flex items-center justify-center">
         <div className="text-[13px] text-ink-muted px-6 text-center max-w-[280px]">
           Your card will be ready once your first scan finishes.
