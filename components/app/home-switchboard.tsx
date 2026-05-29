@@ -34,6 +34,9 @@ import {
   ChevronRight,
   ArrowRight,
   Eye,
+  ListChecks,
+  RefreshCw,
+  Plus,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import type { Personality } from "@/lib/personality";
@@ -70,24 +73,17 @@ export function HomeHeroBand({
         borderBottomRightRadius: "44px",
       }}
     >
-      <div className="container-page max-w-[1200px] pt-10 md:pt-14 pb-16 md:pb-20">
-        {/* Overflow control top-right. The "frugavo" wordmark used to
-            sit on the left here but it doubles with the layout
-            header's wordmark — removed to drop the duplication. */}
-        <div className="flex items-start justify-end">
-          <button
-            type="button"
-            aria-label="More"
-            className="inline-flex items-center justify-center w-8 h-8 rounded-full text-white/70 hover:text-white hover:bg-white/10 transition"
-          >
-            <span className="text-[20px] leading-none">…</span>
-          </button>
-        </div>
+      <div className="container-page max-w-[1200px] pt-12 md:pt-16 pb-16 md:pb-20 text-center">
+        {/* Rotating emoji — picks a new one per render so the hero
+            feels alive without ever feeling gamified. The set is
+            calm, ~7 picks; we pseudo-random per minute so the same
+            visit doesn't flicker. */}
+        <HeroEmoji />
 
-        <h1 className="mt-6 md:mt-8 font-display text-[28px] md:text-[36px] font-bold leading-[1.1] tracking-[-0.02em] text-white max-w-[680px]">
+        <h1 className="mt-3 font-display text-[28px] md:text-[40px] font-bold leading-[1.1] tracking-[-0.02em] text-white max-w-[680px] mx-auto">
           Watching your subscriptions
         </h1>
-        <p className="mt-2 text-[14px] md:text-[15px] text-white/75 leading-relaxed max-w-[520px]">
+        <p className="mt-3 text-[15px] md:text-[16px] text-white/80 leading-relaxed max-w-[560px] mx-auto">
           Everything&apos;s here — tap any card to go deeper.
         </p>
       </div>
@@ -277,10 +273,10 @@ export function FeaturedNoticedCard({
       className="block rounded-2xl border border-amber-200 bg-amber-50 shadow-soft p-5 md:p-6 transition-colors hover:bg-amber-100/60"
     >
       <CardBadge icon={Eye} label="Needs a look" tone="amber" />
-      <h3 className="mt-3 font-display text-[20px] md:text-[22px] font-medium tracking-[-0.01em] text-ink leading-snug">
+      <h3 className="mt-3 font-display text-[20px] md:text-[22px] font-bold tracking-[-0.01em] text-ink leading-snug">
         {topHeadline}
       </h3>
-      <p className="mt-1.5 text-[13.5px] md:text-[14px] text-ink-body leading-relaxed">
+      <p className="mt-2 text-[14px] md:text-[15px] text-ink-body leading-relaxed">
         {topConclusion}
       </p>
       <div className="mt-5 flex items-center gap-4 flex-wrap">
@@ -326,10 +322,10 @@ export function RenewalsCard({
         />
       </div>
       <div className="mt-4">
-        <div className="text-[24px] md:text-[26px] font-medium tracking-[-0.01em] text-ink leading-none tabular-nums">
+        <div className="text-[24px] md:text-[28px] font-bold tracking-[-0.01em] text-ink leading-none tabular-nums">
           {upcomingCount} coming up
         </div>
-        <div className="mt-1.5 text-[13px] text-ink-body tabular-nums">
+        <div className="mt-2 text-[14px] text-ink-body tabular-nums">
           ~{fmtRound(estimatedTotalCents)} · next 14 days
         </div>
       </div>
@@ -370,7 +366,7 @@ export function SpendingCard({
       className="group block rounded-2xl border border-sky-200 bg-sky-50 shadow-soft p-5 md:p-6 transition-colors hover:bg-sky-100/60"
     >
       <div className="flex items-start justify-between gap-3">
-        <CardBadge icon={Wallet} label="Spending" tone="blue" />
+        <CardBadge icon={Wallet} label="Your subs" tone="blue" />
         <ChevronRight
           size={16}
           strokeWidth={2}
@@ -378,15 +374,15 @@ export function SpendingCard({
         />
       </div>
       <div className="mt-4">
-        <div className="text-[24px] md:text-[26px] font-medium tracking-[-0.01em] text-ink leading-none tabular-nums">
+        <div className="text-[24px] md:text-[28px] font-bold tracking-[-0.01em] text-ink leading-none tabular-nums">
           {fmtRound(monthlyCents)}/mo
         </div>
-        <div className="mt-1.5 text-[13px] text-ink-body">
+        <div className="mt-2 text-[14px] text-ink-body">
           {subCount} subscription{subCount === 1 ? "" : "s"}
         </div>
       </div>
       {conclusion ? (
-        <div className="mt-5 flex items-center gap-1.5 text-[13px] text-ink leading-snug">
+        <div className="mt-5 flex items-center gap-1.5 text-[14px] text-ink leading-snug">
           <span>{conclusion}</span>
           <ArrowRight size={12} strokeWidth={2.2} className="text-ink-muted" />
         </div>
@@ -412,10 +408,10 @@ export function InsightsCard({ insightCount }: { insightCount: number }) {
         />
       </div>
       <div className="mt-4">
-        <div className="text-[18px] md:text-[20px] font-medium text-ink leading-snug">
+        <div className="text-[18px] md:text-[20px] font-bold text-ink leading-snug">
           Patterns we&apos;ve noticed
         </div>
-        <div className="mt-1.5 text-[12.5px] text-ink-muted">
+        <div className="mt-1.5 text-[13.5px] text-ink-muted">
           {insightCount} insight{insightCount === 1 ? "" : "s"} available
         </div>
       </div>
@@ -440,10 +436,10 @@ export function YourCardCard({ personality }: { personality: Personality }) {
         />
       </div>
       <div className="mt-4">
-        <div className="text-[18px] md:text-[20px] font-medium text-ink leading-snug">
+        <div className="text-[18px] md:text-[20px] font-bold text-ink leading-snug">
           {personality.label}
         </div>
-        <div className="mt-1.5 text-[12.5px] text-ink-muted leading-relaxed">
+        <div className="mt-1.5 text-[13.5px] text-ink-muted leading-relaxed">
           {personality.sub}
         </div>
       </div>
@@ -460,10 +456,10 @@ export function ShareCard() {
         <CardBadge icon={Share2} label="Share" />
       </div>
       <div className="mt-4">
-        <div className="text-[18px] md:text-[20px] font-medium text-ink leading-snug">
+        <div className="text-[18px] md:text-[20px] font-bold text-ink leading-snug">
           Show off your stack
         </div>
-        <div className="mt-1.5 text-[12.5px] text-ink-muted leading-relaxed">
+        <div className="mt-1.5 text-[13.5px] text-ink-muted leading-relaxed">
           Frugavo turns your subscription pattern into a card you can post.
         </div>
         <Link
@@ -474,6 +470,100 @@ export function ShareCard() {
         </Link>
       </div>
     </div>
+  );
+}
+
+// ─── Hero emoji ─────────────────────────────────────────────────
+
+// Rotates through a small calm set, picking based on the current
+// minute so the visit doesn't flicker but a return reload changes
+// it. Renders inline above the hero h1.
+const HERO_EMOJIS = ["👋", "✨", "🌿", "🧭", "☕️", "📬", "🕊️"];
+function HeroEmoji() {
+  // Server-rendered with a per-minute bucket; deterministic during
+  // a single render and naturally varies across visits.
+  const idx = Math.floor(Date.now() / 60_000) % HERO_EMOJIS.length;
+  return (
+    <span
+      className="inline-block text-[28px] md:text-[32px] leading-none"
+      aria-hidden="true"
+    >
+      {HERO_EMOJIS[idx]}
+    </span>
+  );
+}
+
+// ─── Quick actions row ──────────────────────────────────────────
+
+// Three primary affordances grouped above the install + feedback
+// footer. Visible, keyboard-reachable, low-chrome. Re-scan routes
+// through /app/scanning so the user gets the progress arc + reveal
+// instead of a silent background fetch. Connect another bank links
+// to /app/settings where AddBankButton opens Plaid Link inline.
+//
+// Layout: 1-col on mobile, 3-col from md. Each tile is a plain Link
+// with the same border + soft shadow language as the white cards.
+export function QuickActionsRow() {
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      <QuickAction
+        href="/app/transactions"
+        icon={ListChecks}
+        label="All transactions"
+        hint="See every charge we read"
+      />
+      <QuickAction
+        href="/app/scanning"
+        icon={RefreshCw}
+        label="Re-scan now"
+        hint="Pull the latest from your banks"
+      />
+      <QuickAction
+        href="/app/settings"
+        icon={Plus}
+        label="Connect another bank"
+        hint="Adds coverage + sub recall"
+      />
+    </div>
+  );
+}
+
+function QuickAction({
+  href,
+  icon: Icon,
+  label,
+  hint,
+}: {
+  href: string;
+  icon: LucideIcon;
+  label: string;
+  hint: string;
+}) {
+  return (
+    <Link
+      href={href}
+      className="group flex items-center gap-3 rounded-2xl border border-hairline bg-white shadow-soft px-4 py-3.5 transition-all hover:bg-canvas/40 hover:shadow-float"
+    >
+      <span
+        className="inline-flex items-center justify-center w-9 h-9 rounded-xl bg-ink/[0.05] text-ink shrink-0"
+        aria-hidden="true"
+      >
+        <Icon size={16} strokeWidth={2} />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block text-[14px] font-bold text-ink leading-tight">
+          {label}
+        </span>
+        <span className="mt-0.5 block text-[12px] text-ink-muted leading-snug truncate">
+          {hint}
+        </span>
+      </span>
+      <ChevronRight
+        size={16}
+        strokeWidth={2}
+        className="text-ink-muted group-hover:text-ink transition-colors shrink-0"
+      />
+    </Link>
   );
 }
 

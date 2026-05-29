@@ -3,7 +3,7 @@ import { currentUser } from "@clerk/nextjs/server";
 import Link from "next/link";
 import { ChevronLeft, ChevronRight, Radar } from "lucide-react";
 import { buildDashboardData } from "@/lib/selectors/dashboard";
-import { composeFindings, type Finding } from "@/lib/selectors/findings";
+import { composeFindings, type Finding, kindLabel } from "@/lib/selectors/findings";
 import { supabaseAdmin } from "@/lib/supabase";
 
 // /app/noticed — the "Frugavo noticed" findings feed.
@@ -107,23 +107,28 @@ function FindingCard({ finding }: { finding: Finding }) {
   return (
     <Link
       href={href}
-      className="group block rounded-2xl border border-hairline bg-white p-5 md:p-6 transition-colors hover:bg-canvas/40"
+      className="group block rounded-2xl border border-hairline bg-white shadow-soft p-5 md:p-6 transition-all hover:bg-canvas/40 hover:shadow-float"
     >
-      <div className="flex items-start justify-between gap-3">
-        <ConfidencePill
-          tier={finding.confidenceTier}
-          probability={finding.confidence}
-        />
+      <div className="flex items-start justify-between gap-3 flex-wrap">
+        <div className="inline-flex items-center gap-2">
+          <span className="inline-flex items-center rounded-full bg-ink/[0.05] px-2 h-5 text-[10.5px] font-medium uppercase tracking-[0.08em] text-ink-body">
+            {kindLabel(finding.kind)}
+          </span>
+          <ConfidencePill
+            tier={finding.confidenceTier}
+            probability={finding.confidence}
+          />
+        </div>
         <ChevronRight
           size={16}
           strokeWidth={2}
           className="text-ink-muted group-hover:text-ink transition-colors mt-0.5"
         />
       </div>
-      <h3 className="mt-3 text-[16px] md:text-[17px] font-medium text-ink leading-snug">
+      <h3 className="mt-3 text-[17px] md:text-[18px] font-bold text-ink leading-snug">
         {finding.headline}
       </h3>
-      <p className="mt-1.5 text-[13.5px] text-ink-body leading-relaxed">
+      <p className="mt-2 text-[14px] md:text-[15px] text-ink-body leading-relaxed">
         {finding.conclusion}
       </p>
 

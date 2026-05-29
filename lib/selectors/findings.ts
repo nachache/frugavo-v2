@@ -183,22 +183,36 @@ function moneyLeakKindToFindingKind(k: MoneyLeak["kind"]): FindingKind {
   }
 }
 
+// Returns a short label for the kind — used as an eyebrow chip on
+// finding cards. Reduces the "We found / Frugavo noticed" prefix
+// repetition by letting the headline stand on its own and the
+// kind chip carry the categorization.
+export function kindLabel(kind: FindingKind): string {
+  return verbForKind(kind);
+}
 function verbForKind(kind: FindingKind): string {
   switch (kind) {
     case "duplicate":
     case "overlap":
+      return "Overlap found";
     case "dormant":
-      return "We found";
+      return "Likely forgotten";
     case "price_increase":
+      return "Price up";
     case "rising_spend":
-      return "We noticed";
+      return "Trending higher";
     case "concentration":
+      return "Concentration";
     case "biggest_billing_day":
+      return "Billing spike";
     case "highest_single_charge":
+      return "Biggest charge";
     case "ai_vs_streaming":
+      return "AI now bigger";
     case "top_three_vs_threshold":
+      return "Top three";
     case "longest_running":
-      return "We noticed";
+      return "Long-running";
   }
 }
 
@@ -223,7 +237,6 @@ export function composeFindings(input: FindingsInput): Finding[] {
     const id = `leak:${m.id}`;
     if (resolved.has(id)) continue;
     const kind = moneyLeakKindToFindingKind(m.kind);
-    const verb = verbForKind(kind);
     const subscriptionIds = m.source.subscription_ids ?? [];
     const confidence = computeFindingConfidence({
       subscriptionIds,
@@ -233,7 +246,10 @@ export function composeFindings(input: FindingsInput): Finding[] {
     out.push({
       id,
       kind,
-      headline: `${verb} — ${m.headline}`,
+      // Headline stands on its own — no prepended verb. The kind
+      // label (verbForKind) is rendered as a tiny eyebrow chip in
+      // the noticed feed instead, keeping each finding readable.
+      headline: m.headline,
       conclusion: m.detail,
       why: whyForMoneyLeak(m.kind),
       potentialImpactLabel: impactForMoneyLeak(m),
@@ -250,7 +266,6 @@ export function composeFindings(input: FindingsInput): Finding[] {
     if (resolved.has(id)) continue;
     const kind = shockKindToFindingKind(s.kind);
     if (!kind) continue;
-    const verb = verbForKind(kind);
     const subscriptionIds = s.source.subscription_ids ?? [];
     // Shock insights don't carry a severity field; treat as medium.
     const confidence = computeFindingConfidence({
@@ -261,7 +276,7 @@ export function composeFindings(input: FindingsInput): Finding[] {
     out.push({
       id,
       kind,
-      headline: `${verb} — ${s.headline}`,
+      headline: s.headline,
       conclusion: s.detail,
       why: whyForShock(s.kind),
       potentialImpactLabel: undefined,
@@ -289,7 +304,7 @@ export function composeFindings(input: FindingsInput): Finding[] {
       out.push({
         id,
         kind: "concentration",
-        headline: `We noticed — ${c.headline}`,
+        headline: c.headline,
         conclusion: c.detail,
         why:
           "A single category becoming dominant means one price increase " +

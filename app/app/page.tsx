@@ -30,6 +30,7 @@ import {
   InsightsCard,
   YourCardCard,
   ShareCard,
+  QuickActionsRow,
 } from "@/components/app/home-switchboard";
 
 // /app — the authenticated dashboard home.
@@ -208,7 +209,15 @@ export default async function AppHome() {
         resolvedFindingIds,
       })
     : [];
-  const topFinding = findings[0] ?? null;
+  // Featured noticed rotates through findings so the dashboard feels
+  // alive rather than always pinning the same top item. We bucket by
+  // the current minute → stable within a single page render, varies
+  // across reloads + naturally cycles during longer sessions when
+  // the page is refreshed.
+  const featuredFinding =
+    findings.length > 0
+      ? findings[Math.floor(Date.now() / 60_000) % findings.length]
+      : null;
 
   // Renewals — actions with a predicted next_expected_charge_at in
   // the next 14 days. The deep view (/app/renewals) shows the full
@@ -280,11 +289,11 @@ export default async function AppHome() {
         {/* "Frugavo noticed" — featured card */}
         <div>
           <NoticedSectionHeader count={findings.length} />
-          {topFinding ? (
+          {featuredFinding ? (
             <FeaturedNoticedCard
               totalFindings={findings.length}
-              topHeadline={topFinding.headline}
-              topConclusion={topFinding.conclusion}
+              topHeadline={featuredFinding.headline}
+              topConclusion={featuredFinding.conclusion}
             />
           ) : (
             // Empty state — nothing flagged. Calm placeholder so the
@@ -336,6 +345,13 @@ export default async function AppHome() {
             <ShareCard />
           </div>
         </div>
+
+        {/* Quick actions row — three primary affordances grouped
+            above the install + feedback footer. All visible, all
+            keyboard-reachable. Sync re-runs the scan; All
+            transactions opens the raw activity view; Connect another
+            bank opens the Plaid flow inline via Settings. */}
+        <QuickActionsRow />
 
         {/* Footer — install + talk to Nabil. Quiet, non-competing. */}
         <div className="pt-6 mt-2 border-t border-hairline/60 space-y-4">
