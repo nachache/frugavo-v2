@@ -8,6 +8,7 @@ import {
   Activity,
   Eye,
   Check,
+  type LucideIcon,
 } from "lucide-react";
 
 export const metadata: Metadata = {
@@ -148,15 +149,14 @@ export default function ConnectPage() {
 //   actually about to get?" — not "what brands will I see in a list?"
 //   Discovery framing answers the real question.
 
-// React.ComponentType is intentionally untyped here — Lucide icons
-// have a strict ForwardRef signature that fights a generic prop
-// shape. Since we only use this for icon components, allowing any
-// props is the right pragma.
+// LucideIcon is the canonical shared type for Lucide's ForwardRef
+// components — using it directly avoids the React.ComponentType<any>
+// pragma (which trips Next's ESLint config on builds because the
+// no-explicit-any rule isn't registered in this project).
 type DiscoveryGroup = {
   eyebrow: string;
   heading: string;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  icon: React.ComponentType<any>;
+  icon: LucideIcon;
   items: string[];
 };
 
