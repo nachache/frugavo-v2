@@ -5,7 +5,10 @@ import { currentUser } from "@clerk/nextjs/server";
 import { Wordmark } from "@/components/shared/wordmark";
 import { MobileBottomNav } from "@/components/app/mobile-nav";
 import { AmbientBackdrop } from "@/components/app/ambient-backdrop";
+import { CommandPalette } from "@/components/app/command-palette";
+import { PullToRefresh } from "@/components/app/pull-to-refresh";
 import { supabaseAdmin } from "@/lib/supabase";
+import { isBillingAdmin } from "@/lib/billing/admin-gate";
 
 export const metadata: Metadata = {
   title: "Frugavo · Your subscriptions",
@@ -25,15 +28,19 @@ export default async function AppLayout({
   // Best-effort: failures collapse to 0 so the layout never breaks
   // on a Supabase blip. The query is cheap (count-only head).
   let alertsUnread = 0;
+  let isAdmin = false;
   try {
     const user = await currentUser();
-    if (user && supabaseAdmin) {
-      const { count } = await supabaseAdmin
-        .from("monitoring_alerts")
-        .select("*", { count: "exact", head: true })
-        .eq("user_id", user.id)
-        .eq("status", "active");
-      alertsUnread = count ?? 0;
+    if (user) {
+      isAdmin = isBillingAdmin(user.id);
+      if (supabaseAdmin) {
+        const { count } = await supabaseAdmin
+          .from("monitoring_alerts")
+          .select("*", { count: "exact", head: true })
+          .eq("user_id", user.id)
+          .eq("status", "active");
+        alertsUnread = count ?? 0;
+      }
     }
   } catch {
     /* swallow — non-fatal */
@@ -71,6 +78,15 @@ export default async function AppLayout({
           fixed bottom nav (~64px tall + safe-area inset). */}
       <main className="flex-1 pb-20 md:pb-0">{children}</main>
       <MobileBottomNav alertsUnread={alertsUnread} />
+      {/* Cmd+K palette — mounted at the layout so it's reachable
+          from every /app route. Stays unmounted until first
+          keypress; opening renders the modal. */}
+      <CommandPalette isAdmin={isAdmin} />
+
+      {/* Pull-to-refresh — only active in installed PWA mode. The
+          component self-detects standalone and returns null
+          otherwise, so browser users keep their native gesture. */}
+      <PullToRefresh />
     </div>
   );
 }

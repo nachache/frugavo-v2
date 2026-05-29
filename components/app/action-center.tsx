@@ -742,6 +742,69 @@ function BadgeChip({
 }
 
 function EmptyTab({ tab }: { tab: Tab }) {
+  // Small SVG micro-illustration per tab. Calm, on-brand, no
+  // gamification. Each glyph is a single ~64px line-art mark that
+  // hints at the tab's purpose without being literal.
+  const illustration =
+    tab === "watching" ? (
+      // An eye — what you're watching
+      <svg width="56" height="56" viewBox="0 0 64 64" fill="none" aria-hidden="true">
+        <path
+          d="M6 32s9-16 26-16 26 16 26 16-9 16-26 16S6 32 6 32z"
+          stroke="currentColor"
+          strokeWidth="1.4"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          opacity="0.6"
+        />
+        <circle cx="32" cy="32" r="7" stroke="currentColor" strokeWidth="1.4" />
+        <circle cx="32" cy="32" r="2.2" fill="currentColor" />
+      </svg>
+    ) : tab === "pruned" ? (
+      // Scissors — pruned/cut
+      <svg width="56" height="56" viewBox="0 0 64 64" fill="none" aria-hidden="true">
+        <circle cx="18" cy="46" r="6" stroke="currentColor" strokeWidth="1.4" />
+        <circle cx="46" cy="46" r="6" stroke="currentColor" strokeWidth="1.4" />
+        <path
+          d="M22 42 L48 14"
+          stroke="currentColor"
+          strokeWidth="1.4"
+          strokeLinecap="round"
+        />
+        <path
+          d="M42 42 L16 14"
+          stroke="currentColor"
+          strokeWidth="1.4"
+          strokeLinecap="round"
+        />
+      </svg>
+    ) : tab === "hidden" ? (
+      // Crescent moon — quiet / out of view
+      <svg width="56" height="56" viewBox="0 0 64 64" fill="none" aria-hidden="true">
+        <path
+          d="M44 14a22 22 0 1 0 6 30 18 18 0 0 1-6-30z"
+          stroke="currentColor"
+          strokeWidth="1.4"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          opacity="0.7"
+        />
+        <circle cx="48" cy="20" r="1.2" fill="currentColor" opacity="0.5" />
+        <circle cx="52" cy="32" r="1" fill="currentColor" opacity="0.4" />
+      </svg>
+    ) : (
+      // Magnifier — nothing detected yet
+      <svg width="56" height="56" viewBox="0 0 64 64" fill="none" aria-hidden="true">
+        <circle cx="28" cy="28" r="14" stroke="currentColor" strokeWidth="1.4" />
+        <path
+          d="M40 40 L52 52"
+          stroke="currentColor"
+          strokeWidth="1.4"
+          strokeLinecap="round"
+        />
+      </svg>
+    );
+
   const msg =
     tab === "watching"
       ? "Subscriptions you confirm or keep will appear here."
@@ -750,7 +813,15 @@ function EmptyTab({ tab }: { tab: Tab }) {
         : tab === "hidden"
           ? "Subscriptions you mark as not a sub will appear here, dimmed."
           : "No subscriptions detected yet. Re-scan after Plaid syncs more transactions.";
-  return <div className="py-8 text-center text-[13px] text-ink-muted">{msg}</div>;
+
+  return (
+    <div className="py-12 flex flex-col items-center text-center">
+      <div className="text-ink-muted/55">{illustration}</div>
+      <p className="mt-4 text-[13px] text-ink-muted max-w-[320px] leading-relaxed">
+        {msg}
+      </p>
+    </div>
+  );
 }
 
 function prettyCategory(cat: string): string {

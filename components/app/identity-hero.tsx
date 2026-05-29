@@ -11,6 +11,7 @@
 import { useState } from "react";
 import { Share2 } from "lucide-react";
 import { ShareButtons } from "./share-buttons";
+import { AnimatedNumber } from "@/components/shared/animated-number";
 import type { Personality } from "@/lib/personality";
 import type { HealthScore } from "@/lib/intelligence/health-score";
 
@@ -119,14 +120,22 @@ export function IdentityHero({
             their decisions, even when the archetype LABEL doesn't
             flip (category mix unchanged). */}
         <div className="mt-4 inline-flex items-center gap-2 rounded-full bg-canvas/60 border border-hairline/60 px-3 py-1.5 text-[12.5px] md:text-[13px] text-ink-body tabular-nums">
-          <span className="font-medium text-ink">
-            {subCount.toLocaleString("en-US")}
-          </span>
+          {/* Both numbers animate so a Keep / Not-a-sub action eases
+              the strip to the new values instead of hard-swapping. */}
+          <AnimatedNumber
+            value={subCount}
+            format="integer"
+            className="font-medium text-ink"
+          />
           <span className="text-ink-muted">
             confirmed {subCount === 1 ? "sub" : "subs"}
           </span>
           <span className="text-ink-muted/40">·</span>
-          <span className="font-medium text-ink">{fmt(monthlySubCents)}</span>
+          <AnimatedNumber
+            value={Math.round(monthlySubCents / 100)}
+            format="currency"
+            className="font-medium text-ink"
+          />
           <span className="text-ink-muted">/mo</span>
         </div>
 
@@ -215,7 +224,11 @@ function HealthScorePill({ score }: { score: HealthScore }) {
       title={tooltip}
     >
       <span className="text-ink-muted">Health</span>
-      <span className="font-medium text-ink">{score.score}</span>
+      <AnimatedNumber
+        value={score.score}
+        format="integer"
+        className="font-medium text-ink"
+      />
       <span
         className="inline-block h-1.5 w-12 rounded-full bg-ink/10 overflow-hidden"
         aria-hidden="true"

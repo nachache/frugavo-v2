@@ -21,6 +21,7 @@
 
 import Link from "next/link";
 import { MerchantLogo } from "./merchant-logo";
+import { AnimatedNumber } from "@/components/shared/animated-number";
 import type { ActionItem } from "@/lib/selectors/dashboard";
 
 type Props = {
@@ -104,7 +105,11 @@ export function RenewingSoonCard({ items }: Props) {
         </div>
         <div className="text-right">
           <div className="font-display font-bold text-[24px] md:text-[28px] tracking-[-0.02em] tabular-nums leading-none text-ink">
-            ~{fmtAmount(totalCents)}
+            ~
+            <AnimatedNumber
+              value={Math.round(totalCents / 100)}
+              format="currency"
+            />
           </div>
           <div className="mt-1 text-[11px] md:text-[12px] text-ink-muted">
             estimated total
