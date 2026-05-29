@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { currentUser } from "@clerk/nextjs/server";
 import { getEntitlement } from "@/lib/billing/entitlements";
+import { isEffectivelyPaid } from "@/lib/billing/beta";
 import { RestartProtectionForm } from "@/components/app/restart-protection-form";
 
 // /app/billing/restart
@@ -23,12 +24,11 @@ export default async function RestartProtectionPage() {
   if (!user) redirect("/sign-in");
 
   const entitlement = await getEntitlement(user.id);
-  // Active or trialing users don't belong here. Send them home —
-  // their protection is already running.
+  // Anyone with effective access (paid or beta) doesn't belong on
+  // a restart page — they already have protection. grace_period also
+  // sends home; the dunning banner handles their state on /app.
   if (
-    entitlement.entitlement_state === "trialing" ||
-    entitlement.entitlement_state === "active" ||
-    entitlement.entitlement_state === "cancelled_active" ||
+    isEffectivelyPaid(entitlement) ||
     entitlement.entitlement_state === "grace_period"
   ) {
     redirect("/app");

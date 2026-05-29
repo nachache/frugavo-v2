@@ -42,6 +42,32 @@ export async function sendBillingEmail(
 ): Promise<boolean> {
   if (!supabaseAdmin) return false;
 
+  // ─── Defense in depth: skip for beta-access users ────────────
+  //
+  // Structurally, billing lifecycle emails should never reach beta
+  // users — they have no Stripe subscription, so the side-effects
+  // projector and dunning cron never enqueue them. This guard catches
+  // any future code path that bypasses those gates. We log so a real
+  // bug surfaces in observability rather than silently emailing
+  // someone about a subscription they don't have.
+  try {
+    const { getEntitlement } = await import("@/lib/billing/entitlements");
+    const { isBetaAccess } = await import("@/lib/billing/beta");
+    const ent = await getEntitlement(args.clerkUserId);
+    if (isBetaAccess(ent)) {
+      // eslint-disable-next-line no-console
+      console.warn(
+        "[billing/emails] suppressed for beta_access user",
+        { clerk_user_id: args.clerkUserId, emailType: args.emailType }
+      );
+      return true; // treat as 'handled'; no dispatch row written
+    }
+  } catch {
+    // If the entitlement lookup itself fails, fall through to the
+    // normal send path — better to risk a spurious email than to
+    // wedge billing comms behind a flaky cache.
+  }
+
   // Idempotency check + reservation in one shot. Insert with
   // ON CONFLICT DO NOTHING — if a row exists we don't send again.
   const { data: reservation, error: reserveErr } = await supabaseAdmin

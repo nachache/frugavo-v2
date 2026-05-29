@@ -22,12 +22,14 @@ import { buildProtectionPanelData } from "@/lib/protection/panel";
 import { buildWatchdogDigest } from "@/lib/watchdog/digest";
 import { WatchdogOverlay } from "@/components/app/watchdog-overlay";
 import { ProtectionLockedCard } from "@/components/app/protection-locked-card";
+import { FounderAccessCard } from "@/components/app/founder-access-card";
 import { SpendingPatternsAccordion } from "@/components/app/spending-patterns-accordion";
 import { DashboardTabs } from "@/components/app/dashboard-tabs";
 import { getOrCreatePublicSlug } from "@/lib/users/public-slug";
 import { maybeNotifySignup } from "@/lib/users/signup-notify";
 import { getEntitlement } from "@/lib/billing/entitlements";
 import { buildDashboardData } from "@/lib/selectors/dashboard";
+import { isEffectivelyPaid, isBetaAccess } from "@/lib/billing/beta";
 import { SHOW_BILLS_SURFACE } from "@/lib/feature-flags";
 import { computeIngestionState } from "@/lib/ingestion-state";
 import { PreparingScreen } from "@/components/app/preparing-screen";
@@ -147,10 +149,11 @@ export default async function AppHome({
   // so subsequent renders are stable and the entitlement check
   // never re-runs as a workaround.
   const entitlement = await getEntitlement(user.id);
-  const isProtected =
-    entitlement.entitlement_state === "active" ||
-    entitlement.entitlement_state === "trialing" ||
-    entitlement.entitlement_state === "cancelled_active";
+  // Routes through the central beta-policy helper so the unlock
+  // applied inside getEntitlement is honored automatically. Returns
+  // true for: trialing | active | cancelled_active | beta_access.
+  const isProtected = isEffectivelyPaid(entitlement);
+  const isBeta = isBetaAccess(entitlement);
 
   if (!userRow?.welcomed_at && isProtected) {
     // Self-heal: the user is protected (paid through Stripe) but
@@ -658,6 +661,13 @@ export default async function AppHome({
 
             {!showActivateCard ? (
               <div className="space-y-5 md:space-y-6">
+                {/* Beta-era only: communicate "Founder Access" once,
+                    at the top of the protection layer. Replaces the
+                    transactional "Activate Protection" surface that
+                    the unlock makes redundant. Self-removes the
+                    instant entitlement.entitlement_state stops being
+                    "beta_access" (i.e. when monetization begins). */}
+                {isBeta && <FounderAccessCard />}
                 <ProtectionPanel
                   data={protectionPanelData}
                   state="active"

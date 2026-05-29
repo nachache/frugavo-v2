@@ -3,6 +3,7 @@ import { currentUser } from "@clerk/nextjs/server";
 import Link from "next/link";
 import { buildProtectionSummary } from "@/lib/protection/summary";
 import { getEntitlement } from "@/lib/billing/entitlements";
+import { isEffectivelyPaid } from "@/lib/billing/beta";
 import { ProtectionUpsellPreview } from "@/components/app/protection-upsell-preview";
 
 // /app/protection — the retention surface.
@@ -44,11 +45,12 @@ export default async function ProtectionPage() {
   // sample data + Activate CTA), paid users see their real summary.
   // The Protection tab in the bottom nav lands here for both.
   const entitlement = await getEntitlement(user.id);
+  // beta_access is included via isEffectivelyPaid. grace_period is
+  // also entitled (real paid users mid-dunning); kept explicit so the
+  // surface logic is readable.
   const isEntitled =
-    entitlement.entitlement_state === "trialing" ||
-    entitlement.entitlement_state === "active" ||
-    entitlement.entitlement_state === "grace_period" ||
-    entitlement.entitlement_state === "cancelled_active";
+    isEffectivelyPaid(entitlement) ||
+    entitlement.entitlement_state === "grace_period";
 
   if (!isEntitled) {
     return <ProtectionUpsellPreview userId={user.id} />;

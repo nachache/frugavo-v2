@@ -21,7 +21,10 @@ type Props = {
     | "cancelled_active"
     | "past_due"
     | "expired"
-    | "none";
+    | "none"
+    // Beta-era synthetic state — see lib/billing/beta.ts. Rendered
+    // as a "Founder Access" pill, distinct tone from paid-active.
+    | "beta_access";
   trialEndsAt: string | null;
   expiresAt: string | null;
   // ISO date the user joined Frugavo. Used as the "Protected since"
@@ -56,9 +59,14 @@ export function ProtectionStatusPill({
   // it as referenced for the linter.
   void _trialEndsAt;
   let label: string | null = null;
-  let tone: "trial" | "active" | "ending" | null = null;
+  let tone: "trial" | "active" | "ending" | "founder" | null = null;
 
-  if (state === "trialing" || state === "active") {
+  if (state === "beta_access") {
+    // Beta-era voice: privilege + identity, not transaction. No
+    // dates, no countdowns — the access is open-ended by design.
+    label = "Founder Access";
+    tone = "founder";
+  } else if (state === "trialing" || state === "active") {
     const since = fmtShortDate(protectionStartedAt);
     label = since ? `Protected since ${since}` : "Protected";
     tone = "active";
@@ -72,10 +80,15 @@ export function ProtectionStatusPill({
 
   if (!label || !tone) return null;
 
+  // founder gets a slightly richer treatment than active — same
+  // brand-green family, but with a deeper border so it reads as
+  // a deliberate identity badge, not a generic status.
   const toneClass =
-    tone === "active"
-      ? "border-brand/30 bg-brand/10 text-brand"
-      : "border-accent/30 bg-accent/10 text-accent";
+    tone === "founder"
+      ? "border-brand/40 bg-brand/12 text-brand"
+      : tone === "active"
+        ? "border-brand/30 bg-brand/10 text-brand"
+        : "border-accent/30 bg-accent/10 text-accent";
 
   return (
     <Link

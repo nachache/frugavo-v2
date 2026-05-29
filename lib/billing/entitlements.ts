@@ -13,6 +13,7 @@
 
 import { supabaseAdmin } from "@/lib/supabase";
 import { cacheGet, cacheSet, cacheDel } from "@/lib/cache";
+import { applyBetaUnlock } from "@/lib/billing/beta";
 
 export type EntitlementState =
   | "none"
@@ -21,7 +22,14 @@ export type EntitlementState =
   | "grace_period"
   | "cancelled_active"
   | "past_due"
-  | "expired";
+  | "expired"
+  // Synthetic state injected by lib/billing/beta.ts during the
+  // current beta phase. Treated as access-granting by hasAccess(),
+  // flagged as effectively-paid by isEffectivelyPaid(), but
+  // recognizable by isBetaAccess() so UI surfaces can render the
+  // "Founder Access" framing instead of the standard paid pill.
+  // Will no longer be returned once BETA_MODE_ENABLED flips false.
+  | "beta_access";
 
 export type Entitlement = {
   clerk_user_id: string;
@@ -47,6 +55,7 @@ const ACCESS_GRANTING: ReadonlySet<EntitlementState> = new Set([
   "active",
   "grace_period",
   "cancelled_active",
+  "beta_access",
 ]);
 
 const TIME_LIMITED: ReadonlySet<EntitlementState> = new Set([
@@ -109,7 +118,7 @@ export async function getEntitlement(
     throw new Error(`[billing] getEntitlement query failed: ${error.message}`);
   }
 
-  const row: Entitlement = data ?? {
+  const rawRow: Entitlement = data ?? {
     // No row yet → user has never started a trial.
     clerk_user_id: clerkUserId,
     feature,
@@ -120,9 +129,17 @@ export async function getEntitlement(
     source_event_id: null,
   };
 
+  // Beta unlock — applied here so EVERY caller sees the synthetic
+  // beta_access state without each having to compose the policy.
+  // Real paid subscriptions pass through unchanged; only states in
+  // the overridable set (none / expired / past_due) get rewritten.
+  // When BETA_MODE_ENABLED flips false, this becomes a no-op.
+  const row = applyBetaUnlock(rawRow);
+
   // Don't cache "expired" / "past_due" states for the full 30s —
   // those are recoverable (the user might restart their plan in
   // seconds and we want them to see the change). Cap at 5s.
+  // beta_access is open-ended and safe to cache for the full TTL.
   const ttl =
     row.entitlement_state === "expired" || row.entitlement_state === "past_due"
       ? 5

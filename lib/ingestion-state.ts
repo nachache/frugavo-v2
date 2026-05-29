@@ -404,14 +404,19 @@ async function sendFirstReadyEmail(args: {
     let trialStartedDedupKey: string | null = null;
     try {
       const { getEntitlement } = await import("./billing/entitlements");
+      const { isEffectivelyPaid, isBetaAccess } = await import("./billing/beta");
       const ent = await getEntitlement(args.userId);
-      const isPaid =
-        ent.entitlement_state === "trialing" ||
-        ent.entitlement_state === "active" ||
-        ent.entitlement_state === "cancelled_active";
+      // Beta users get the protection acknowledgment line too —
+      // monitoring really is active for them. We just skip the
+      // synthetic billing_email_dispatches write since there's no
+      // real stripe subscription to dedup against.
+      const isPaid = isEffectivelyPaid(ent);
+      const isBeta = isBetaAccess(ent);
       if (isPaid) {
         const dedupKey = ent.stripe_subscription_id ?? `merged-${args.userId}`;
-        trialStartedDedupKey = dedupKey;
+        // Only set the dedup key when there's a real subscription
+        // we could double-dispatch against. Beta has no subscription.
+        if (!isBeta) trialStartedDedupKey = dedupKey;
         // Has the trial_started email already been dispatched? If
         // not, this email absorbs it.
         const { data: priorDispatch } = await supabaseAdmin

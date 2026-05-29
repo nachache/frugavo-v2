@@ -10,6 +10,7 @@ import { SoundToggle } from "@/components/app/sound-toggle";
 import { BillingPanel } from "@/components/app/settings-billing-panel";
 import { AddBankButton } from "@/components/app/add-bank-button";
 import { getEntitlement } from "@/lib/billing/entitlements";
+import { isEffectivelyPaid } from "@/lib/billing/beta";
 
 // /app/settings — minimal account + connection management.
 // Real disconnect, billing, and data-export controls land in week 5.
@@ -34,13 +35,11 @@ export default async function SettingsPage() {
 
   const email = user.emailAddresses[0]?.emailAddress ?? "";
 
-  // Paid-tier gate for "Add another bank". trialing, active, and
-  // cancelled-but-still-active all count as paid.
+  // Paid-tier gate for "Add another bank". Routed through the
+  // central beta policy — trialing / active / cancelled_active /
+  // beta_access all count as paid.
   const entitlement = await getEntitlement(user.id);
-  const isPaid =
-    entitlement.entitlement_state === "active" ||
-    entitlement.entitlement_state === "trialing" ||
-    entitlement.entitlement_state === "cancelled_active";
+  const isPaid = isEffectivelyPaid(entitlement);
 
   return (
     <section className="container-page py-8 md:py-12 max-w-[720px]">

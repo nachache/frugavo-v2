@@ -27,6 +27,34 @@ export async function BillingPanel() {
   if (!user) return null;
   const ent = await getEntitlement(user.id);
 
+  // Beta-era unlock: replaces the activation pitch when the user
+  // is operating on Founder Access. Keep the premium positioning
+  // (every protection feature listed); strip the price pressure.
+  if (ent.entitlement_state === "beta_access") {
+    return (
+      <div className="space-y-3">
+        <div className="rounded-xl border border-brand/30 bg-brand/[0.04] p-4">
+          <div className="inline-flex items-center gap-1.5 rounded-full bg-brand/12 border border-brand/25 px-2.5 h-6 text-[11px] font-medium text-brand uppercase tracking-[0.08em]">
+            Founder Access
+          </div>
+          <div className="mt-2.5 text-[15.5px] font-medium text-ink">
+            Every protection feature is unlocked.
+          </div>
+          <p className="mt-1.5 text-[13.5px] text-ink-body leading-relaxed">
+            You&apos;re part of Frugavo&apos;s early access. There&apos;s
+            nothing to bill — your account stays open while we&apos;re
+            still learning what makes the product most useful.
+          </p>
+          <p className="mt-3 text-[12px] text-ink-muted leading-relaxed">
+            Frugavo will eventually be a paid product. We&apos;ll give
+            you plenty of notice before anything changes for your
+            account.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   if (
     ent.entitlement_state === "trialing" ||
     ent.entitlement_state === "active"
