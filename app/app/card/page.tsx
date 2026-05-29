@@ -42,6 +42,8 @@ export default async function CardPage() {
       </div>
 
       {data && data.personality ? (
+        // Health score deliberately omitted here — moved to /app/insights
+        // so this view stays focused on the shareable identity card.
         <IdentityHero
           monthlySubCents={data.monthly.sub_only_cents}
           subCount={data.monthly.sub_only_count}
@@ -51,7 +53,6 @@ export default async function CardPage() {
           hasData={
             data.monthly.sub_only_count > 0 && data.monthly.sub_only_cents > 0
           }
-          healthScore={data.health_score}
         />
       ) : (
         <div className="rounded-2xl border border-hairline bg-white p-6">

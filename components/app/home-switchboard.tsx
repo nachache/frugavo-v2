@@ -393,7 +393,7 @@ export function SpendingCard({
 
 // ─── Insights card (white) ─────────────────────────────────────
 
-export function InsightsCard({ insightCount }: { insightCount: number }) {
+export function InsightsCard() {
   return (
     <Link
       href="/app/insights"
@@ -409,10 +409,10 @@ export function InsightsCard({ insightCount }: { insightCount: number }) {
       </div>
       <div className="mt-4">
         <div className="text-[18px] md:text-[20px] font-bold text-ink leading-snug">
-          Patterns we&apos;ve noticed
+          Patterns, health & trend
         </div>
         <div className="mt-1.5 text-[13.5px] text-ink-muted">
-          {insightCount} insight{insightCount === 1 ? "" : "s"} available
+          Score, 12-month chart, category breakdown
         </div>
       </div>
     </Link>

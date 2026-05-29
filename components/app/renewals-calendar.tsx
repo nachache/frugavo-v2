@@ -1,25 +1,24 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 import type { ActionItem } from "@/lib/selectors/dashboard";
+import { MerchantLogo } from "@/components/app/merchant-logo";
 
-// RenewalsCalendar — full-month grid + day agenda.
+// RenewalsCalendar — full-month grid + scrollable month agenda.
 //
-// Pure CSS grid + date math. No date-picker dependency per spec.
-//
-// Day cells: 7 columns Sun–Sat. Leading/trailing days from the
-// adjacent months are dimmed but rendered so the grid is always
-// 5 or 6 rows tall — never ragged.
-//
-// Today is marked with a small filled ring. Selected day is marked
-// with a heavier outline. Days with predicted charges get a small
-// brand-green dot + count.
-//
-// Tapping a day reveals that day's agenda BELOW the grid as a list
-// of charge rows, each with merchant, amount, and confidence pill.
-// Tapping a charge routes to /app/subscriptions/[id].
+// PASS 2 redesign (task 106):
+//   • Calendar lives inside a polished white card (border + shadow).
+//   • Day cells are taller and breath more; days that carry charges
+//     show a tinted background whose opacity scales with the day's
+//     dollar magnitude — at-a-glance heat map.
+//   • Today is a green pill. Selected day is a heavier outline.
+//   • Below the grid: ALL the month's predicted charges grouped by
+//     day, with merchant logos. Tapping a day in the grid smooth-
+//     scrolls to that day's group and gives it a temporary brand
+//     halo so the connection is obvious.
+//   • Tapping a charge routes to /app/subscriptions/[id].
 
 type Props = {
   year: number;
@@ -28,7 +27,7 @@ type Props = {
   initialSelectedIso: string | null;
 };
 
-const WEEKDAYS = ["S", "M", "T", "W", "T", "F", "S"];
+const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 function isoDate(d: Date): string {
   const y = d.getFullYear();
@@ -45,6 +44,10 @@ function sameDay(a: Date, b: Date): boolean {
   );
 }
 
+function dayAnchorId(iso: string): string {
+  return `renewal-day-${iso}`;
+}
+
 export function RenewalsCalendar({
   year,
   month,
@@ -57,12 +60,11 @@ export function RenewalsCalendar({
     return d;
   }, []);
 
-  // Build the grid: start on the Sunday of the week containing the
-  // 1st, end on the Saturday of the week containing the last day.
+  // Build the grid. Sunday-anchored. Pads to a full 5 or 6 rows.
   const grid = useMemo(() => {
     const first = new Date(year, month, 1);
     const last = new Date(year, month + 1, 0);
-    const startOffset = first.getDay(); // 0 = Sun
+    const startOffset = first.getDay();
     const endPad = 6 - last.getDay();
     const total = startOffset + last.getDate() + endPad;
     const cells: { date: Date; inMonth: boolean }[] = [];
@@ -73,7 +75,7 @@ export function RenewalsCalendar({
     return cells;
   }, [year, month]);
 
-  // Index charges by ISO day for quick lookup.
+  // Bucket charges by ISO day for quick lookup.
   const chargesByDay = useMemo(() => {
     const map = new Map<string, ActionItem[]>();
     for (const a of upcoming) {
@@ -83,135 +85,273 @@ export function RenewalsCalendar({
       list.push(a);
       map.set(iso, list);
     }
+    // Sort each day's charges by amount desc so the heaviest hits
+    // float to the top of each group.
+    for (const list of map.values()) {
+      list.sort((a, b) => b.monthly_cents - a.monthly_cents);
+    }
     return map;
   }, [upcoming]);
 
-  // Selected day state — defaults to the URL param OR today (if today
-  // falls in this month), else the 1st of the month.
+  // Compute per-day totals + the month's peak for the heat ramp.
+  const { totalsByDay, peakCents } = useMemo(() => {
+    const totals = new Map<string, number>();
+    let peak = 0;
+    for (const [iso, list] of chargesByDay.entries()) {
+      const t = list.reduce((acc, a) => acc + a.monthly_cents, 0);
+      totals.set(iso, t);
+      if (t > peak) peak = t;
+    }
+    return { totalsByDay: totals, peakCents: peak };
+  }, [chargesByDay]);
+
+  // Build the month agenda (only IN-month days that have charges,
+  // sorted by date asc).
+  const monthAgenda = useMemo(() => {
+    const out: { iso: string; date: Date; items: ActionItem[] }[] = [];
+    for (const cell of grid) {
+      if (!cell.inMonth) continue;
+      const iso = isoDate(cell.date);
+      const items = chargesByDay.get(iso);
+      if (items && items.length > 0) {
+        out.push({ iso, date: cell.date, items });
+      }
+    }
+    return out;
+  }, [grid, chargesByDay]);
+
+  // Selected day — defaults to the URL param OR today (if today is in
+  // this month) OR the first day with charges OR the 1st.
   const initial = (() => {
     if (initialSelectedIso) return initialSelectedIso;
     if (today.getFullYear() === year && today.getMonth() === month) {
       return isoDate(today);
     }
+    if (monthAgenda.length > 0) return monthAgenda[0].iso;
     return isoDate(new Date(year, month, 1));
   })();
   const [selectedIso, setSelectedIso] = useState<string>(initial);
 
-  const agendaCharges = chargesByDay.get(selectedIso) ?? [];
-  const selectedDate = new Date(selectedIso);
-  const selectedLabel = selectedDate.toLocaleDateString("en-US", {
-    weekday: "long",
-    month: "long",
-    day: "numeric",
-  });
+  // Smooth-scroll the agenda group into view when the user taps a day.
+  // We also briefly highlight the target group via the highlightedIso
+  // state (cleared after 1.2s) so the link reads visually.
+  const [highlightedIso, setHighlightedIso] = useState<string | null>(null);
+  const highlightTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleDayClick = (iso: string) => {
+    setSelectedIso(iso);
+    // Only scroll if that day actually has an agenda entry.
+    if (!chargesByDay.has(iso)) return;
+    const el = document.getElementById(dayAnchorId(iso));
+    if (el && typeof el.scrollIntoView === "function") {
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+    setHighlightedIso(iso);
+    if (highlightTimer.current) clearTimeout(highlightTimer.current);
+    highlightTimer.current = setTimeout(() => setHighlightedIso(null), 1400);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (highlightTimer.current) clearTimeout(highlightTimer.current);
+    };
+  }, []);
 
   return (
     <div>
-      {/* Weekday header */}
-      <div className="grid grid-cols-7 gap-1 mb-2 px-1">
-        {WEEKDAYS.map((w, i) => (
-          <div
-            key={i}
-            className="text-center text-[10.5px] font-medium uppercase tracking-[0.1em] text-ink-muted"
-          >
-            {w}
-          </div>
-        ))}
-      </div>
-
-      {/* Grid */}
-      <div className="grid grid-cols-7 gap-1">
-        {grid.map(({ date, inMonth }, i) => {
-          const iso = isoDate(date);
-          const charges = chargesByDay.get(iso) ?? [];
-          const isToday = sameDay(date, today);
-          const isSelected = iso === selectedIso;
-          return (
-            <button
-              key={i}
-              type="button"
-              onClick={() => setSelectedIso(iso)}
-              className={[
-                "relative aspect-square rounded-xl flex flex-col items-center justify-center transition-colors",
-                inMonth
-                  ? "text-ink hover:bg-ink/[0.04]"
-                  : "text-ink-muted/40 hover:bg-ink/[0.02]",
-                isSelected ? "ring-2 ring-emerald-600 ring-offset-1" : "",
-              ].join(" ")}
-              aria-label={`Renewals on ${date.toLocaleDateString("en-US", {
-                month: "long",
-                day: "numeric",
-              })}`}
+      {/* ─── Grid card ─────────────────────────────────────── */}
+      <div className="rounded-2xl border border-hairline bg-white shadow-soft p-3 md:p-5">
+        {/* Weekday header */}
+        <div className="grid grid-cols-7 gap-1 mb-2 px-0.5">
+          {WEEKDAYS.map((w) => (
+            <div
+              key={w}
+              className="text-center text-[10.5px] font-medium uppercase tracking-[0.1em] text-ink-muted"
             >
-              <span
+              {w.slice(0, 1)}
+              <span className="hidden md:inline">{w.slice(1)}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* Day grid */}
+        <div className="grid grid-cols-7 gap-1 md:gap-1.5">
+          {grid.map(({ date, inMonth }, i) => {
+            const iso = isoDate(date);
+            const charges = chargesByDay.get(iso) ?? [];
+            const isToday = sameDay(date, today);
+            const isSelected = iso === selectedIso;
+            const total = totalsByDay.get(iso) ?? 0;
+            // Heat ramp 0..0.18 alpha on the cell background based on
+            // dollar magnitude relative to the month's peak.
+            const heat = peakCents > 0 ? total / peakCents : 0;
+            const heatAlpha = inMonth && total > 0 ? 0.06 + heat * 0.18 : 0;
+            const bg =
+              heatAlpha > 0
+                ? `rgba(15, 110, 86, ${heatAlpha.toFixed(3)})`
+                : undefined;
+            return (
+              <button
+                key={i}
+                type="button"
+                onClick={() => handleDayClick(iso)}
+                disabled={!inMonth && charges.length === 0}
                 className={[
-                  "text-[13px] tabular-nums",
-                  isToday
-                    ? "font-medium inline-flex items-center justify-center w-6 h-6 rounded-full bg-ink text-white"
+                  "relative aspect-square rounded-xl flex flex-col items-center justify-between p-1.5 transition-all",
+                  inMonth ? "text-ink" : "text-ink-muted/40",
+                  inMonth && !isSelected ? "hover:bg-ink/[0.04]" : "",
+                  isSelected
+                    ? "ring-2 ring-emerald-700 ring-offset-1 ring-offset-white"
+                    : "",
+                  inMonth && total > 0 && !isSelected
+                    ? "hover:shadow-soft"
                     : "",
                 ].join(" ")}
+                style={bg ? { background: bg } : undefined}
+                aria-label={`${date.toLocaleDateString("en-US", {
+                  month: "long",
+                  day: "numeric",
+                })}${charges.length > 0 ? ` — ${charges.length} charge${charges.length === 1 ? "" : "s"}` : ""}`}
               >
-                {date.getDate()}
-              </span>
-              {charges.length > 0 && inMonth ? (
-                <span className="absolute bottom-1.5 inline-flex items-center gap-0.5">
-                  <span
-                    className="inline-block w-1.5 h-1.5 rounded-full"
-                    style={{ background: "#0F6E56" }}
-                  />
-                  {charges.length > 1 ? (
-                    <span className="text-[9.5px] font-medium text-ink-muted leading-none">
-                      {charges.length}
-                    </span>
-                  ) : null}
+                <span
+                  className={[
+                    "text-[13px] md:text-[14px] tabular-nums leading-none",
+                    isToday
+                      ? "font-bold inline-flex items-center justify-center w-6 h-6 rounded-full text-white"
+                      : "font-medium",
+                  ].join(" ")}
+                  style={
+                    isToday ? { background: "#0F6E56" } : undefined
+                  }
+                >
+                  {date.getDate()}
                 </span>
-              ) : null}
-            </button>
-          );
-        })}
+                {inMonth && total > 0 ? (
+                  <span className="text-[9.5px] md:text-[10px] font-medium text-emerald-900/80 tabular-nums leading-none">
+                    ${Math.round(total / 100).toLocaleString("en-US")}
+                  </span>
+                ) : (
+                  <span className="block h-[10px]" aria-hidden="true" />
+                )}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Legend */}
+        <div className="mt-3 flex items-center justify-between text-[10.5px] text-ink-muted px-0.5">
+          <span>Tap a day to jump to its charges below</span>
+          <span className="inline-flex items-center gap-1.5">
+            <span className="inline-block w-2 h-2 rounded-sm bg-emerald-700/10" />
+            <span className="inline-block w-2 h-2 rounded-sm bg-emerald-700/30" />
+            heavier days
+          </span>
+        </div>
       </div>
 
-      {/* Agenda for the selected day */}
+      {/* ─── Month agenda ──────────────────────────────────── */}
       <div className="mt-7">
         <div className="text-[11.5px] font-medium uppercase tracking-[0.08em] text-ink-muted mb-2.5 px-1">
-          {selectedLabel}
+          This month, by day
         </div>
-        {agendaCharges.length === 0 ? (
+        {monthAgenda.length === 0 ? (
           <div className="rounded-2xl border border-hairline bg-white p-5 text-[13px] text-ink-muted">
-            No charges expected on this day.
+            No charges expected this month.
           </div>
         ) : (
-          <ul className="rounded-2xl border border-hairline bg-white divide-y divide-hairline/60 overflow-hidden">
-            {agendaCharges.map((a) => (
-              <li key={a.subscription_id}>
-                <Link
-                  href={`/app/subscriptions/${a.subscription_id}`}
-                  className="flex items-center gap-3 px-4 py-3.5 hover:bg-canvas/40 transition"
+          <div className="space-y-3">
+            {monthAgenda.map((group) => {
+              const isHighlighted = highlightedIso === group.iso;
+              const isSelectedGroup = selectedIso === group.iso;
+              const dayLabel = group.date.toLocaleDateString("en-US", {
+                weekday: "short",
+                month: "short",
+                day: "numeric",
+              });
+              const groupTotal = group.items.reduce(
+                (acc, a) => acc + a.monthly_cents,
+                0
+              );
+              return (
+                <div
+                  key={group.iso}
+                  id={dayAnchorId(group.iso)}
+                  className={[
+                    "rounded-2xl border bg-white shadow-soft overflow-hidden transition-all",
+                    isHighlighted
+                      ? "border-emerald-300 ring-2 ring-emerald-200"
+                      : isSelectedGroup
+                        ? "border-emerald-200"
+                        : "border-hairline",
+                  ].join(" ")}
                 >
-                  <div className="flex-1 min-w-0">
-                    <div className="text-[14px] font-medium text-ink truncate">
-                      {a.merchant_name}
-                    </div>
-                    <div className="text-[12px] text-ink-muted">
-                      {a.category.replace(/_/g, " ")}
+                  <div className="flex items-center justify-between gap-3 px-4 md:px-5 py-3 border-b border-hairline/60 bg-canvas/30">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <span className="inline-flex flex-col items-center justify-center w-10 h-10 rounded-xl bg-emerald-50 text-emerald-900 shrink-0">
+                        <span className="text-[9px] font-medium uppercase tracking-[0.05em] leading-none opacity-70">
+                          {group.date.toLocaleDateString("en-US", {
+                            month: "short",
+                          })}
+                        </span>
+                        <span className="text-[14px] font-bold tabular-nums leading-none mt-0.5">
+                          {group.date.getDate()}
+                        </span>
+                      </span>
+                      <div className="min-w-0">
+                        <div className="text-[13.5px] font-bold text-ink truncate">
+                          {dayLabel}
+                        </div>
+                        <div className="text-[11.5px] text-ink-muted tabular-nums">
+                          {group.items.length} charge
+                          {group.items.length === 1 ? "" : "s"} · ~$
+                          {Math.round(groupTotal / 100).toLocaleString("en-US")}
+                        </div>
+                      </div>
                     </div>
                   </div>
-                  <ConfidenceTierPill
-                    probability={computeRenewalProbability(a)}
-                  />
-                  <div className="text-[13px] font-medium text-ink tabular-nums shrink-0">
-                    ~$
-                    {Math.round(a.monthly_cents / 100).toLocaleString("en-US")}
-                  </div>
-                  <ChevronRight
-                    size={14}
-                    strokeWidth={2}
-                    className="text-ink-muted shrink-0"
-                  />
-                </Link>
-              </li>
-            ))}
-          </ul>
+                  <ul className="divide-y divide-hairline/60">
+                    {group.items.map((a) => (
+                      <li key={a.subscription_id}>
+                        <Link
+                          href={`/app/subscriptions/${a.subscription_id}`}
+                          className="flex items-center gap-3 px-4 md:px-5 py-3.5 hover:bg-canvas/40 transition"
+                        >
+                          <MerchantLogo
+                            name={a.merchant_name}
+                            domain={a.domain}
+                            size={32}
+                            rounded="lg"
+                          />
+                          <div className="flex-1 min-w-0">
+                            <div className="text-[14px] font-bold text-ink truncate">
+                              {a.merchant_name}
+                            </div>
+                            <div className="text-[11.5px] text-ink-muted truncate">
+                              {a.category.replace(/_/g, " ")}
+                            </div>
+                          </div>
+                          <ConfidenceTierPill
+                            probability={computeRenewalProbability(a)}
+                          />
+                          <div className="text-[13.5px] font-bold text-ink tabular-nums shrink-0">
+                            ~$
+                            {Math.round(a.monthly_cents / 100).toLocaleString(
+                              "en-US"
+                            )}
+                          </div>
+                          <ChevronRight
+                            size={14}
+                            strokeWidth={2}
+                            className="text-ink-muted shrink-0"
+                          />
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              );
+            })}
+          </div>
         )}
         <p className="mt-3 text-[11px] text-ink-muted px-1 leading-relaxed">
           Forecast, not guaranteed. Predicted dates can shift when
@@ -225,38 +365,17 @@ export function RenewalsCalendar({
 // ─── confidence derivation ──────────────────────────────────────
 
 // Real per-prediction probability derived from FOUR engine signals
-// that already exist on the ActionItem:
+// already on the ActionItem. See lib/selectors/dashboard.ts.
 //
-//   • a.confidence (0..1)        — Claude's per-merchant verdict
-//                                   score from the Phase F cutover.
-//                                   How sure we are this is a real
-//                                   recurring subscription at all.
-//   • a.months_observed (0..12)  — distinct months that contain a
-//                                   matching charge for this sub.
-//                                   More observation = more stable
-//                                   cadence = better date prediction.
-//   • a.frequency                — 'monthly' / 'annually' / etc. If
-//                                   'unknown', the engine couldn't
-//                                   lock a cadence, which collapses
-//                                   our ability to predict a date.
-//   • a.status                   — non-active subs are unlikely to
-//                                   charge on date, period.
-//
-// Formula:
-//   base       = a.confidence ?? 0.5                       // sub-level trust
-//   stability  = min(1, months_observed / 6)               // 0..1, 6mo = full
+//   base       = a.confidence ?? 0.5
+//   stability  = min(1, months_observed / 6)
 //   freqPenalty = a.frequency === 'unknown' ? 0.4 : 1.0
 //   statusPenalty = a.status === 'active' ? 1.0 : 0.3
 //   probability = base * stability * freqPenalty * statusPenalty
 //
-// Tier boundaries:
-//   ≥ 0.80  → "Very likely"
-//   ≥ 0.55  → "Likely"
-//   < 0.55  → "Less certain"
+// Tier boundaries: ≥0.80 high, ≥0.55 medium, <0.55 low.
 //
-// This is a real number derived from real signals. Calibration can
-// improve over time (the constants here are conservative — they err
-// toward "Less certain" when in doubt), but no value is invented.
+// No invented numbers — all four inputs come from the engine.
 
 export function computeRenewalProbability(a: ActionItem): number {
   const base =
@@ -298,7 +417,7 @@ function ConfidenceTierPill({
   const pct = Math.round(probability * 100);
   return (
     <span
-      className={`inline-flex items-center gap-1.5 rounded-full border px-2 h-5 text-[10.5px] font-medium uppercase tracking-[0.06em] ${cls}`}
+      className={`hidden md:inline-flex items-center gap-1.5 rounded-full border px-2 h-5 text-[10.5px] font-medium uppercase tracking-[0.06em] ${cls}`}
     >
       {label}
       <span className="opacity-70 tabular-nums normal-case tracking-normal">

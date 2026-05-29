@@ -84,14 +84,14 @@ export default async function RenewalsPage({
         className="inline-flex items-center gap-1.5 text-[13px] text-ink-muted hover:text-ink transition mb-5"
       >
         <ChevronLeft size={14} strokeWidth={2} />
-        Back
+        Back to dashboard
       </Link>
 
       <div className="flex items-center gap-2.5 mb-1">
         <span className="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-ink/[0.05] text-ink">
           <Calendar size={14} strokeWidth={2} />
         </span>
-        <h1 className="font-display text-[24px] md:text-[28px] font-medium tracking-[-0.01em] text-ink leading-tight">
+        <h1 className="font-display text-[24px] md:text-[28px] font-bold tracking-[-0.01em] text-ink leading-tight">
           Renewals
         </h1>
       </div>

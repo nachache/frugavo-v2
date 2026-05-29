@@ -7,6 +7,7 @@ import { DashboardSessionPinger } from "@/components/app/dashboard-session-pinge
 import { FounderFeedbackChip } from "@/components/app/founder-feedback-chip";
 import { AppIntro } from "@/components/app/app-intro";
 import { InstallFrugavoRow } from "@/components/app/install-frugavo-row";
+import { ProtectionAlertCard } from "@/components/app/protection-alert-card";
 import { BillingStatusBanner } from "@/components/app/billing-status-banner";
 import { buildWatchdogDigest } from "@/lib/watchdog/digest";
 import { WatchdogOverlay } from "@/components/app/watchdog-overlay";
@@ -331,7 +332,7 @@ export default async function AppHome() {
         <div>
           <DiscoverSectionHeader />
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            <InsightsCard insightCount={findings.length} />
+            <InsightsCard />
             {personality ? (
               <YourCardCard personality={personality} />
             ) : (
@@ -345,6 +346,11 @@ export default async function AppHome() {
             <ShareCard />
           </div>
         </div>
+
+        {/* Protection — peace-of-mind tile. Opens a modal with the
+            four things Frugavo actively watches for the user. Sits
+            on its own so the explanation gets room to breathe. */}
+        <ProtectionAlertCard />
 
         {/* Quick actions row — three primary affordances grouped
             above the install + feedback footer. All visible, all
