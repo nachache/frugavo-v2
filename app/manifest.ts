@@ -51,7 +51,11 @@ export default function manifest(): MetadataRoute.Manifest {
     scope: "/",
     display: "standalone",
     orientation: "portrait",
-    background_color: "#FAF8F4",
+    // Splash screen background. We use ink-black so the icon
+    // (also black to the edges) blends into the launch surface
+    // instead of floating in a cream square. theme_color still
+    // tints the Android status bar to ink.
+    background_color: "#0A0A0A",
     theme_color: "#0F172A",
     categories: ["finance", "productivity", "lifestyle"],
     icons: [

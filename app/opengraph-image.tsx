@@ -65,7 +65,7 @@ export default function OgImage() {
         >
           Your subscription
           <br />
-          <span style={{ color: "#047857" }}>watchdog.</span>
+          <span style={{ color: "#047857" }}>protection intelligence.</span>
         </div>
 
         {/* Subhead */}
@@ -84,9 +84,8 @@ export default function OgImage() {
               maxWidth: 880,
             }}
           >
-            Frugavo watches every recurring charge on your accounts and
-            alerts you before trials convert, prices rise, or unusual
-            charges hit.
+            Frugavo quietly observes every recurring charge across your
+            accounts and surfaces what changes — before you notice.
           </span>
           <span
             style={{
@@ -95,7 +94,7 @@ export default function OgImage() {
               letterSpacing: -0.3,
             }}
           >
-            frugavo.com · 7 days free
+            frugavo.com · Founder Access during early access
           </span>
         </div>
       </div>

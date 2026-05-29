@@ -38,22 +38,22 @@ const newsreader = Newsreader({
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://frugavo.com"),
-  title: "Frugavo — Your subscription watchdog",
+  title: "Frugavo — Subscription protection intelligence",
   description:
-    "Frugavo watches every recurring charge on your accounts and alerts you before trials convert, prices rise, or unusual charges hit. Connect your bank in 60 seconds. 7 days free, cancel anytime.",
+    "Frugavo quietly observes every recurring charge across your accounts and surfaces what changes — price hikes, forgotten trials, unusual billing — before you notice. Calm protection in the background.",
   openGraph: {
-    title: "Frugavo — Your subscription watchdog",
+    title: "Frugavo — Subscription protection intelligence",
     description:
-      "Continuous monitoring for every recurring charge. We catch trial conversions, price hikes, and unusual subscription activity — automatically, every day.",
+      "A calm intelligence layer over your recurring spending. Frugavo notices what you'd miss — price increases, trial conversions, forgotten subscriptions — and tells you only when it matters.",
     url: "https://frugavo.com",
     siteName: "Frugavo",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Frugavo — Your subscription watchdog",
+    title: "Frugavo — Subscription protection intelligence",
     description:
-      "Frugavo watches your subscriptions every day so you don't have to. Trial alerts, price-hike alerts, unusual charge alerts. 7 days free.",
+      "Calm protection for your recurring spending. Frugavo notices what you'd miss — and tells you only when it matters.",
   },
   // Favicon is auto-served by Next.js from app/icon.png (App Router
   // file convention). The PWA / Apple touch icons are wired below.

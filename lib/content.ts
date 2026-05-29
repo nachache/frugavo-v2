@@ -3,26 +3,30 @@
 
 export const nav = {
   links: [
-    { label: "Pricing", href: "/#pricing" },
     { label: "How it works", href: "/#how-it-works" },
+    { label: "Access", href: "/#access" },
     { label: "Library", href: "/learn" },
     { label: "FAQ", href: "/#faq" },
   ],
   signIn: { label: "Sign in", href: "/sign-in" },
-  cta: { label: "Start Scan", href: "/sign-up" },
+  cta: { label: "Start your analysis", href: "/sign-up" },
 };
 
 export const hero = {
-  eyebrow: "Beta",
-  headline: "Your subscription watchdog.",
+  // "Founder Access" sets the tone before the headline lands —
+  // privilege framing, not a generic "Beta" badge.
+  eyebrow: "Founder Access · Open during early access",
+  headline: "Your subscription protection intelligence.",
   stat: "You think you pay $86 in subscriptions. It's really $219.",
   sourceCitation: "Source: C+R Research, 2026",
+  // Calm, observational voice. The product notices what the user
+  // can't, instead of "killing" or "watchdog'ing" subscriptions.
   subhead:
-    "89% of people guess too low. We find the ones you forgot you're paying for.",
-  primaryCta: { label: "Start Scan", href: "/sign-up" },
+    "Frugavo quietly observes every recurring charge across your accounts and surfaces what changes — before you notice.",
+  primaryCta: { label: "Start your analysis", href: "/sign-up" },
   secondaryCta: { label: "See how it works", href: "#demo" },
   trust:
-    "Read-only access via Plaid · We don’t store bank credentials · Works with 11,000+ banks",
+    "Read-only access via Plaid · We don’t store bank credentials · 12,000+ banks across the US and Canada",
 };
 
 export type DemoSub = {
@@ -48,7 +52,7 @@ export const heroDemoSubs: DemoSub[] = [
 // components/sections/social-proof.tsx.
 
 export const howItWorks = {
-  heading: "Three steps. Then never think about it again.",
+  heading: "Three steps. Then it works in the background.",
   steps: [
     {
       n: "01",
@@ -60,13 +64,13 @@ export const howItWorks = {
       n: "02",
       icon: "Search",
       title: "See every recurring charge",
-      body: "Frugavo scans 12 months of transactions and shows you every subscription and bill in one list — with monthly and annual totals.",
+      body: "Frugavo analyzes the last 12 months of transactions and shows you every subscription and bill in one calm view — with monthly and annual totals, category concentration, and a subscription health score.",
     },
     {
       n: "03",
       icon: "Zap",
-      title: "Watch every day after that",
-      body: "Frugavo keeps watching your accounts. We alert you before trials convert, when prices rise, and when an unusual charge hits — automatically, every day.",
+      title: "Frugavo notices what you'd miss",
+      body: "From then on, Frugavo quietly observes your recurring spending in the background. Price changes, forgotten subscriptions, expected renewals, unusual billing — surfaced on your dashboard only when there's something meaningful to know.",
     },
   ],
 };
@@ -235,66 +239,59 @@ export const providers = {
   ],
 };
 
-// Sample cancellation feed. These entries are illustrative — Frugavo is
-// pre-launch and has no real cancellation activity yet. The ticker is
-// labeled "Sample activity" in the UI so visitors aren't misled.
+// Sample observations. These illustrate the KIND of things Frugavo
+// notices in the background — they're not real user events. The
+// ticker labels itself "Sample observations" in the UI so visitors
+// aren't misled. Voice rules: lead with "Frugavo noticed," use plain
+// past-tense observation, no exclamations, no urgency, no savings
+// claims. Every line should sound like a calm note the product would
+// surface, not a marketing line.
 export const ticker = [
-  "Netflix would save $22.99/mo · typical cancellation",
-  "Adobe Creative Cloud would save $59.99/mo · typical cancellation",
-  "Peloton would save $44.00/mo · typical cancellation",
-  "LinkedIn Premium would save $39.99/mo · typical cancellation",
-  "Spotify Premium would save $11.99/mo · typical cancellation",
-  "HelloFresh would save $89.94/mo · typical cancellation",
-  "NYT would save $25.00/mo · typical cancellation",
-  "Audible would save $14.95/mo · typical cancellation",
-  "Disney+ would save $13.99/mo · typical cancellation",
-  "Hulu would save $17.99/mo · typical cancellation",
-  "ClassPass would save $79.00/mo · typical cancellation",
-  "Headspace would save $12.99/mo · typical cancellation",
-  "Calm would save $14.99/mo · typical cancellation",
-  "Microsoft 365 would save $9.99/mo · typical cancellation",
-  "Canva Pro would save $14.99/mo · typical cancellation",
+  "Frugavo noticed Netflix went from $15.49 to $17.99",
+  "Frugavo noticed a duplicate Hulu subscription on your card",
+  "Frugavo noticed Audible has been unused for 4 months",
+  "Frugavo noticed Adobe converts to $59.99/mo on Friday",
+  "Frugavo noticed Notion AI added a new monthly charge",
+  "Frugavo noticed Peloton skipped its usual billing this cycle",
+  "Frugavo noticed Spotify and Apple Music are both active",
+  "Frugavo noticed Microsoft 365 renews in 6 days",
+  "Frugavo noticed an unfamiliar recurring charge — $19/mo",
+  "Frugavo noticed LinkedIn Premium has been idle for 11 weeks",
+  "Frugavo noticed your gym tier dropped from Premium to Plus",
+  "Frugavo noticed HelloFresh missed a delivery cycle",
+  "Frugavo noticed your insurance auto-renewed at a higher rate",
+  "Frugavo noticed Substack added two new paid subscriptions",
+  "Frugavo noticed a $1 trial charge from a new merchant",
 ];
 
-export const pricing = {
-  heading: "Pricing that makes sense.",
+// Founder Access — the public-facing surface that reflects the
+// in-app entitlement state (lib/billing/beta.ts). Single tier, no
+// pricing pressure, but clearly communicates that this IS a premium
+// product. The "future paid" line preserves long-term monetization
+// credibility without selling anything today.
+export const access = {
+  heading: "Founder Access. Open during early access.",
   subhead:
-    "The full scan is free, forever. Continuous monitoring runs on Peace of Mind — $14.99/month with a 7-day free trial.",
-  plans: [
-    {
-      id: "free",
-      name: "Free",
-      recommended: false,
-      priceMonthly: 0,
-      tagline: "One-time scan + dashboard",
-      features: [
-        "Connect your bank in 30 seconds via Plaid",
-        "Full view of every recurring charge",
-        "Yearly + monthly totals, biggest line items",
-        "Subscription personality card to share",
-        "Re-scan any time, manually",
-      ],
-      cta: "Start Scan",
-      ctaHref: "/sign-up",
-    },
-    {
-      id: "peace_of_mind",
-      name: "Peace of Mind",
-      recommended: true,
-      priceMonthly: 14.99,
-      tagline: "Daily monitoring + alerts",
-      features: [
-        "Everything in Free",
-        "Daily monitoring across every connected account",
-        "Trial-conversion alerts 24h before charges hit",
-        "Price-hike + duplicate + dormant-charge detection",
-        "Email digest at your chosen cadence (daily / weekly / monthly)",
-        "Cancel any time. 7-day free trial.",
-      ],
-      cta: "Start 7-day free trial",
-      ctaHref: "/sign-up",
-    },
+    "Frugavo is in early access. Every protection feature — continuous monitoring, change detection, cancellation-assist, multi-account coverage — is unlocked for your account. No payment, no trial countdown, no card on file.",
+  // Tagline above the feature list. Restates the value architecture
+  // so users still understand they're inside a premium system.
+  featuresHeading: "Everything in your account, unlocked",
+  features: [
+    "Connect your bank in 30 seconds via Plaid",
+    "Full subscription analysis across every connected account",
+    "Continuous monitoring — new charges, price changes, forgotten subs",
+    "Renewal forecasting and trial-conversion observation",
+    "Cancellation-assist for known providers",
+    "Subscription health score + personality card",
   ],
+  // Honest framing for the future. Reads as confident, not as a
+  // countdown. Mirrors the BillingPanel + FounderAccessCard copy.
+  futureNote:
+    "Frugavo will eventually be a paid product. While we're still learning what makes it most useful, your access stays open. We'll give you plenty of notice before anything changes.",
+  cta: "Start your analysis",
+  ctaHref: "/sign-up",
+  secondaryCta: "See how it works",
+  secondaryCtaHref: "#how-it-works",
 };
 
 export const trust = {
@@ -303,41 +300,41 @@ export const trust = {
     {
       icon: "Eye",
       title: "Read-only access",
-      body: "We use read-only scopes to identify recurring charges. We can’t send email or move money on your behalf.",
+      body: "We use read-only scopes to identify recurring charges. Frugavo can't send email or move money on your behalf.",
     },
     {
       icon: "Lock",
       title: "Bank credentials never stored",
-      body: "Bank connections will be brokered through Plaid when the product launches. We never see or store your bank password.",
+      body: "Bank connections run through Plaid — the same infrastructure your bank app uses. We never see or store your bank password.",
     },
     {
       icon: "ShieldCheck",
-      title: "We don’t sell your data",
-      body: "Your subscription information is yours. We don’t sell, share, or train models on it. See our privacy policy.",
+      title: "We don't sell your data",
+      body: "Your subscription information is yours. We don't sell, share, or train models on it. See our privacy policy.",
     },
   ],
 };
 
 export const faqs = [
   {
+    q: "What does Founder Access include? Is it really free?",
+    a: "Founder Access opens every protection feature for your account during Frugavo's early-access period: continuous monitoring, change detection, cancellation-assist, multi-account coverage, the full subscription analysis. No card on file. No trial countdown. Frugavo will eventually be a paid product, and we'll give you plenty of notice before anything changes for your account.",
+  },
+  {
     q: "Is this safe? What does Frugavo actually see?",
-    a: "Bank connections run through Plaid — the same infrastructure used by Venmo, Chime, and Robinhood. Read-only access. We see merchant names, amounts, and dates. We never see or store your bank password. We can’t move money, transfer funds, or do anything except read the transaction list.",
+    a: "Bank connections run through Plaid — the same infrastructure used by Venmo, Chime, and Robinhood. Read-only access. We see merchant names, amounts, and dates. We never see or store your bank password. Frugavo can't move money, transfer funds, or do anything except read the transaction list.",
   },
   {
-    q: "How does the cancellation actually work?",
-    a: "When you tap Cancel on a subscription, Frugavo opens the provider’s real cancellation page in a new tab and pre-fills a cancellation email you can send from your own inbox. You complete the cancellation yourself — usually 60 seconds. Then Plaid watches your next billing cycle and confirms whether the charge actually stopped.",
+    q: "How does cancellation-assist work?",
+    a: "When you decide to cancel a subscription, Frugavo opens the provider's real cancellation page in a new tab and prepares the right language for you. You complete the cancellation yourself — usually under a minute. Frugavo then watches the next billing cycle and confirms whether the charge actually stopped.",
   },
   {
-    q: "Why don’t you cancel for me automatically?",
-    a: "Because doing it well requires storing your credentials for every provider, handling 2FA, and surviving every provider’s anti-automation defenses — all of which we don’t want to do badly. We’d rather walk you straight to the cancel page and confirm the result via your bank than promise full automation we can’t guarantee. Full agentic cancellation is on the year-two roadmap.",
-  },
-  {
-    q: "What if a provider requires a phone call to cancel?",
-    a: "A small number of providers (mostly gyms and some telcos) still require a phone call. For those, Frugavo provides the phone number, the script, and the best time to call. A paid concierge add-on that places the call for you is on the roadmap.",
+    q: "Why don't you cancel for me automatically?",
+    a: "Because doing it well requires storing your credentials for every provider, handling 2FA, and surviving every provider's anti-automation defenses — all of which we don't want to do badly. We'd rather walk you straight to the cancel page and confirm the result via your bank than promise full automation we can't guarantee. Deeper agentic cancellation is on the longer-term roadmap.",
   },
   {
     q: "Do you catch free trials before they bill?",
-    a: "Yes — once we’ve seen the first trial transaction, we track the expected next charge and email you 48 hours before. The 48-hour window is enough to cancel the trial before any charge appears.",
+    a: "Yes — once we've seen the first trial transaction, we track the expected next charge and surface it on your dashboard before it happens. The window is wide enough to act on if you decide you don't want the conversion.",
   },
   {
     q: "Which banks do you support?",
@@ -345,30 +342,26 @@ export const faqs = [
   },
   {
     q: "Is this available in Canada?",
-    a: "Yes — Frugavo is built for North America. We support CAD subscriptions and Canadian banks at launch.",
+    a: "Yes — Frugavo is built for North America. We support CAD subscriptions and Canadian banks.",
   },
   {
     q: "How is this different from Rocket Money?",
-    a: "Rocket Money is bundled with a budgeting product and pushes you toward their bill-negotiation upsell. Frugavo does one thing: find subscriptions, walk you to the cancel page, and confirm via your bank that the charge actually stopped. No upsells, no negotiation pitches, no budgeting features. Five dollars a month, flat.",
+    a: "Rocket Money is bundled with a budgeting product and pushes you toward their bill-negotiation upsell. Frugavo is calm, focused subscription protection intelligence: it observes your recurring spending, surfaces what changes, and helps you decide what to keep. No budgeting, no negotiation pitches, no upsell pressure.",
   },
   {
-    q: "What if I miss a charge after I try to cancel?",
-    a: "Plaid monitors your next billing cycle. If the same merchant charges you again after you marked the subscription as cancelled, we email you so you can follow up. We also keep a per-provider success-rate dashboard so we know which cancellation flows are reliable and which need a phone call instead.",
-  },
-  {
-    q: "Can I cancel my Frugavo account easily?",
-    a: "Yes — one click in settings. We’d be hypocrites otherwise.",
+    q: "Can I delete my Frugavo account easily?",
+    a: "Yes — one button in settings deletes every piece of data we hold about you. Immediate and unrecoverable. We'd be hypocrites otherwise.",
   },
 ];
 
 export const finalCta = {
-  heading: "Stop paying for subscriptions you forgot about.",
+  heading: "See what your recurring spending really looks like.",
   subhead:
-    "Connect your bank, see every recurring charge, and cancel the ones you don't want. Takes about 30 seconds.",
+    "Connect a bank in 30 seconds. Frugavo analyzes the last 12 months and shows you the recurring charges you'd otherwise never see in one place. Calm protection from there on.",
 };
 
 export const footer = {
-  tagline: "The subscription killer.",
+  tagline: "Subscription protection intelligence.",
   // Business address omitted until Frugavo Inc. has a real registered
   // address to publish. Required by Google Ads and Meta Ads for paid
   // financial-services advertising, but not required for organic traffic
@@ -380,7 +373,7 @@ export const footer = {
       title: "Product",
       links: [
         { label: "How it works", href: "#how-it-works" },
-        { label: "Pricing", href: "#pricing" },
+        { label: "Access", href: "#access" },
         { label: "FAQ", href: "#faq" },
         { label: "Roadmap", href: "/roadmap" },
       ],

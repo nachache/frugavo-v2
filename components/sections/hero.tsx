@@ -36,10 +36,14 @@ import { hero } from "@/lib/content";
 // In its place: three static value-prop chips. Each describes a structural
 // product feature, not a personalized financial outcome.
 
+// Founder-Access-era value props. No "trial," no "cancel any time"
+// (there's no billing to cancel). What we promise: the system unlocks
+// in seconds, never asks for a card, and never feels noisy. The third
+// line is intentionally about the experience, not the price.
 const VALUE_PROPS = [
-  "Free to join the waitlist",
-  "No credit card required",
-  "Cancel any time",
+  "Open access during beta",
+  "No credit card, ever",
+  "Calm by design",
 ];
 
 export function Hero() {
@@ -78,7 +82,8 @@ export function Hero() {
             }}
             className="mt-6 font-display font-bold text-ink text-[36px] md:text-[56px] leading-[1.05] tracking-[-0.03em]"
           >
-            Your subscription <span className="text-brand">watchdog</span>.
+            Your subscription{" "}
+            <span className="text-brand">protection intelligence</span>.
           </motion.h1>
 
           <motion.p
