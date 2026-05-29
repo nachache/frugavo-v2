@@ -93,24 +93,35 @@ export async function dispatchUrgentForUser(opts: {
   // Suppress urgent alerts immediately after first-ready completes
   // so the user's first impression is the calm "we analyzed your
   // recurring spending" moment — not an inbox full of urgent
-  // warnings before they've ever opened the dashboard.
+  // warnings before they've ever sat down with the dashboard.
   //
   // The grace lifts when EITHER:
   //   - 24 hours have passed since first_ready_at, OR
-  //   - the user has opened the dashboard at least once
-  //     (welcomed_at is the proxy — set on the first reveal-stage
-  //      render and on the self-heal path that backfills it).
+  //   - the user has had a MEANINGFUL first dashboard session,
+  //     tracked via app_users.dashboard_first_session_at. That
+  //     column is stamped only after ≥12s of visible dwell or an
+  //     interaction (click/scroll/keydown) — see
+  //     components/app/dashboard-session-pinger.tsx +
+  //     app/api/user/dashboard-session/route.ts.
   //
-  // Whichever comes first. Alerts are still inserted into
-  // monitoring_alerts during this window; the dashboard surfaces
-  // them in-product. We're suppressing the EMAIL fanout only.
+  // Whichever comes first. Note: we INTENTIONALLY do not use
+  // welcomed_at as the release signal — it gets auto-stamped on
+  // first /app load for paid users via the dashboard self-heal,
+  // which means a 200ms accidental refresh on Stripe success would
+  // release the grace before the user has actually seen anything.
+  // dashboard_first_session_at is the stricter "they really sat
+  // down with it" signal.
+  //
+  // Alerts are still inserted into monitoring_alerts during this
+  // window; the dashboard surfaces them in-product. We're
+  // suppressing the EMAIL fanout only.
   {
     const { data: u } = await supabaseAdmin
       .from("app_users")
-      .select("first_ready_at, welcomed_at")
+      .select("first_ready_at, dashboard_first_session_at")
       .eq("id", opts.userId)
       .maybeSingle();
-    if (u?.first_ready_at && !u.welcomed_at) {
+    if (u?.first_ready_at && !u.dashboard_first_session_at) {
       const readyMs = new Date(u.first_ready_at).getTime();
       const ageMs = Date.now() - readyMs;
       if (ageMs < 24 * 60 * 60 * 1000) {
@@ -120,7 +131,7 @@ export async function dispatchUrgentForUser(opts: {
           {
             userId: opts.userId,
             ageHours: Math.round(ageMs / 3600 / 1000),
-            welcomed_at: u.welcomed_at,
+            dashboard_first_session_at: u.dashboard_first_session_at,
           }
         );
         out.skipped = opts.alertIds.length;

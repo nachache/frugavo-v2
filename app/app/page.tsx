@@ -10,6 +10,7 @@ import { OverviewCard } from "@/components/app/overview-card";
 import { ActionCenter } from "@/components/app/action-center";
 import { RenewingSoonCard } from "@/components/app/renewing-soon-card";
 import { WhatChangedCard } from "@/components/app/what-changed-card";
+import { DashboardSessionPinger } from "@/components/app/dashboard-session-pinger";
 import { UncertainPromptCards } from "@/components/app/uncertain-prompt-cards";
 import { ActivateProtectionCard } from "@/components/app/activate-protection-card";
 import { BillingStatusBanner } from "@/components/app/billing-status-banner";
@@ -127,7 +128,7 @@ export default async function AppHome({
   // mid-flow refresh doesn't ricochet.
   const { data: userRow } = await supabaseAdmin
     .from("app_users")
-    .select("welcomed_at")
+    .select("welcomed_at, dashboard_first_session_at")
     .eq("id", user.id)
     .maybeSingle();
 
@@ -372,6 +373,13 @@ export default async function AppHome({
   return (
     <section className="container-page py-6 md:py-12 max-w-[1200px] space-y-5 md:space-y-8">
       <TimezoneCapture />
+      {/* Stealth client component — pings the meaningful-session
+          endpoint once the user dwells ≥12s OR interacts with the
+          page. Used by lib/notifications/dispatch.ts to release the
+          urgent-alert onboarding grace window. */}
+      <DashboardSessionPinger
+        alreadySet={!!userRow?.dashboard_first_session_at}
+      />
       {/* Daily watchdog reveal — portals itself into <body>, so the
           DOM position here doesn't matter visually. It only renders
           when buildWatchdogDigest returns a non-null payload (i.e.
