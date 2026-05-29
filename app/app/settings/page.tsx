@@ -9,6 +9,7 @@ import {
 import { SoundToggle } from "@/components/app/sound-toggle";
 import { BillingPanel } from "@/components/app/settings-billing-panel";
 import { AddBankButton } from "@/components/app/add-bank-button";
+import { InstallFrugavoRow } from "@/components/app/install-frugavo-row";
 import { getEntitlement } from "@/lib/billing/entitlements";
 import { isEffectivelyPaid } from "@/lib/billing/beta";
 
@@ -142,6 +143,14 @@ export default async function SettingsPage() {
               <polyline points="9 18 15 12 9 6" />
             </svg>
           </Link>
+        </div>
+        {/* Install Frugavo — persistent home for the PWA install
+            option. The dashboard chip is a first-time discovery
+            surface; once dismissed it goes quiet, so we want a
+            permanent place users can always find. Self-detects
+            platform (iOS / Android / desktop / installed). */}
+        <div className="mt-4 pt-4 border-t border-hairline/60">
+          <InstallFrugavoRow />
         </div>
       </Section>
 

@@ -7,10 +7,16 @@ import { useEffect, useState } from "react";
 // Mounted at the top of /app. Overlay-only — the dashboard renders
 // behind it so we never block hydration. Visual choreography:
 //
-//   t=0      mark fades up + slight scale + "Hi, {Name}"
-//   t=300ms  subtitle ("Here's your subscription analysis") fades in
-//   t=950ms  whole overlay starts to dissolve
-//   t=1300ms unmount
+//   t=0      mark fades up + slight scale
+//   t=180ms  "Hi, {Name}." fades in
+//   t=320ms  subtitle ("Here's your subscription analysis.") fades in
+//   t=1750ms whole overlay starts to dissolve
+//   t=2200ms unmount
+//
+// The hold between subtitle-in (t≈920ms when its 0.6s animation
+// finishes) and dissolve-start (t=1750ms) gives the user about
+// 830ms to actually read the greeting — long enough for a calm
+// moment, short enough that it never feels like a loading screen.
 //
 // One-shot per browser session (sessionStorage). Returning to the
 // dashboard later in the same tab does NOT replay it — the feeling
@@ -24,8 +30,8 @@ type Props = {
 };
 
 const SESSION_KEY = "frugavo:app-intro-shown";
-const INTRO_DURATION_MS = 1300;
-const DISSOLVE_START_MS = 950;
+const INTRO_DURATION_MS = 2200;
+const DISSOLVE_START_MS = 1750;
 
 export function AppIntro({ firstName }: Props) {
   const [phase, setPhase] = useState<"hidden" | "visible" | "dissolving">(
