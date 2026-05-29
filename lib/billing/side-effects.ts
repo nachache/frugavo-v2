@@ -110,13 +110,47 @@ async function onActivation(ctx: SideEffectContext): Promise<void> {
     urgent_immediate_enabled: true,
   });
 
-  // 2. Welcome email — "You're protected." Dedup'd by subscription
-  //    id so reprocessing the same webhook never double-sends.
-  await sendBillingEmailSafe(
-    ctx,
-    "trial_started",
-    ctx.subscription?.stripe_subscription_id ?? ctx.triggerEventId
-  );
+  // 2. Welcome email — "You're protected."
+  //
+  //    EMOTIONAL PACING RULE:
+  //    A user who activates billing BEFORE their first scan has
+  //    completed should NOT receive two emails seconds apart
+  //    ("You're protected" + "Your dashboard is ready"). It feels
+  //    like SaaS automation overload before any trust is built.
+  //
+  //    Resolution: when first_ready_at is null at the moment trial
+  //    activates, suppress the standalone trial_started send. The
+  //    first-ready email path (lib/ingestion-state.ts) will check
+  //    entitlement state and absorb the protection acknowledgment
+  //    into a single calm "We analyzed your recurring spending"
+  //    moment, then mark trial_started as dispatched via a
+  //    'merged_into_first_ready' status row.
+  //
+  //    Path B (rare): user activates billing days/weeks AFTER their
+  //    first scan completed. first_ready_at is set; we send the
+  //    standalone trial_started normally — it's not an onboarding
+  //    overload anymore, it's a discrete moment.
+  const dedupKey =
+    ctx.subscription?.stripe_subscription_id ?? ctx.triggerEventId;
+  let shouldSendStandalone = true;
+  if (supabaseAdmin) {
+    const { data: readyRow } = await supabaseAdmin
+      .from("app_users")
+      .select("first_ready_at")
+      .eq("id", ctx.clerkUserId)
+      .maybeSingle();
+    if (!readyRow?.first_ready_at) {
+      shouldSendStandalone = false;
+      // eslint-disable-next-line no-console
+      console.info(
+        "[billing/side-effects] suppressing standalone trial_started — first-ready will absorb it",
+        { clerkUserId: ctx.clerkUserId, dedupKey }
+      );
+    }
+  }
+  if (shouldSendStandalone) {
+    await sendBillingEmailSafe(ctx, "trial_started", dedupKey);
+  }
 
   // 3. Queue a fresh protection scan if the user already connected
   //    a bank. (If they haven't, the next /app visit will route

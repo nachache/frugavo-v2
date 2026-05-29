@@ -200,22 +200,30 @@ function p(text: string): string {
 // ─── Individual templates ────────────────────────────────────────
 
 function tplTrialStarted(_data: Record<string, string | number>): Rendered {
+  // Path B only — fires when trial activation happens AFTER first
+  // scan completes (i.e. user previously did a free scan, returned
+  // later to activate billing). When trial activates BEFORE first
+  // scan, the first-ready email absorbs this message instead; see
+  // lib/billing/side-effects.ts → onActivation.
+  //
+  // Voice: calm observation, not lifecycle automation. Frugavo
+  // "begins watching" rather than "is now monitoring."
   const base = appUrl().replace(/\/$/, "");
-  const subject = "You're protected.";
+  const subject = "Monitoring is now active";
   const body = `
-    ${h1("You're protected.")}
-    ${p("Frugavo is now watching your accounts. The first time we catch something — a new charge, a price hike, a trial about to convert — you'll know.")}
-    ${p("Your 7-day trial runs free. After that it's $14.99/month. Cancel anytime from your dashboard, no questions.")}
-    <div style="margin:18px 0 6px 0;">${cta(`${base}/app`, "Open dashboard")}</div>
+    ${h1("We're now watching for changes.")}
+    ${p("From this moment on, Frugavo will quietly observe your recurring charges in the background. When something meaningful happens — a price increase, a forgotten trial about to convert, a new recurring charge — we'll surface it on your dashboard.")}
+    ${p("Your 7-day trial runs free. After that it's $14.99/month. You can cancel anytime from settings.")}
+    <div style="margin:22px 0 6px 0;">${cta(`${base}/app`, "Open your dashboard")}</div>
   `;
-  const text = `You're protected.
+  const text = `We're now watching for changes.
 
-Frugavo is now watching your accounts. The first time we catch something — a new charge, a price hike, a trial about to convert — you'll know.
+From this moment on, Frugavo will quietly observe your recurring charges in the background. When something meaningful happens — a price increase, a forgotten trial about to convert, a new recurring charge — we'll surface it on your dashboard.
 
-Your 7-day trial runs free. After that it's $14.99/month. Cancel anytime from your dashboard.
+Your 7-day trial runs free. After that it's $14.99/month. You can cancel anytime from settings.
 
 ${base}/app`;
-  return { subject, html: shell({ preheader: "Monitoring is now active on your account.", body }), text };
+  return { subject, html: shell({ preheader: "Background monitoring is now active.", body }), text };
 }
 
 function tplTrialConvertsT6(_data: Record<string, string | number>): Rendered {

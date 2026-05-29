@@ -40,6 +40,16 @@ export async function POST() {
     const result = await sendFirstReadyEmail({
       email,
       reachedState: "ready_with_results",
+      // Synthetic insights so the admin tester can preview the
+      // "first magic moment" copy without needing a populated
+      // dashboard for the test recipient.
+      insights: {
+        subCount: 4,
+        monthlyTotalCents: 16400,
+        insightLine:
+          "Telecom dominates your recurring spend — 45% of your monthly recurring goes to phone & internet.",
+      },
+      includeProtectionLine: true,
     });
     return NextResponse.json({
       ok: true,

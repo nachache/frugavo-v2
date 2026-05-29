@@ -88,6 +88,47 @@ export async function dispatchUrgentForUser(opts: {
     return out;
   }
 
+  // ─── Onboarding grace ──────────────────────────────────────────
+  //
+  // Suppress urgent alerts immediately after first-ready completes
+  // so the user's first impression is the calm "we analyzed your
+  // recurring spending" moment — not an inbox full of urgent
+  // warnings before they've ever opened the dashboard.
+  //
+  // The grace lifts when EITHER:
+  //   - 24 hours have passed since first_ready_at, OR
+  //   - the user has opened the dashboard at least once
+  //     (welcomed_at is the proxy — set on the first reveal-stage
+  //      render and on the self-heal path that backfills it).
+  //
+  // Whichever comes first. Alerts are still inserted into
+  // monitoring_alerts during this window; the dashboard surfaces
+  // them in-product. We're suppressing the EMAIL fanout only.
+  {
+    const { data: u } = await supabaseAdmin
+      .from("app_users")
+      .select("first_ready_at, welcomed_at")
+      .eq("id", opts.userId)
+      .maybeSingle();
+    if (u?.first_ready_at && !u.welcomed_at) {
+      const readyMs = new Date(u.first_ready_at).getTime();
+      const ageMs = Date.now() - readyMs;
+      if (ageMs < 24 * 60 * 60 * 1000) {
+        // eslint-disable-next-line no-console
+        console.info(
+          "[notifications/dispatch] urgent suppressed — onboarding grace",
+          {
+            userId: opts.userId,
+            ageHours: Math.round(ageMs / 3600 / 1000),
+            welcomed_at: u.welcomed_at,
+          }
+        );
+        out.skipped = opts.alertIds.length;
+        return out;
+      }
+    }
+  }
+
   const email = await getUserEmail(opts.userId);
   if (!email) {
     out.skipped = opts.alertIds.length;
