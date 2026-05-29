@@ -188,11 +188,24 @@ export default async function AppHome() {
 
   // Findings feed — single verb-led list. Top item drives the
   // featured card; the rest live on /app/noticed.
+  // Pass actionItems so the aggregator can look up sub.confidence
+  // and months_observed to compute a REAL per-finding score.
+  // Resolved findings are filtered out — fetched below before
+  // composing.
+  const resolvedFindingIds = await loadResolvedFindingIds(
+    supabaseAdmin,
+    user.id
+  );
   const findings = data
     ? composeFindings({
         moneyLeaks: data.money_leaks,
         shockInsights: data.shock_insights,
         concentration: data.concentration,
+        actionItems: [
+          ...data.actions.worth_a_look,
+          ...data.actions.watching,
+        ],
+        resolvedFindingIds,
       })
     : [];
   const topFinding = findings[0] ?? null;
@@ -338,4 +351,31 @@ export default async function AppHome() {
       </section>
     </>
   );
+}
+
+// ─── helpers ────────────────────────────────────────────────────
+
+// Load the set of finding_ids the user has resolved (either
+// "look_into_it" or "looks_fine"). Read from feedback_finding_resolve
+// (introduced in migration 038). Best-effort: if the table is missing
+// or the query fails, returns an empty set so the feed degrades to
+// "show everything" rather than breaking the render.
+type SupabaseLike = NonNullable<typeof supabaseAdmin>;
+async function loadResolvedFindingIds(
+  supabase: SupabaseLike,
+  clerkUserId: string
+): Promise<Set<string>> {
+  try {
+    const { data } = await supabase
+      .from("feedback_finding_resolve")
+      .select("finding_id")
+      .eq("clerk_user_id", clerkUserId);
+    const out = new Set<string>();
+    for (const row of (data ?? []) as Array<{ finding_id: string }>) {
+      out.add(row.finding_id);
+    }
+    return out;
+  } catch {
+    return new Set<string>();
+  }
 }

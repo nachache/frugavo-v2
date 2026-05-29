@@ -172,6 +172,12 @@ export type ActionItem = {
   // Dynamic behavioral badges (price increased, likely forgotten,
   // annual trap, essential, stable for N months, etc). Up to 2.
   badges: Badge[];
+  // Engine confidence (0..1) — Claude's per-merchant verdict score
+  // from the Phase F cutover. Used by /app/renewals to derive the
+  // per-prediction temporal probability that a charge lands on its
+  // expected date. Null for pre-Phase-B rows that haven't been
+  // re-scored yet.
+  confidence: number | null;
 };
 
 // Dedupe subscription rows that point at the same real merchant.
@@ -664,6 +670,12 @@ export async function buildDashboardData(
       tags,
       override_type: ov,
       badges,
+      // Engine confidence — read straight off the source subscription.
+      // Already in the query at the top of buildDashboardData; we
+      // just propagate it. Used downstream by /app/renewals to
+      // derive a real per-prediction probability.
+      confidence:
+        (s as { confidence?: number | null }).confidence ?? null,
     };
   });
 

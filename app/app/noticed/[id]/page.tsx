@@ -3,8 +3,9 @@ import { currentUser } from "@clerk/nextjs/server";
 import Link from "next/link";
 import { ChevronLeft, Radar } from "lucide-react";
 import { buildDashboardData } from "@/lib/selectors/dashboard";
-import { composeFindings, type Finding } from "@/lib/selectors/findings";
+import { composeFindings } from "@/lib/selectors/findings";
 import { FindingResolveActions } from "@/components/app/finding-resolve-actions";
+import { supabaseAdmin } from "@/lib/supabase";
 
 // /app/noticed/[id] — single-finding detail view.
 //
@@ -29,11 +30,38 @@ export default async function FindingDetailPage({ params }: Props) {
   if (!user) redirect("/sign-in");
 
   const data = await buildDashboardData(user.id);
+
+  // We DO NOT filter out resolved findings here — if the user
+  // navigates back to a previously-resolved finding via deep link,
+  // they should still see it. The feed page is what hides resolved
+  // items from discovery.
+  const resolvedIds = await (async () => {
+    try {
+      if (!supabaseAdmin) return new Set<string>();
+      const { data: rows } = await supabaseAdmin
+        .from("feedback_finding_resolve")
+        .select("finding_id")
+        .eq("clerk_user_id", user.id);
+      const out = new Set<string>();
+      for (const r of (rows ?? []) as Array<{ finding_id: string }>) {
+        out.add(r.finding_id);
+      }
+      return out;
+    } catch {
+      return new Set<string>();
+    }
+  })();
+
   const findings = data
     ? composeFindings({
         moneyLeaks: data.money_leaks,
         shockInsights: data.shock_insights,
         concentration: data.concentration,
+        actionItems: [
+          ...data.actions.worth_a_look,
+          ...data.actions.watching,
+        ],
+        // Intentionally NOT passing resolvedFindingIds — see note above.
       })
     : [];
 
@@ -42,6 +70,7 @@ export default async function FindingDetailPage({ params }: Props) {
   if (!finding) {
     notFound();
   }
+  const alreadyResolved = resolvedIds.has(finding.id);
 
   // Find the underlying subscription rows so the user can see the
   // evidence behind the finding.
@@ -79,7 +108,10 @@ export default async function FindingDetailPage({ params }: Props) {
       </p>
 
       <div className="mt-6">
-        <ConfidenceLine tier={finding.confidence} />
+        <ConfidenceLine
+          tier={finding.confidenceTier}
+          probability={finding.confidence}
+        />
       </div>
 
       <div className="mt-7 rounded-2xl border border-hairline bg-white p-5 md:p-6 space-y-3.5">
@@ -146,6 +178,7 @@ export default async function FindingDetailPage({ params }: Props) {
         <FindingResolveActions
           finding={finding}
           subscriptionIds={finding.subscriptionIds}
+          alreadyResolved={alreadyResolved}
         />
       </div>
     </section>
@@ -154,7 +187,13 @@ export default async function FindingDetailPage({ params }: Props) {
 
 // ─── Confidence inline line ─────────────────────────────────────
 
-function ConfidenceLine({ tier }: { tier: "high" | "medium" | "low" }) {
+function ConfidenceLine({
+  tier,
+  probability,
+}: {
+  tier: "high" | "medium" | "low";
+  probability: number;
+}) {
   const label =
     tier === "high" ? "High" : tier === "medium" ? "Medium" : "Low";
   const dot =
@@ -163,16 +202,15 @@ function ConfidenceLine({ tier }: { tier: "high" | "medium" | "low" }) {
       : tier === "medium"
         ? "bg-amber-500"
         : "bg-ink/30";
+  const pct = Math.round(probability * 100);
   return (
     <div className="inline-flex items-center gap-2 text-[12.5px] text-ink-body">
       <span className={`inline-block w-1.5 h-1.5 rounded-full ${dot}`} />
       <span>
         <span className="text-ink-muted">Confidence:</span>{" "}
-        <span className="font-medium text-ink">{label}</span>
+        <span className="font-medium text-ink">{label}</span>{" "}
+        <span className="text-ink-muted tabular-nums">· {pct}%</span>
       </span>
-      {/* TODO(confidence): when the engine ships a per-finding score,
-          render the percent inline (e.g. "Medium · 76%"). For now we
-          stay at the tier per the confidence-honesty rule. */}
     </div>
   );
 }

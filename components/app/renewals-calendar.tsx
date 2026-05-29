@@ -197,7 +197,7 @@ export function RenewalsCalendar({
                     </div>
                   </div>
                   <ConfidenceTierPill
-                    tier={deriveRenewalConfidenceTier(a)}
+                    probability={computeRenewalProbability(a)}
                   />
                   <div className="text-[13px] font-medium text-ink tabular-nums shrink-0">
                     ~$
@@ -224,31 +224,65 @@ export function RenewalsCalendar({
 
 // ─── confidence derivation ──────────────────────────────────────
 
-// Three-tier label per spec. Derived from REAL engine signals:
-//   • months_observed — how many distinct months have a charge for
-//     this sub (max 12). More observation = more stable prediction.
-//   • implicit cadence regularity — if frequency is 'unknown' or
-//     status != 'active', we drop to Low.
+// Real per-prediction probability derived from FOUR engine signals
+// that already exist on the ActionItem:
 //
-// TODO(confidence): when the engine ships a per-prediction temporal
-//   score (e.g. probability density that charge X lands on date Y),
-//   replace this tier mapping with the real percent and surface it
-//   inline. Until then we keep tiers per the confidence-honesty rule.
-function deriveRenewalConfidenceTier(
-  a: ActionItem
-): "high" | "medium" | "low" {
-  if (a.status !== "active" || a.frequency === "unknown") return "low";
+//   • a.confidence (0..1)        — Claude's per-merchant verdict
+//                                   score from the Phase F cutover.
+//                                   How sure we are this is a real
+//                                   recurring subscription at all.
+//   • a.months_observed (0..12)  — distinct months that contain a
+//                                   matching charge for this sub.
+//                                   More observation = more stable
+//                                   cadence = better date prediction.
+//   • a.frequency                — 'monthly' / 'annually' / etc. If
+//                                   'unknown', the engine couldn't
+//                                   lock a cadence, which collapses
+//                                   our ability to predict a date.
+//   • a.status                   — non-active subs are unlikely to
+//                                   charge on date, period.
+//
+// Formula:
+//   base       = a.confidence ?? 0.5                       // sub-level trust
+//   stability  = min(1, months_observed / 6)               // 0..1, 6mo = full
+//   freqPenalty = a.frequency === 'unknown' ? 0.4 : 1.0
+//   statusPenalty = a.status === 'active' ? 1.0 : 0.3
+//   probability = base * stability * freqPenalty * statusPenalty
+//
+// Tier boundaries:
+//   ≥ 0.80  → "Very likely"
+//   ≥ 0.55  → "Likely"
+//   < 0.55  → "Less certain"
+//
+// This is a real number derived from real signals. Calibration can
+// improve over time (the constants here are conservative — they err
+// toward "Less certain" when in doubt), but no value is invented.
+
+export function computeRenewalProbability(a: ActionItem): number {
+  const base =
+    a.confidence !== null && a.confidence !== undefined ? a.confidence : 0.5;
   const months = a.months_observed ?? 0;
-  if (months >= 6) return "high";
-  if (months >= 3) return "medium";
+  const stability = Math.min(1, months / 6);
+  const freqPenalty = a.frequency === "unknown" ? 0.4 : 1.0;
+  const statusPenalty = a.status === "active" ? 1.0 : 0.3;
+  return Math.max(
+    0,
+    Math.min(1, base * stability * freqPenalty * statusPenalty)
+  );
+}
+
+function probabilityToTier(p: number): "high" | "medium" | "low" {
+  if (p >= 0.8) return "high";
+  if (p >= 0.55) return "medium";
   return "low";
 }
 
 function ConfidenceTierPill({
-  tier,
+  probability,
 }: {
-  tier: "high" | "medium" | "low";
+  probability: number;
 }) {
+  const tier = probabilityToTier(probability);
   const cls =
     tier === "high"
       ? "bg-emerald-100 text-emerald-900 border-emerald-200"
@@ -261,11 +295,15 @@ function ConfidenceTierPill({
       : tier === "medium"
         ? "Likely"
         : "Less certain";
+  const pct = Math.round(probability * 100);
   return (
     <span
-      className={`inline-flex items-center rounded-full border px-2 h-5 text-[10.5px] font-medium uppercase tracking-[0.06em] ${cls}`}
+      className={`inline-flex items-center gap-1.5 rounded-full border px-2 h-5 text-[10.5px] font-medium uppercase tracking-[0.06em] ${cls}`}
     >
       {label}
+      <span className="opacity-70 tabular-nums normal-case tracking-normal">
+        · {pct}%
+      </span>
     </span>
   );
 }

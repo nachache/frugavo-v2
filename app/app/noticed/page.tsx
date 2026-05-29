@@ -4,6 +4,7 @@ import Link from "next/link";
 import { ChevronLeft, ChevronRight, Radar } from "lucide-react";
 import { buildDashboardData } from "@/lib/selectors/dashboard";
 import { composeFindings, type Finding } from "@/lib/selectors/findings";
+import { supabaseAdmin } from "@/lib/supabase";
 
 // /app/noticed — the "Frugavo noticed" findings feed.
 //
@@ -22,11 +23,36 @@ export default async function NoticedFeedPage() {
   if (!user) redirect("/sign-in");
 
   const data = await buildDashboardData(user.id);
+
+  // Resolved findings — filtered from the feed via the aggregator.
+  // Best-effort read; failures degrade to "show everything."
+  const resolvedFindingIds = await (async () => {
+    try {
+      if (!supabaseAdmin) return new Set<string>();
+      const { data: rows } = await supabaseAdmin
+        .from("feedback_finding_resolve")
+        .select("finding_id")
+        .eq("clerk_user_id", user.id);
+      const out = new Set<string>();
+      for (const r of (rows ?? []) as Array<{ finding_id: string }>) {
+        out.add(r.finding_id);
+      }
+      return out;
+    } catch {
+      return new Set<string>();
+    }
+  })();
+
   const findings = data
     ? composeFindings({
         moneyLeaks: data.money_leaks,
         shockInsights: data.shock_insights,
         concentration: data.concentration,
+        actionItems: [
+          ...data.actions.worth_a_look,
+          ...data.actions.watching,
+        ],
+        resolvedFindingIds,
       })
     : [];
 
@@ -84,7 +110,10 @@ function FindingCard({ finding }: { finding: Finding }) {
       className="group block rounded-2xl border border-hairline bg-white p-5 md:p-6 transition-colors hover:bg-canvas/40"
     >
       <div className="flex items-start justify-between gap-3">
-        <ConfidencePill tier={finding.confidence} />
+        <ConfidencePill
+          tier={finding.confidenceTier}
+          probability={finding.confidence}
+        />
         <ChevronRight
           size={16}
           strokeWidth={2}
@@ -119,7 +148,13 @@ function FindingCard({ finding }: { finding: Finding }) {
 // percentages. The percent column gets re-introduced if/when the
 // engine ships a real per-finding confidence score (TODO comment in
 // lib/selectors/findings.ts).
-function ConfidencePill({ tier }: { tier: "high" | "medium" | "low" }) {
+function ConfidencePill({
+  tier,
+  probability,
+}: {
+  tier: "high" | "medium" | "low";
+  probability: number;
+}) {
   const cls =
     tier === "high"
       ? "bg-emerald-100 text-emerald-900 border-emerald-200"
@@ -132,11 +167,15 @@ function ConfidencePill({ tier }: { tier: "high" | "medium" | "low" }) {
       : tier === "medium"
         ? "Medium confidence"
         : "Low confidence";
+  const pct = Math.round(probability * 100);
   return (
     <span
-      className={`inline-flex items-center rounded-full border px-2 h-5 text-[10.5px] font-medium uppercase tracking-[0.08em] ${cls}`}
+      className={`inline-flex items-center gap-1.5 rounded-full border px-2 h-5 text-[10.5px] font-medium uppercase tracking-[0.08em] ${cls}`}
     >
       {label}
+      <span className="opacity-70 tabular-nums normal-case tracking-normal">
+        · {pct}%
+      </span>
     </span>
   );
 }
