@@ -28,9 +28,6 @@ import {
   Sparkles,
   Calendar,
   Wallet,
-  BarChart3,
-  BadgeCheck,
-  Share2,
   ChevronRight,
   ArrowRight,
   Eye,
@@ -426,85 +423,92 @@ export function SpendingCard({
   );
 }
 
-// ─── Insights card (white) ─────────────────────────────────────
+// ─── Discover-row cards (Insights / Your card / Share) ────────
+//
+// Slack-style: title + sub + small outlined CTA top-left, big
+// isometric block logo decorating the bottom-right. All three share
+// the SAME visual template — white bg, hairline border, identical
+// button styling — so the row reads as a set. The CardBadge chip
+// was removed because the logo now carries the visual identity.
+
+function DiscoverCard({
+  href,
+  title,
+  sub,
+  cta,
+  logoSrc,
+  logoAlt,
+}: {
+  href: string;
+  title: string;
+  sub: string;
+  cta: string;
+  logoSrc: string;
+  logoAlt: string;
+}) {
+  return (
+    <Link
+      href={href}
+      className="group relative block rounded-2xl border border-hairline bg-white shadow-soft p-5 md:p-6 pr-[120px] md:pr-[140px] min-h-[176px] md:min-h-[200px] overflow-hidden transition-all hover:bg-canvas/40 hover:shadow-float"
+    >
+      <div>
+        <div className="text-[18px] md:text-[20px] font-bold text-ink leading-snug">
+          {title}
+        </div>
+        <div className="mt-1.5 text-[13.5px] text-ink-muted leading-relaxed max-w-[180px] md:max-w-[200px]">
+          {sub}
+        </div>
+        <span className="mt-4 inline-flex h-9 items-center justify-center rounded-full border border-hairline bg-white px-4 text-[12.5px] font-medium text-ink group-hover:bg-ink/[0.04] transition">
+          {cta}
+        </span>
+      </div>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={logoSrc}
+        alt={logoAlt}
+        aria-hidden="true"
+        className="pointer-events-none absolute right-1 bottom-0 w-[120px] md:w-[150px] h-auto select-none drop-shadow-sm"
+      />
+    </Link>
+  );
+}
 
 export function InsightsCard() {
   return (
-    <Link
+    <DiscoverCard
       href="/app/insights"
-      className="group block rounded-2xl border border-hairline bg-white shadow-soft p-5 md:p-6 transition-all hover:bg-canvas/40 hover:shadow-float"
-    >
-      <div className="flex items-start justify-between gap-3">
-        <CardBadge icon={BarChart3} label="Insights" />
-        <ChevronRight
-          size={16}
-          strokeWidth={2}
-          className="text-ink-muted group-hover:text-ink transition-colors"
-        />
-      </div>
-      <div className="mt-4">
-        <div className="text-[18px] md:text-[20px] font-bold text-ink leading-snug">
-          Patterns, health & trend
-        </div>
-        <div className="mt-1.5 text-[13.5px] text-ink-muted">
-          Score, 12-month chart, category breakdown
-        </div>
-      </div>
-    </Link>
+      title="Patterns, health & trend"
+      sub="Score, 12-month chart, category breakdown."
+      cta="See insights"
+      logoSrc="/cards/insights.png"
+      logoAlt="Insights"
+    />
   );
 }
-
-// ─── Your card (green tint) ───────────────────────────────────
 
 export function YourCardCard({ personality }: { personality: Personality }) {
   return (
-    <Link
+    <DiscoverCard
       href="/app/card"
-      className="group block rounded-2xl border border-emerald-200 bg-emerald-50 shadow-soft p-5 md:p-6 transition-colors hover:bg-emerald-100/60"
-    >
-      <div className="flex items-start justify-between gap-3">
-        <CardBadge icon={BadgeCheck} label="Your card" tone="green" />
-        <ChevronRight
-          size={16}
-          strokeWidth={2}
-          className="text-ink-muted group-hover:text-ink transition-colors"
-        />
-      </div>
-      <div className="mt-4">
-        <div className="text-[18px] md:text-[20px] font-bold text-ink leading-snug">
-          {personality.label}
-        </div>
-        <div className="mt-1.5 text-[13.5px] text-ink-muted leading-relaxed">
-          {personality.sub}
-        </div>
-      </div>
-    </Link>
+      title={personality.label}
+      sub={personality.sub}
+      cta="See your card"
+      logoSrc="/cards/your-card.png"
+      logoAlt="Your card"
+    />
   );
 }
 
-// ─── Share card (white) ──────────────────────────────────────
-
 export function ShareCard() {
   return (
-    <div className="block rounded-2xl border border-hairline bg-white shadow-soft p-5 md:p-6">
-      <div className="flex items-start justify-between gap-3">
-        <CardBadge icon={Share2} label="Share" />
-      </div>
-      <div className="mt-4">
-        <div className="text-[18px] md:text-[20px] font-bold text-ink leading-snug">
-          Show off your stack
-        </div>
-        <div className="mt-1.5 text-[13.5px] text-ink-muted leading-relaxed">
-          Frugavo turns your subscription pattern into a card you can post.
-        </div>
-        <Link
-          href="/app/share"
-          className="mt-4 inline-flex h-9 items-center justify-center rounded-full border border-hairline px-4 text-[12.5px] font-medium text-ink hover:bg-ink/[0.04] transition"
-        >
-          Share stats
-        </Link>
-      </div>
-    </div>
+    <DiscoverCard
+      href="/app/share"
+      title="Show off your stack"
+      sub="Frugavo turns your subs into a card you can post."
+      cta="Share stats"
+      logoSrc="/cards/share.png"
+      logoAlt="Share"
+    />
   );
 }
 
