@@ -140,6 +140,24 @@
     animation: drawIn 0.9s cubic-bezier(0.16, 1, 0.3, 1) both;
   }
 
+  /* Stagger cascade. Wrap a dashboard section in `.stagger-N` and
+     any descendant carrying `.animate-fadeUp` (typically the card's
+     own outer div) receives a `N * 80ms` animation-delay. Used by
+     app/app/page.tsx to orchestrate the hydration sequence — each
+     section reveals ~80ms after the one above it, producing a
+     calm cascade rather than a hard-cut wall of cards.
+
+     Honors prefers-reduced-motion globally (the rule below already
+     wipes animation-duration to ~0). */
+  .stagger-1 .animate-fadeUp { animation-delay: 80ms; }
+  .stagger-2 .animate-fadeUp { animation-delay: 160ms; }
+  .stagger-3 .animate-fadeUp { animation-delay: 240ms; }
+  .stagger-4 .animate-fadeUp { animation-delay: 320ms; }
+  .stagger-5 .animate-fadeUp { animation-delay: 400ms; }
+  .stagger-6 .animate-fadeUp { animation-delay: 480ms; }
+  .stagger-7 .animate-fadeUp { animation-delay: 560ms; }
+  .stagger-8 .animate-fadeUp { animation-delay: 640ms; }
+
   /* Onboarding reveal — stage transitions + progress-bar fill. */
   @keyframes revealUp {
     0% {
@@ -243,6 +261,32 @@
   }
   .is-standalone .standalone-padding-bottom {
     padding-bottom: max(env(safe-area-inset-bottom), 12px);
+  }
+
+  /* Render only when in standalone (installed PWA). The default
+     state is `display: none` — the .is-standalone class is added
+     by components/shared/standalone-mode-class.tsx the moment the
+     match-media `(display-mode: standalone)` reports true. */
+  .is-standalone-only {
+    display: none;
+  }
+  .is-standalone .is-standalone-only {
+    display: block;
+  }
+
+  /* Force the bottom-tab nav visible at ALL viewport sizes when the
+     PWA is installed. The bar already has `md:hidden` for mobile
+     browsers; this rule overrides it so a tablet-sized installed PWA
+     still gets the nav. */
+  .is-standalone .standalone-tab-bar {
+    display: block !important;
+  }
+  /* Bottom-bar clearance: when the tab bar renders in standalone, the
+     dashboard gets extra bottom padding so content doesn't disappear
+     behind the bar. 84px = bar height (~60px) + safe-area headroom. */
+  .is-standalone main,
+  .is-standalone section.container-page {
+    padding-bottom: calc(84px + env(safe-area-inset-bottom));
   }
 
   /* Disable pull-to-refresh + browser bounce inside the installed

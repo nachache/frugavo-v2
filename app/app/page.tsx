@@ -13,6 +13,7 @@ import { WhatChangedCard } from "@/components/app/what-changed-card";
 import { DashboardSessionPinger } from "@/components/app/dashboard-session-pinger";
 import { InstallPwaChip } from "@/components/app/install-pwa-chip";
 import { FounderFeedbackChip } from "@/components/app/founder-feedback-chip";
+import { AppIntro } from "@/components/app/app-intro";
 import { UncertainPromptCards } from "@/components/app/uncertain-prompt-cards";
 import { ActivateProtectionCard } from "@/components/app/activate-protection-card";
 import { BillingStatusBanner } from "@/components/app/billing-status-banner";
@@ -376,7 +377,26 @@ export default async function AppHome({
       : null;
 
   return (
-    <section className="container-page py-6 md:py-12 max-w-[1200px] space-y-5 md:space-y-8">
+    <section className="container-page py-6 md:py-12 max-w-[1200px] space-y-5 md:space-y-8 relative">
+      {/* Backdrop warmth — soft radial gradient behind the top of the
+          dashboard. Same canvas color, just a warmer beige tint
+          off-center. Reads as "lit" rather than "printed flat." Sits
+          behind everything via -z-10 + pointer-events-none. */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute -top-12 inset-x-0 -z-10"
+        style={{
+          height: "640px",
+          background:
+            "radial-gradient(60% 60% at 30% 30%, rgba(247, 235, 215, 0.55), transparent 70%), radial-gradient(50% 60% at 80% 18%, rgba(209, 250, 229, 0.30), transparent 75%)",
+        }}
+      />
+
+      {/* AppIntro — first-paint splash, one-shot per session. The
+          overlay renders above everything but is pointer-events-none
+          so it never blocks interaction; the dashboard hydrates behind
+          it during the ~1.3s show. */}
+      <AppIntro firstName={user.firstName ?? null} />
       <TimezoneCapture />
       {/* Stealth client component — pings the meaningful-session
           endpoint once the user dwells ≥12s OR interacts with the
@@ -454,6 +474,10 @@ export default async function AppHome({
           )}
 
           {activeTab === "subscriptions" && (
+            <SectionEyebrow label="What's worth your attention" />
+          )}
+
+          {activeTab === "subscriptions" && (
             <DecisionStrip
               worthALookCount={data.actions.worth_a_look.length}
               worthALookYearlyCents={
@@ -473,6 +497,7 @@ export default async function AppHome({
             />
           )}
 
+          <div className="stagger-1">
           {activeTab === "subscriptions" ? (
             <OverviewCard
               mode="subscriptions"
@@ -549,21 +574,35 @@ export default async function AppHome({
                 }))}
             />
           )}
+          </div>
 
           {/* Renewing soon — small dedicated card for predicted
               charges in the next 14 days. Self-hides when there's
               nothing in the window. Predictive copy only — "expected
               in ~N days", never "will charge". */}
           {activeTab === "subscriptions" && (
-            <RenewingSoonCard
-              items={[
-                ...data.actions.worth_a_look,
-                ...data.actions.watching,
-              ]}
-            />
+            <>
+              <SectionEyebrow label="Expected next" />
+              <div className="stagger-2">
+                <RenewingSoonCard
+                  items={[
+                    ...data.actions.worth_a_look,
+                    ...data.actions.watching,
+                  ]}
+                />
+              </div>
+            </>
           )}
 
-          <div id="action-center">
+          <SectionEyebrow
+            label={
+              activeTab === "subscriptions"
+                ? "Your subscriptions"
+                : "Your bills"
+            }
+          />
+
+          <div id="action-center" className="stagger-3">
             {activeTab === "subscriptions" ? (
               <ActionCenter
                 worth_a_look={data.actions.worth_a_look}
@@ -596,7 +635,10 @@ export default async function AppHome({
               width — no protection rail sitting next to it stealing
               attention. */}
           {activeTab === "subscriptions" && (
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 md:gap-6 items-start">
+            <SectionEyebrow label="Who you are, in subscriptions" />
+          )}
+          {activeTab === "subscriptions" && (
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 md:gap-6 items-start stagger-4">
               <div className="lg:col-span-7">
                 <IdentityHero
                   monthlySubCents={data.monthly.sub_only_cents}
@@ -632,7 +674,7 @@ export default async function AppHome({
               quieter activate card. Either way, this layer never
               competes for the eye on first load — Layer 1 has already
               done the trust work. */}
-          <section className="pt-4 md:pt-6 border-t border-hairline/60">
+          <section className="pt-4 md:pt-6 border-t border-hairline/60 stagger-5">
             <div className="mb-4 md:mb-5 flex items-baseline justify-between gap-3 flex-wrap">
               <h2 className="text-[14px] md:text-[15px] font-medium text-ink">
                 Background protection
@@ -726,3 +768,20 @@ export default async function AppHome({
 // pre-ingestion welcome redirect, which produced the "Quietly
 // Watching $0" bug. Welcome routing now lives below
 // computeIngestionState and uses ingestion.state directly.)
+
+// SectionEyebrow — small uppercase label that names a dashboard zone.
+//
+// Used between major sections so the page reads as a deliberate
+// composition rather than a stack of cards. Voice rules:
+//   - Short, observational, calm
+//   - No "Section 1 / Section 2" numbering
+//   - Slight ink-muted tone so it never competes with content
+function SectionEyebrow({ label }: { label: string }) {
+  return (
+    <div className="pt-1 -mb-3 md:-mb-4">
+      <span className="text-[10.5px] md:text-[11px] font-semibold uppercase tracking-[0.14em] text-ink-muted">
+        {label}
+      </span>
+    </div>
+  );
+}

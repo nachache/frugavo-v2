@@ -21,9 +21,18 @@ import { cn } from "@/lib/utils";
 // protection page and see the blurred preview + Activate CTA; paid
 // users see live monitoring coverage.
 //
-// Marked as fixed bottom; main content gets bottom padding so
-// nothing hides behind it. Safe-area inset respects iPhone home
-// indicator.
+// Visual treatment (May 2026 polish):
+//   • Active tab gets a Slack-style "lit pill" — ink/[0.06] circle
+//     behind the icon. Reads as a tactile button press.
+//   • Icon stroke thickens on active. Subtle, not heavy.
+//   • Label weight bumps to semibold on active.
+//   • Tap-state spring: active scale + soft compression on press.
+//   • Fixed at bottom on mobile browsers; also lit by the
+//     .is-standalone-only class shim so the installed PWA gets it
+//     at every viewport (not just md-and-below). Either way the
+//     layout's bottom-pb token keeps content above the bar.
+//
+// Safe-area inset respects iPhone home indicator on both paths.
 
 const ITEMS: {
   label: string;
@@ -76,9 +85,20 @@ export function MobileBottomNav() {
   return (
     <nav
       aria-label="Primary"
-      className="md:hidden fixed bottom-0 inset-x-0 z-30 bg-white border-t border-hairline/60 shadow-[0_-4px_24px_rgba(15,23,42,0.04)]"
+      // md:hidden = bottom bar appears on mobile browser at any size.
+      // standalone-show = same bar appears at ALL sizes when the PWA
+      // is installed (because installed-app feels weird without a
+      // bottom nav, even on tablet).
+      // md:hidden = mobile browsers. The .standalone-tab-bar class
+      // is targeted by globals.css's .is-standalone selector to
+      // force the bar visible at every viewport when the PWA is
+      // installed (where a missing bottom nav would feel naked).
+      className="standalone-tab-bar md:hidden fixed bottom-0 inset-x-0 z-30 bg-surface/95 backdrop-blur border-t border-hairline/60 shadow-[0_-4px_24px_rgba(15,23,42,0.04)]"
+      style={{
+        paddingBottom: "max(env(safe-area-inset-bottom), 6px)",
+      }}
     >
-      <ul className="grid grid-cols-4">
+      <ul className="mx-auto max-w-[640px] grid grid-cols-4 pt-1.5 px-2">
         {ITEMS.map((item) => {
           const Icon = item.icon;
           const active = item.match(pathname);
@@ -86,21 +106,41 @@ export function MobileBottomNav() {
             <li key={item.href}>
               <Link
                 href={item.href}
+                prefetch={false}
                 className={cn(
-                  // 44px+ touch target. The visible row is 56px tall.
-                  "flex flex-col items-center justify-center gap-1 py-2.5 text-[10.5px] font-medium transition min-h-[56px]",
-                  active ? "text-brand" : "text-ink-muted hover:text-ink"
+                  // 44px+ touch target. We use group so the active
+                  // pill animates with the icon together.
+                  "group flex flex-col items-center justify-center gap-0.5 py-1 px-2 min-h-[56px] active:scale-[0.96] transition-transform",
+                  active ? "text-ink" : "text-ink-muted hover:text-ink"
                 )}
               >
-                <Icon size={20} strokeWidth={active ? 2.4 : 2} />
-                <span className="leading-none">{item.label}</span>
+                <span
+                  className={cn(
+                    // Slack-style active pill: soft ink wash behind the
+                    // icon. Sizes generously to read as a tap target.
+                    "inline-flex items-center justify-center w-10 h-9 rounded-full transition-all duration-200",
+                    active ? "bg-ink/[0.07]" : "bg-transparent"
+                  )}
+                >
+                  <Icon
+                    size={19}
+                    strokeWidth={active ? 2.4 : 2}
+                    aria-hidden="true"
+                  />
+                </span>
+                <span
+                  className={cn(
+                    "text-[10.5px] leading-none mt-0.5 tracking-[0.01em]",
+                    active ? "font-semibold" : "font-medium"
+                  )}
+                >
+                  {item.label}
+                </span>
               </Link>
             </li>
           );
         })}
       </ul>
-      {/* Safe-area inset so the bar respects iPhone home indicator. */}
-      <div className="h-[env(safe-area-inset-bottom)]" />
     </nav>
   );
 }
