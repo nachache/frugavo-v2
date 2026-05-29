@@ -213,19 +213,24 @@ export function ConnectBankButton({
   const disabled =
     status === "connecting" || status === "exchanging" || status === "error";
 
-  // Static labels. The previous rotating "Scanning recurring
-  // merchants…" copy during exchange was Bug 1 — it duplicated the
-  // cinematic progress the /app/scanning page already runs. Keep the
-  // button visually quiet between Plaid modal close and the
-  // navigation to /app/scanning.
-  const idleLabel = variant === "compact" ? compactLabel : "Scan my subscriptions";
+  // Static labels.
+  //
+  // Voice rule (Founder Access era): the CTA names the OUTCOME,
+  // not the mechanism. "Analyze my recurring spending" mirrors the
+  // first-ready email subject and the connect-page hero — one
+  // continuous promise from landing to dashboard.
+  //
+  // In-flight labels still describe what's happening, but use
+  // user-facing language ("preparing," "connecting") not engine
+  // language ("scanning," "exchanging").
+  const idleLabel = variant === "compact" ? compactLabel : "Analyze my recurring spending";
   const label =
     status === "connecting"
       ? "Opening secure bank login…"
       : status === "exchanging"
-        ? "Connecting your bank…"
+        ? "Setting up your analysis…"
         : status === "queued"
-          ? "Preparing your scan…"
+          ? "Preparing your analysis…"
           : idleLabel;
 
   // Compact variant — used inside settings page next to an existing
@@ -282,9 +287,11 @@ export function ConnectBankButton({
 
   return (
     <div className="flex flex-col items-start">
-      {/* Eyebrow copy — sets expectations BEFORE the click. */}
+      {/* Eyebrow copy — sets expectations BEFORE the click. The
+          "no card" line is the calmest legitimacy signal we have at
+          this surface; "Founder Access" gives the outcome a name. */}
       <p className="text-[12.5px] md:text-[13px] text-ink-muted mb-3">
-        Free scan. No credit card required.
+        Founder Access open · No card required
       </p>
 
       <button
@@ -326,9 +333,11 @@ export function ConnectBankButton({
         )}
       </button>
 
-      {/* Sub-copy: anchors expected duration so the user doesn't bail. */}
+      {/* Sub-copy: anchors duration so the user doesn't bail. Soft
+          re-emphasis of analysis (not "scan") to keep the voice
+          consistent with the button label. */}
       <p className="mt-3 text-[12.5px] md:text-[13px] text-ink-muted">
-        Takes about 30 seconds.
+        Your first analysis is ready in about 30 seconds.
       </p>
 
       {errorMessage && (

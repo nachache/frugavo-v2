@@ -103,14 +103,19 @@ export function PreparingScreen({
     <section className="container-page py-10 md:py-16 max-w-[860px]">
       <div className="mb-6 md:mb-10">
         <span className="text-[12px] md:text-[13px] font-medium text-brand">
-          Preparing your account
+          Preparing your subscription analysis
         </span>
         <h1 className="mt-1.5 md:mt-2 font-display text-[28px] sm:text-[34px] md:text-[42px] font-bold tracking-[-0.03em] leading-[1.05] text-ink">
-          Almost there.
+          We&apos;re reading between the lines.
         </h1>
         <p className="mt-2 md:mt-3 text-[14px] md:text-[15.5px] leading-relaxed text-ink-body max-w-[560px]">
           {subtitle}
         </p>
+        {/* Rotating anticipation tagline. Cycles slowly so the user
+            doesn't feel rushed; appears below the subtitle as a calm
+            italic line. Curiosity-led, never claims a finding about
+            this user's data specifically. */}
+        <AnticipationLine />
       </div>
 
       {/* Milestone strip */}
@@ -183,33 +188,36 @@ type Milestone = {
 function buildMilestones(poll: PollState, bankNames: string): Milestone[] {
   const bank = bankNames.trim() || "your bank";
 
-  // m1: connected — always done at this point (we only render
-  // PreparingScreen when an item exists).
+  // Discovery-led labels. We keep the same four real ingestion
+  // checkpoints — connected → first transactions in → analyzing →
+  // assembling dashboard — but reframe each one as something Frugavo
+  // is figuring out about the user's recurring spending, instead of a
+  // backend job description. Same state machine, calmer voice.
+
+  // m1: connected — always done by the time PreparingScreen renders.
   const m1: Milestone = {
     id: "connected",
     label: `Connected to ${bank}`,
     status: "done",
   };
 
-  // m2: fetching — done once we have ANY rows.
+  // m2: first transactions arriving. Done once any rows exist.
   const fetchingDone = poll.txnCount > 0;
   const m2: Milestone = {
-    id: "fetching",
-    label: fetchingDone
-      ? "Fetching your transactions"
-      : "Fetching your transactions",
+    id: "identifying",
+    label: "Identifying recurring charges",
     detail: fetchingDone
-      ? `${poll.txnCount.toLocaleString()} pulled so far`
+      ? `${poll.txnCount.toLocaleString()} transactions reviewed so far`
       : poll.state === "preparing"
-      ? "Plaid is preparing your account"
+      ? "Waiting on your bank to release transactions"
       : undefined,
     status: fetchingDone ? "done" : "active",
   };
 
-  // m3: analyzing — active during state==='analyzing', done after.
+  // m3: analyzing — active during the engine pass.
   const m3: Milestone = {
     id: "analyzing",
-    label: "Analyzing recurring patterns",
+    label: "Detecting overlapping services and price changes",
     status:
       poll.state === "analyzing"
         ? "active"
@@ -218,18 +226,16 @@ function buildMilestones(poll: PollState, bankNames: string): Milestone[] {
         : "pending",
   };
   if (fetchingDone && poll.state !== "analyzing") {
-    // We're in syncing with rows but no scan running yet — show
-    // analyzing as pending (next up).
     m3.status = "pending";
   }
   if (poll.state === "ready_with_results" || poll.state === "ready_but_empty") {
     m3.status = "done";
   }
 
-  // m4: building — final beat before the dashboard appears.
+  // m4: assembling — calculating subscription profile / health / etc.
   const m4: Milestone = {
-    id: "building",
-    label: "Building your dashboard",
+    id: "assembling",
+    label: "Measuring your recurring spend health",
     status:
       poll.state === "ready_with_results" || poll.state === "ready_but_empty"
         ? "done"
@@ -238,7 +244,17 @@ function buildMilestones(poll: PollState, bankNames: string): Milestone[] {
         : "pending",
   };
 
-  return [m1, m2, m3, m4];
+  // m5: subscription personality — final calm beat before reveal.
+  const m5: Milestone = {
+    id: "personality",
+    label: "Preparing your subscription personality",
+    status:
+      poll.state === "ready_with_results" || poll.state === "ready_but_empty"
+        ? "done"
+        : "pending",
+  };
+
+  return [m1, m2, m3, m4, m5];
 }
 
 function pickSubtitle(args: {
@@ -253,19 +269,34 @@ function pickSubtitle(args: {
     return `${bank} needs you to re-authorize the connection.`;
   }
   if (args.classicLikely && args.noSuccessfulUpdateYet) {
-    return `${bank} uses Plaid's older integration, so the first pull can take 15–30 minutes. You can close this tab — we'll email you when it's ready.`;
+    return `Some banks take a little longer to release your full history. You can close this tab — we'll let you know the moment your analysis is ready.`;
   }
   if (args.state === "preparing") {
-    return "Plaid is preparing your account. The first transactions should arrive in a moment.";
+    return "We're preparing your subscription analysis. The first signals should arrive in a moment.";
   }
   if (args.state === "syncing") {
-    return `We've started receiving transactions from ${bank}. Sorting them now.`;
+    return `We've started reviewing recurring charges from ${bank}. This is where the picture begins to form.`;
   }
   if (args.state === "analyzing") {
-    return `We've pulled ${args.txnCount.toLocaleString()} transactions and the engine is identifying recurring charges.`;
+    return `We've reviewed ${args.txnCount.toLocaleString()} transactions and we're now noticing patterns — duplicates, price changes, hidden recurring charges.`;
   }
-  return "Getting your data ready. You can close this tab — we'll email you when it's done.";
+  return "Putting your analysis together. You can close this tab — we'll let you know when it's ready.";
 }
+
+// Rotating anticipation copy — surfaces below the headline, cycles
+// every ~5s. Curiosity-led observations about what Frugavo tends to
+// discover. NEVER claims a finding about THIS user — just primes the
+// pump for what's likely about to land in the reveal.
+//
+// Calibrated: short, vague enough to read true for almost any user,
+// confident enough to feel like the product knows what it's doing.
+const ANTICIPATION_TAGLINES: string[] = [
+  "Most users discover subscriptions they forgot they had.",
+  "Recurring spending often costs more than expected.",
+  "Many users are surprised by how concentrated their spending is.",
+  "Price increases often go unnoticed for months.",
+  "Duplicate services hide more often than you'd think.",
+];
 
 // ──────────────────────────────────────────────────────────────────────
 // Skeleton dashboard. Layout-matching shimmer cards. No numbers, no
@@ -298,5 +329,54 @@ function SkelCard({ h }: { h: string }) {
     <div
       className={`rounded-2xl border border-hairline bg-surface ${h} animate-pulse`}
     />
+  );
+}
+
+// ──────────────────────────────────────────────────────────────────────
+// Anticipation tagline. Rotates calmly through the ANTICIPATION_TAGLINES
+// list. Crossfades via opacity so the swap doesn't fight the rest of
+// the screen for attention. Pauses under prefers-reduced-motion (we
+// show the first tagline only).
+// ──────────────────────────────────────────────────────────────────────
+
+const TAGLINE_INTERVAL_MS = 5_000;
+const TAGLINE_FADE_MS = 380;
+
+function AnticipationLine() {
+  const [idx, setIdx] = useState(0);
+  const [visible, setVisible] = useState(true);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const reduce = window.matchMedia?.(
+      "(prefers-reduced-motion: reduce)"
+    ).matches;
+    if (reduce) return;
+
+    const advance = () => {
+      // Fade out, swap, fade in. The TAGLINE_FADE_MS guard keeps the
+      // crossfade from clipping mid-render.
+      setVisible(false);
+      setTimeout(() => {
+        setIdx((i) => (i + 1) % ANTICIPATION_TAGLINES.length);
+        setVisible(true);
+      }, TAGLINE_FADE_MS);
+    };
+
+    const id = setInterval(advance, TAGLINE_INTERVAL_MS);
+    return () => clearInterval(id);
+  }, []);
+
+  return (
+    <p
+      className="mt-4 md:mt-5 text-[13.5px] md:text-[14px] italic text-ink-muted leading-relaxed max-w-[560px]"
+      style={{
+        opacity: visible ? 1 : 0,
+        transition: `opacity ${TAGLINE_FADE_MS}ms ease`,
+      }}
+      aria-live="polite"
+    >
+      {ANTICIPATION_TAGLINES[idx]}
+    </p>
   );
 }

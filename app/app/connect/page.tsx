@@ -1,6 +1,14 @@
 import type { Metadata } from "next";
 import { ConnectFlow } from "@/components/plaid/connect-flow";
-import { ShieldCheck, Lock, Power } from "lucide-react";
+import {
+  ShieldCheck,
+  Lock,
+  Power,
+  Sparkles,
+  Activity,
+  Eye,
+  Check,
+} from "lucide-react";
 
 export const metadata: Metadata = {
   title: "Find your subscriptions · Frugavo",
@@ -33,12 +41,13 @@ export default function ConnectPage() {
         {/* ─────────── LEFT COLUMN — conversion ─────────── */}
         <div className="max-w-[560px]">
           <h1 className="font-display text-[32px] sm:text-[40px] lg:text-[48px] font-bold tracking-[-0.035em] leading-[1.02] text-ink">
-            Find hidden subscriptions in{" "}
-            <span className="text-brand">under 30 seconds.</span>
+            Uncover the recurring spending{" "}
+            <span className="text-brand">you can&apos;t see.</span>
           </h1>
           <p className="mt-4 lg:mt-5 text-[15.5px] lg:text-[16.5px] leading-relaxed text-ink-body max-w-[480px]">
-            See recurring charges, forgotten trials, AI tools, and duplicate
-            subscriptions across all your accounts.
+            Frugavo analyzes the last 12 months of your accounts and builds a
+            calm intelligence layer over every recurring charge — what
+            you&apos;re paying for, what changes, and what to protect against.
           </p>
 
           {/* Trust strip — inline, no boxes */}
@@ -64,7 +73,35 @@ export default function ConnectPage() {
             <ConnectFlow />
           </div>
 
-          {/* Plaid trust line — compact, supporting */}
+          {/* Protection section — strategically placed under the CTA
+              so the user reads "what this defends me against" right
+              after agreeing to start. Reinforces protection positioning
+              before the Plaid handoff. Six items in a tight 2-column
+              grid; deliberately calm tone, no urgency. */}
+          <div className="mt-7 lg:mt-8">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-brand">
+              What Frugavo protects against
+            </div>
+            <ul className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-y-1.5 gap-x-5 max-w-[480px]">
+              {PROTECTION_ITEMS.map((item) => (
+                <li
+                  key={item}
+                  className="flex items-start gap-2 text-[12.5px] lg:text-[13px] text-ink-body leading-snug"
+                >
+                  <ShieldCheck
+                    size={13}
+                    strokeWidth={2.2}
+                    className="mt-0.5 shrink-0 text-brand"
+                  />
+                  <span>{item}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Plaid trust line — compact, supporting. Pushed below
+              the protection list so security framing comes last
+              rather than competing with discovery framing. */}
           <p className="mt-6 lg:mt-7 text-[12px] lg:text-[12.5px] text-ink-muted leading-relaxed max-w-[460px]">
             <span className="inline-flex items-center gap-1.5">
               <PlaidGlyph />
@@ -95,30 +132,89 @@ export default function ConnectPage() {
 }
 
 // ─────────────────────────────────────────────────────────────
-// Dashboard preview — desktop
+// Discovery preview — desktop
 // ─────────────────────────────────────────────────────────────
+//
+// Replaces the sample-subscription preview with three intelligence-led
+// sections that communicate the OUTCOME the user is about to receive,
+// not the mechanism. The card still uses the faux-browser chrome so
+// it reads as "your forthcoming dashboard," but instead of showing
+// Netflix / Spotify rows, it lists what Frugavo will detect, calculate,
+// and monitor on behalf of the user.
+//
+// Strategic rationale (from product brief):
+//   The connect screen is the last moment before the user crosses
+//   into Plaid Link. Their question at this moment is "what am I
+//   actually about to get?" — not "what brands will I see in a list?"
+//   Discovery framing answers the real question.
 
-const SAMPLE_ROWS: Array<{
-  name: string;
-  category: string;
-  amount: string;
-  glyph: string;
-  glyphBg: string;
-}> = [
-  { name: "Netflix",   category: "Streaming",      amount: "$15.49", glyph: "N", glyphBg: "#E50914" },
-  { name: "Spotify",   category: "Music",          amount: "$11.99", glyph: "S", glyphBg: "#1DB954" },
-  { name: "ChatGPT",   category: "AI tools",       amount: "$20.00", glyph: "G", glyphBg: "#10A37F" },
-  { name: "Adobe",     category: "Creative",       amount: "$54.99", glyph: "A", glyphBg: "#FA0F00" },
-  { name: "Notion",    category: "Productivity",   amount: "$10.00", glyph: "N", glyphBg: "#0A0A0A" },
-  { name: "iCloud+",   category: "Storage",        amount: "$2.99",  glyph: "i", glyphBg: "#3B82F6" },
+// React.ComponentType is intentionally untyped here — Lucide icons
+// have a strict ForwardRef signature that fights a generic prop
+// shape. Since we only use this for icon components, allowing any
+// props is the right pragma.
+type DiscoveryGroup = {
+  eyebrow: string;
+  heading: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  icon: React.ComponentType<any>;
+  items: string[];
+};
+
+// What Frugavo protects against — rendered below the CTA. Order
+// matters: most relatable / most-discussed pain points first.
+const PROTECTION_ITEMS: string[] = [
+  "Forgotten subscriptions",
+  "Trial conversions",
+  "Silent price increases",
+  "Duplicate services",
+  "Subscription creep",
+  "Hidden recurring spending",
+];
+
+const DISCOVERY_GROUPS: DiscoveryGroup[] = [
+  {
+    eyebrow: "Detect",
+    heading: "What Frugavo will find",
+    icon: Eye,
+    items: [
+      "Overlapping services",
+      "Subscription traps",
+      "Silent price increases",
+      "Duplicate subscriptions",
+      "Upcoming renewals",
+      "Hidden recurring charges",
+    ],
+  },
+  {
+    eyebrow: "Calculate",
+    heading: "What Frugavo will measure",
+    icon: Sparkles,
+    items: [
+      "Subscription Health Score",
+      "Subscription personality",
+      "Yearly recurring impact",
+      "Spending concentration",
+      "Recurring spend trends",
+    ],
+  },
+  {
+    eyebrow: "Monitor",
+    heading: "What Frugavo will watch for",
+    icon: Activity,
+    items: [
+      "New recurring charges",
+      "Price increases over time",
+      "Trial conversions",
+      "Subscription creep",
+      "Unusual recurring activity",
+    ],
+  },
 ];
 
 function DashboardPreview() {
   return (
     <div className="relative">
-      {/* Subtle background halo — makes the card feel "lit" without
-          adding a literal gradient panel like the screenshot the user
-          showed. Stays brand-aligned. */}
+      {/* Subtle background halo — keeps the card feeling "lit." */}
       <div
         className="absolute -inset-6 -z-10 opacity-50 pointer-events-none"
         style={{
@@ -128,8 +224,8 @@ function DashboardPreview() {
       />
 
       <div className="rounded-3xl bg-surface border border-hairline shadow-[0_24px_60px_-30px_rgba(10,10,10,0.25)] overflow-hidden">
-        {/* Faux browser chrome — three dots top-left. Subtle product
-            cue without being a literal screenshot. */}
+        {/* Faux browser chrome — kept identical to the prior version so
+            users who saw the old preview still recognize the shape. */}
         <div className="px-5 py-3 border-b border-hairline/70 flex items-center gap-1.5">
           <span className="w-2 h-2 rounded-full bg-ink-muted/25" />
           <span className="w-2 h-2 rounded-full bg-ink-muted/25" />
@@ -139,163 +235,110 @@ function DashboardPreview() {
           </span>
         </div>
 
-        {/* Headline number block */}
-        <div className="px-6 pt-6 pb-5">
-          <div className="text-[11px] font-medium uppercase tracking-[0.14em] text-ink-muted">
-            Monthly upkeep
+        {/* Headline block */}
+        <div className="px-6 pt-6 pb-4">
+          <div className="text-[11px] font-medium uppercase tracking-[0.14em] text-brand">
+            Your subscription analysis
           </div>
-          <div className="mt-1.5 flex items-baseline gap-2">
-            <span className="font-display text-[44px] font-bold tracking-[-0.03em] text-ink leading-none">
-              $174
-            </span>
-            <span className="text-[15px] text-ink-muted font-medium">/mo</span>
+          <div className="mt-1.5 font-display text-[22px] md:text-[24px] font-bold tracking-[-0.02em] text-ink leading-tight">
+            Discoveries in the next ~30 seconds
           </div>
-          <div className="mt-1.5 text-[12.5px] text-ink-muted">
-            $2,088 a year{" "}
-            <span className="text-ink-muted/40">·</span>{" "}
-            12 subscriptions detected
-          </div>
-
-          {/* Mini insights row */}
-          <div className="mt-4 grid grid-cols-3 gap-3">
-            <MiniStat label="AI tools" value="$45" trend="up" />
-            <MiniStat label="Trials converting" value="2" trend="warn" />
-            <MiniStat label="Duplicates" value="1" trend="alert" />
-          </div>
+          <p className="mt-1 text-[12.5px] text-ink-muted leading-relaxed">
+            Calm intelligence over your recurring charges — not a list to
+            audit, a layer that notices.
+          </p>
         </div>
 
-        {/* Sample subscription rows */}
-        <div className="px-6 pb-2">
-          <div className="text-[11px] font-medium uppercase tracking-[0.14em] text-ink-muted mb-2">
-            Worth a look
-          </div>
-          <ul className="divide-y divide-hairline/70">
-            {SAMPLE_ROWS.map((row) => (
-              <li
-                key={row.name}
-                className="flex items-center gap-3 py-2.5"
-              >
-                <span
-                  className="inline-flex items-center justify-center w-7 h-7 rounded-md text-[11px] font-bold text-white shrink-0"
-                  style={{ background: row.glyphBg }}
-                  aria-hidden="true"
-                >
-                  {row.glyph}
-                </span>
-                <div className="min-w-0 flex-1">
-                  <div className="text-[13.5px] font-medium text-ink truncate">
-                    {row.name}
-                  </div>
-                  <div className="text-[11.5px] text-ink-muted truncate">
-                    {row.category}
-                  </div>
-                </div>
-                <div className="text-[13px] font-medium tabular-nums text-ink shrink-0">
-                  {row.amount}
-                  <span className="text-ink-muted">/mo</span>
-                </div>
-              </li>
-            ))}
-          </ul>
-        </div>
-
-        {/* Bottom gradient fade — communicates "and more below" */}
-        <div className="relative h-12">
-          <div
-            className="absolute inset-0 pointer-events-none"
-            style={{
-              background:
-                "linear-gradient(to bottom, transparent, rgba(250,248,244,0.95) 70%, var(--surface,#fff) 100%)",
-            }}
-          />
-          <div className="absolute inset-x-0 bottom-2 flex justify-center">
-            <span className="text-[11px] text-ink-muted/70 tracking-tight">
-              + 6 more
-            </span>
-          </div>
+        {/* Three discovery groups */}
+        <div className="px-6 pb-6 space-y-5">
+          {DISCOVERY_GROUPS.map((group) => (
+            <DiscoveryBlock key={group.eyebrow} group={group} />
+          ))}
         </div>
       </div>
 
-      {/* Whisper caption — disambiguates "this is a preview, not your
-          actual data" without breaking the spell. */}
+      {/* Whisper caption — preview, not yet-your-data. */}
       <p className="mt-3 text-[11.5px] text-ink-muted/70 text-center tracking-tight">
-        Sample preview · your numbers in ~30 seconds
+        Preview · your real analysis appears in ~30 seconds
       </p>
     </div>
   );
 }
 
-function MiniStat({
-  label,
-  value,
-  trend,
-}: {
-  label: string;
-  value: string;
-  trend: "up" | "warn" | "alert";
-}) {
-  const dotColor =
-    trend === "up"
-      ? "#10b981"
-      : trend === "warn"
-        ? "#f59e0b"
-        : "#ef4444";
+function DiscoveryBlock({ group }: { group: DiscoveryGroup }) {
+  const Icon = group.icon;
   return (
-    <div className="rounded-xl bg-canvas/60 px-3 py-2.5">
-      <div className="flex items-center gap-1.5">
-        <span
-          className="w-1.5 h-1.5 rounded-full"
-          style={{ background: dotColor }}
-          aria-hidden="true"
-        />
-        <span className="text-[10.5px] font-medium uppercase tracking-[0.1em] text-ink-muted">
-          {label}
+    <div>
+      <div className="flex items-center gap-2 mb-2">
+        <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-brand/12 text-brand">
+          <Icon size={11} strokeWidth={2.2} />
+        </span>
+        <span className="text-[10.5px] font-semibold uppercase tracking-[0.12em] text-brand">
+          {group.eyebrow}
+        </span>
+        <span className="text-[13px] font-medium text-ink">
+          {group.heading}
         </span>
       </div>
-      <div className="mt-0.5 text-[16px] font-semibold tabular-nums text-ink leading-tight">
-        {value}
-      </div>
+      <ul className="grid grid-cols-1 sm:grid-cols-2 gap-y-1.5 gap-x-4 pl-7">
+        {group.items.map((item) => (
+          <li
+            key={item}
+            className="flex items-start gap-2 text-[12.5px] text-ink-body leading-snug"
+          >
+            <Check
+              size={12}
+              strokeWidth={2.6}
+              className="mt-0.5 shrink-0 text-brand"
+            />
+            <span>{item}</span>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
 
 // ─────────────────────────────────────────────────────────────
-// Mobile compact preview — three rows max
+// Mobile compact preview — single discovery group, condensed
 // ─────────────────────────────────────────────────────────────
+//
+// On phone we don't have vertical room for the full triptych — we'd
+// be pushing the CTA below the fold. The compact version shows just
+// the "Detect" group, with a small tail line implying there's more
+// where that came from. The desktop card carries the full story.
 
 function DashboardPreviewCompact() {
+  const detect = DISCOVERY_GROUPS[0];
   return (
     <div className="mt-2 rounded-2xl bg-surface border border-hairline shadow-[0_12px_30px_-18px_rgba(10,10,10,0.25)] overflow-hidden">
-      <div className="px-4 py-3 flex items-center justify-between border-b border-hairline/70">
-        <span className="text-[10.5px] font-medium uppercase tracking-[0.12em] text-ink-muted">
-          Sample preview
+      <div className="px-4 py-3 flex items-center gap-2 border-b border-hairline/70">
+        <Eye size={13} strokeWidth={2.2} className="text-brand" />
+        <span className="text-[10.5px] font-semibold uppercase tracking-[0.12em] text-brand">
+          Detect
         </span>
-        <span className="text-[12px] text-ink-muted tabular-nums">
-          $174/mo
+        <span className="text-[12.5px] font-medium text-ink">
+          What Frugavo will find
         </span>
       </div>
-      <ul className="px-4 py-2 divide-y divide-hairline/70">
-        {SAMPLE_ROWS.slice(0, 3).map((row) => (
+      <ul className="px-4 py-3 space-y-1.5">
+        {detect.items.slice(0, 4).map((item) => (
           <li
-            key={row.name}
-            className="flex items-center gap-2.5 py-2"
+            key={item}
+            className="flex items-start gap-2 text-[12.5px] text-ink-body leading-snug"
           >
-            <span
-              className="inline-flex items-center justify-center w-6 h-6 rounded-md text-[10.5px] font-bold text-white shrink-0"
-              style={{ background: row.glyphBg }}
-              aria-hidden="true"
-            >
-              {row.glyph}
-            </span>
-            <span className="text-[12.5px] font-medium text-ink flex-1 truncate">
-              {row.name}
-            </span>
-            <span className="text-[12px] tabular-nums text-ink-muted">
-              {row.amount}
-            </span>
+            <Check
+              size={11}
+              strokeWidth={2.6}
+              className="mt-0.5 shrink-0 text-brand"
+            />
+            <span>{item}</span>
           </li>
         ))}
       </ul>
+      <div className="px-4 py-2 border-t border-hairline/70 text-[11px] text-ink-muted">
+        + measurements, monitoring, and renewals
+      </div>
     </div>
   );
 }
