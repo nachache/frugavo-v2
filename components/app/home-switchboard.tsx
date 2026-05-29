@@ -71,18 +71,10 @@ export function HomeHeroBand({
       }}
     >
       <div className="container-page max-w-[1200px] pt-10 md:pt-14 pb-16 md:pb-20">
-        {/* Wordmark — calm sans, lowercase, with a small accent dot. */}
-        <div className="flex items-start justify-between gap-3">
-          <div className="inline-flex items-center gap-2">
-            <span
-              className="inline-block w-2 h-2 rounded-full"
-              style={{ background: "#A7F3D0" }}
-              aria-hidden="true"
-            />
-            <span className="text-[18px] md:text-[20px] font-medium text-white tracking-tight">
-              frugavo
-            </span>
-          </div>
+        {/* Overflow control top-right. The "frugavo" wordmark used to
+            sit on the left here but it doubles with the layout
+            header's wordmark — removed to drop the duplication. */}
+        <div className="flex items-start justify-end">
           <button
             type="button"
             aria-label="More"
@@ -92,8 +84,8 @@ export function HomeHeroBand({
           </button>
         </div>
 
-        <h1 className="mt-8 md:mt-10 font-display text-[28px] md:text-[34px] font-medium leading-[1.1] tracking-[-0.02em] text-white max-w-[680px]">
-          Watching your recurring spend
+        <h1 className="mt-6 md:mt-8 font-display text-[28px] md:text-[36px] font-bold leading-[1.1] tracking-[-0.02em] text-white max-w-[680px]">
+          Watching your subscriptions
         </h1>
         <p className="mt-2 text-[14px] md:text-[15px] text-white/75 leading-relaxed max-w-[520px]">
           Everything&apos;s here — tap any card to go deeper.
@@ -137,43 +129,54 @@ export function HomeLiveStatusStrip({
   })();
 
   return (
+    // Outer container: stickies just below the layout header. We
+    // add a translucent canvas wash + backdrop blur so when the
+    // page scrolls under it, content doesn't ghost through the
+    // pill's negative space.
     <div
-      className="sticky z-30 px-2"
+      className="sticky z-30"
       style={{
-        top: "72px", // sits just below the 64px layout header
-        // Pull up so it overlaps the hero's curved bottom.
+        top: "64px",
+        // Pull up so the strip overlaps the hero's curved bottom.
         marginTop: "-32px",
         marginBottom: "8px",
       }}
     >
-      <div className="container-page max-w-[1200px] px-0">
-        <div className="inline-flex items-center gap-2.5 rounded-full bg-white border border-hairline px-3.5 h-9 text-[12.5px] text-ink">
-          <span className="relative inline-flex items-center justify-center">
-            <span
-              className="absolute inline-flex h-2.5 w-2.5 rounded-full opacity-60 animate-ping"
-              style={{ background: "#10B981" }}
-              aria-hidden="true"
-            />
-            <span
-              className="relative inline-flex h-2 w-2 rounded-full"
-              style={{ background: "#10B981" }}
-            />
-          </span>
-          <span className="font-medium">Live</span>
-          <span className="text-ink-muted">·</span>
-          <span className="text-ink-muted">Last scan {lastScanLabel}</span>
-          <span className="text-ink-muted">·</span>
-          <span className="text-ink-muted">
-            monitoring{" "}
-            <span className="text-ink font-medium">{monitoringCharges}</span>{" "}
-            charges
-          </span>
-          <span className="text-ink-muted">·</span>
-          <span className="text-ink-muted">
-            watching{" "}
-            <span className="text-ink font-medium">{watchingRenewals}</span>{" "}
-            renewals
-          </span>
+      <div className="bg-canvas/80 backdrop-blur-md py-2">
+        <div className="container-page max-w-[1200px]">
+          <div className="inline-flex max-w-full items-center gap-2 sm:gap-2.5 rounded-full bg-white border border-hairline shadow-soft px-3 sm:px-3.5 h-9 text-[11.5px] sm:text-[12.5px] text-ink whitespace-nowrap overflow-hidden">
+            <span className="relative inline-flex items-center justify-center shrink-0">
+              <span
+                className="absolute inline-flex h-2.5 w-2.5 rounded-full opacity-60 animate-ping"
+                style={{ background: "#10B981" }}
+                aria-hidden="true"
+              />
+              <span
+                className="relative inline-flex h-2 w-2 rounded-full"
+                style={{ background: "#10B981" }}
+              />
+            </span>
+            <span className="font-medium shrink-0">Live</span>
+            {/* On mobile we collapse to "monitoring N · watching M".
+                Last-scan label hides because it's the lowest-signal
+                of the four when space is tight. */}
+            <span className="text-ink-muted hidden sm:inline">·</span>
+            <span className="text-ink-muted hidden sm:inline shrink-0">
+              Last scan {lastScanLabel}
+            </span>
+            <span className="text-ink-muted shrink-0">·</span>
+            <span className="text-ink-muted shrink-0">
+              <span className="text-ink font-medium">
+                {monitoringCharges}
+              </span>{" "}
+              monitoring
+            </span>
+            <span className="text-ink-muted shrink-0">·</span>
+            <span className="text-ink-muted shrink-0">
+              <span className="text-ink font-medium">{watchingRenewals}</span>{" "}
+              renewals
+            </span>
+          </div>
         </div>
       </div>
     </div>
@@ -271,7 +274,7 @@ export function FeaturedNoticedCard({
   return (
     <Link
       href="/app/noticed"
-      className="block rounded-2xl border border-amber-200 bg-amber-50 p-5 md:p-6 transition-colors hover:bg-amber-100/60"
+      className="block rounded-2xl border border-amber-200 bg-amber-50 shadow-soft p-5 md:p-6 transition-colors hover:bg-amber-100/60"
     >
       <CardBadge icon={Eye} label="Needs a look" tone="amber" />
       <h3 className="mt-3 font-display text-[20px] md:text-[22px] font-medium tracking-[-0.01em] text-ink leading-snug">
@@ -312,7 +315,7 @@ export function RenewalsCard({
   return (
     <Link
       href="/app/renewals"
-      className="group block rounded-2xl border border-hairline bg-white p-5 md:p-6 transition-colors hover:bg-canvas/40"
+      className="group block rounded-2xl border border-hairline bg-white shadow-soft p-5 md:p-6 transition-all hover:bg-canvas/40 hover:shadow-float"
     >
       <div className="flex items-start justify-between gap-3">
         <CardBadge icon={Calendar} label="Renewals" />
@@ -364,7 +367,7 @@ export function SpendingCard({
   return (
     <Link
       href="/app/spending"
-      className="group block rounded-2xl border border-sky-200 bg-sky-50 p-5 md:p-6 transition-colors hover:bg-sky-100/60"
+      className="group block rounded-2xl border border-sky-200 bg-sky-50 shadow-soft p-5 md:p-6 transition-colors hover:bg-sky-100/60"
     >
       <div className="flex items-start justify-between gap-3">
         <CardBadge icon={Wallet} label="Spending" tone="blue" />
@@ -398,7 +401,7 @@ export function InsightsCard({ insightCount }: { insightCount: number }) {
   return (
     <Link
       href="/app/insights"
-      className="group block rounded-2xl border border-hairline bg-white p-5 md:p-6 transition-colors hover:bg-canvas/40"
+      className="group block rounded-2xl border border-hairline bg-white shadow-soft p-5 md:p-6 transition-all hover:bg-canvas/40 hover:shadow-float"
     >
       <div className="flex items-start justify-between gap-3">
         <CardBadge icon={BarChart3} label="Insights" />
@@ -426,7 +429,7 @@ export function YourCardCard({ personality }: { personality: Personality }) {
   return (
     <Link
       href="/app/card"
-      className="group block rounded-2xl border border-emerald-200 bg-emerald-50 p-5 md:p-6 transition-colors hover:bg-emerald-100/60"
+      className="group block rounded-2xl border border-emerald-200 bg-emerald-50 shadow-soft p-5 md:p-6 transition-colors hover:bg-emerald-100/60"
     >
       <div className="flex items-start justify-between gap-3">
         <CardBadge icon={BadgeCheck} label="Your card" tone="green" />
@@ -452,7 +455,7 @@ export function YourCardCard({ personality }: { personality: Personality }) {
 
 export function ShareCard() {
   return (
-    <div className="block rounded-2xl border border-hairline bg-white p-5 md:p-6">
+    <div className="block rounded-2xl border border-hairline bg-white shadow-soft p-5 md:p-6">
       <div className="flex items-start justify-between gap-3">
         <CardBadge icon={Share2} label="Share" />
       </div>

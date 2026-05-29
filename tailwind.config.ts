@@ -28,8 +28,11 @@ const config: Config = {
         hairline: "#E5E5E5",
       },
       fontFamily: {
-        sans: ["var(--font-inter)", "system-ui", "sans-serif"],
-        display: ["var(--font-inter-tight)", "var(--font-inter)", "system-ui", "sans-serif"],
+        // Body, cards, UI — Lato. Humanist sans with warm baseline.
+        sans: ["var(--font-sans)", "system-ui", "sans-serif"],
+        // Headlines, hero — Figtree. Geometric sans with confident
+        // proportions; reads premium without being austere.
+        display: ["var(--font-display)", "var(--font-sans)", "system-ui", "sans-serif"],
         // Editorial pair used in /learn articles. Fraunces is a variable
         // serif with strong display character; Newsreader is optimized for
         // long-form on-screen reading.

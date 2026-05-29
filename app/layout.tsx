@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Inter, Inter_Tight, Fraunces, Newsreader } from "next/font/google";
+import { Figtree, Lato, Fraunces, Newsreader } from "next/font/google";
 import { GoogleAnalytics } from "@next/third-parties/google";
 import { ClerkProvider } from "@clerk/nextjs";
 import { GaDebug } from "@/components/shared/ga-debug";
@@ -9,16 +9,23 @@ import { StandaloneModeClass } from "@/components/shared/standalone-mode-class";
 import "./globals.css";
 
 // next/font self-hosts the typefaces — no runtime CDN call.
-const inter = Inter({
+//
+// Typography pair:
+//   • Lato (--font-sans)    — body, cards, UI. Calm humanist sans.
+//   • Figtree (--font-display) — headlines, hero line. Geometric sans
+//     with confident proportions. Pairs cleanly with Lato.
+const lato = Lato({
   subsets: ["latin"],
+  weight: ["400", "700"],
   display: "swap",
-  variable: "--font-inter",
+  variable: "--font-sans",
 });
 
-const interTight = Inter_Tight({
+const figtree = Figtree({
   subsets: ["latin"],
+  weight: ["400", "500", "700"],
   display: "swap",
-  variable: "--font-inter-tight",
+  variable: "--font-display",
 });
 
 // Article typography. Fraunces for editorial headings (variable, generous in
@@ -106,13 +113,13 @@ export default function RootLayout({
           colorText: "#0A0A0A",
           colorBackground: "#FAF8F4",
           borderRadius: "0.75rem",
-          fontFamily: "var(--font-inter), system-ui, sans-serif",
+          fontFamily: "var(--font-sans), system-ui, sans-serif",
         },
       }}
     >
     <html
       lang="en"
-      className={`${inter.variable} ${interTight.variable} ${fraunces.variable} ${newsreader.variable}`}
+      className={`${lato.variable} ${figtree.variable} ${fraunces.variable} ${newsreader.variable}`}
     >
       <body>
         <a
