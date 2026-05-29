@@ -171,7 +171,7 @@ export default async function SubscriptionDetailPage({
     <section className="container-page py-8 md:py-12 max-w-[1100px]">
       <div className="mb-6 md:mb-8">
         <Link
-          href="/app"
+          href="/app/spending"
           className="inline-flex items-center gap-2 text-[13px] text-ink-muted hover:text-ink transition"
         >
           <svg
@@ -188,7 +188,7 @@ export default async function SubscriptionDetailPage({
             <line x1="19" y1="12" x2="5" y2="12" />
             <polyline points="12 19 5 12 12 5" />
           </svg>
-          Back to dashboard
+          Back to your subs
         </Link>
       </div>
 

@@ -21,20 +21,29 @@ export default async function SpendingPage() {
   if (!user) redirect("/sign-in");
 
   const data = await buildDashboardData(user.id);
-  const monthlyCents = data?.monthly.sub_only_cents ?? 0;
 
-  // All confirmed subs — pull from worth_a_look + watching (the
-  // ActionItem feed already excludes overrides like "not a sub",
-  // "cancelled", "not recurring"). Same source the home cards use,
-  // so the totals match.
-  const subs = data
-    ? [...data.actions.worth_a_look, ...data.actions.watching].filter(
-        (a) =>
-          a.override_type !== "not_subscription" &&
-          a.override_type !== "not_recurring" &&
-          a.override_type !== "cancelled"
-      )
+  // All confirmed subs first; the not-a-sub / cancelled / not-recurring
+  // overrides land in their own dimmed group below the live list so
+  // the user can restore them with one tap.
+  const allActionItems = data
+    ? [
+        ...data.actions.worth_a_look,
+        ...data.actions.watching,
+        ...data.actions.hidden,
+      ]
     : [];
+  const subs = allActionItems.filter(
+    (a) =>
+      a.override_type !== "not_subscription" &&
+      a.override_type !== "not_recurring" &&
+      a.override_type !== "cancelled"
+  );
+  const excludedSubs = allActionItems.filter(
+    (a) =>
+      a.override_type === "not_subscription" ||
+      a.override_type === "not_recurring" ||
+      a.override_type === "cancelled"
+  );
 
   return (
     <section className="container-page max-w-[860px] py-6 md:py-10">
@@ -54,12 +63,11 @@ export default async function SpendingPage() {
           Your subs
         </h1>
       </div>
-      <div className="ml-[40px] text-[13px] text-ink-body tabular-nums">
-        ${Math.round(monthlyCents / 100).toLocaleString("en-US")}/mo recurring ·{" "}
-        {subs.length} sub{subs.length === 1 ? "" : "s"}
-      </div>
+      {/* Live totals — the inline summary is rendered inside the
+          browser so it reflects mark/restore mutations instantly,
+          before router.refresh has reconciled with the server. */}
 
-      <div className="mt-7">
+      <div className="mt-5">
         {subs.length === 0 ? (
           <div className="rounded-2xl border border-hairline bg-white p-6 text-center">
             <div className="text-[14px] font-bold text-ink">
@@ -70,7 +78,7 @@ export default async function SpendingPage() {
             </p>
           </div>
         ) : (
-          <SubscriptionsBrowser subs={subs} />
+          <SubscriptionsBrowser subs={subs} excluded={excludedSubs} />
         )}
       </div>
     </section>

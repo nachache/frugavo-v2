@@ -25,6 +25,10 @@ type Props = {
   month: number; // 0..11
   upcoming: ActionItem[];
   initialSelectedIso: string | null;
+  // Subscription ids whose next_expected_charge_at was server-side
+  // estimated from last_charged_at + cadence rather than coming from
+  // the engine. UI tags these rows so the user sees the difference.
+  approximateIds?: Set<string>;
 };
 
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -53,6 +57,7 @@ export function RenewalsCalendar({
   month,
   upcoming,
   initialSelectedIso,
+  approximateIds,
 }: Props) {
   const today = useMemo(() => {
     const d = new Date();
@@ -159,8 +164,11 @@ export function RenewalsCalendar({
 
   return (
     <div>
-      {/* ─── Grid card ─────────────────────────────────────── */}
-      <div className="rounded-2xl border border-hairline bg-white shadow-soft p-3 md:p-5">
+      {/* ─── Grid card ───────────────────────────────────────
+          Capped width on desktop so the calendar reads as a widget,
+          not a screen takeover. Centered, with normal whitespace
+          around it. */}
+      <div className="rounded-2xl border border-hairline bg-white shadow-soft p-3 md:p-5 max-w-[620px] mx-auto">
         {/* Weekday header */}
         <div className="grid grid-cols-7 gap-1 mb-2 px-0.5">
           {WEEKDAYS.map((w) => (
@@ -197,7 +205,7 @@ export function RenewalsCalendar({
                 onClick={() => handleDayClick(iso)}
                 disabled={!inMonth && charges.length === 0}
                 className={[
-                  "relative aspect-square rounded-xl flex flex-col items-center justify-between p-1.5 transition-all",
+                  "relative aspect-square md:aspect-[1.1/1] max-h-[72px] rounded-xl flex flex-col items-center justify-between p-1.5 transition-all",
                   inMonth ? "text-ink" : "text-ink-muted/40",
                   inMonth && !isSelected ? "hover:bg-ink/[0.04]" : "",
                   isSelected
@@ -323,8 +331,18 @@ export function RenewalsCalendar({
                             rounded="lg"
                           />
                           <div className="flex-1 min-w-0">
-                            <div className="text-[14px] font-bold text-ink truncate">
-                              {a.merchant_name}
+                            <div className="flex items-center gap-1.5 min-w-0">
+                              <div className="text-[14px] font-bold text-ink truncate">
+                                {a.merchant_name}
+                              </div>
+                              {approximateIds?.has(a.subscription_id) ? (
+                                <span
+                                  className="inline-flex items-center rounded-full bg-ink/[0.05] text-ink-muted px-1.5 h-4 text-[9.5px] font-medium uppercase tracking-[0.06em] shrink-0"
+                                  title="Estimated from billing history"
+                                >
+                                  est.
+                                </span>
+                              ) : null}
                             </div>
                             <div className="text-[11.5px] text-ink-muted truncate">
                               {a.category.replace(/_/g, " ")}

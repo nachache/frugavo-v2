@@ -11,7 +11,6 @@
 // can come later for filtering/export.
 
 import type { ChargeRow, PriceChange } from "@/app/app/subscriptions/[id]/page";
-import { SubscriptionFeedbackControls } from "./subscription-feedback-controls";
 
 type Subscription = {
   id: string;
@@ -182,70 +181,41 @@ export function SubscriptionDetailView({
       : `Last ${spanMonths} month${spanMonths === 1 ? "" : "s"}`;
 
   return (
-    <div className="space-y-6 md:space-y-8">
-      {/* ─── 1. HEADER ────────────────────────────────────────────── */}
-      <div
-        className="rounded-3xl border border-hairline bg-ink px-6 py-7 md:px-10 md:py-10 overflow-hidden relative animate-fadeUp"
-        style={{ color: "#FAF8F4" }}
-      >
-        <div className="absolute -top-32 -right-32 h-80 w-80 rounded-full bg-brand opacity-20 blur-3xl pointer-events-none" />
-        <div className="relative">
-          <div className="flex flex-wrap items-center gap-2 mb-4">
-            <span
-              className="text-[12px] font-medium uppercase tracking-[0.12em]"
-              style={{ color: "rgba(250,248,244,0.6)" }}
-            >
-              {prettyCategory(subscription.category)}
-            </span>
-            <span style={{ color: "rgba(250,248,244,0.3)" }}>·</span>
-            <span
-              className="text-[12px] font-medium uppercase tracking-[0.12em]"
-              style={{ color: "rgba(250,248,244,0.6)" }}
-            >
-              {prettyFrequency(subscription.frequency)}
-            </span>
-            <span style={{ color: "rgba(250,248,244,0.3)" }}>·</span>
-            <StatusBadge status={subscription.status} />
-          </div>
-          <h1
-            className="font-display font-bold text-[36px] md:text-[56px] tracking-[-0.03em] leading-[1] break-words"
-            style={{ color: "#FAF8F4" }}
-          >
-            {subscription.merchant_name}
-          </h1>
-          <div
-            className="mt-5 font-display font-bold tracking-[-0.03em] leading-[1] text-[40px] md:text-[56px] tabular-nums"
-            style={{ color: "#FAF8F4" }}
-          >
-            {fmtCents(monthly)}
-            <span
-              className="text-[20px] md:text-[28px] font-medium"
-              style={{ color: "rgba(250,248,244,0.6)" }}
-            >
-              /mo
-            </span>
-          </div>
-          <div
-            className="mt-2 text-[14px] md:text-[15px]"
-            style={{ color: "rgba(250,248,244,0.7)" }}
-          >
-            {fmtCents(yearly, { withCents: false })}/yr ·
-            {" "}
-            Last charged {fmtDate(stats.last_charge_date)}
-            {subscription.next_expected_charge_at && (
-              <> · Next expected {fmtDate(subscription.next_expected_charge_at)}</>
-            )}
-          </div>
+    <div className="space-y-5 md:space-y-6">
+      {/* ─── 1. HEADER (light, overlay-style) ───────────────────────
+          Replaces the heavy black card. Reads as a calm detail surface
+          aligned with the new dashboard aesthetic. */}
+      <div className="rounded-2xl border border-hairline bg-white shadow-soft p-5 md:p-7 animate-fadeUp">
+        <div className="flex flex-wrap items-center gap-2 mb-3">
+          <span className="text-[11px] font-medium uppercase tracking-[0.12em] text-ink-muted">
+            {prettyCategory(subscription.category)}
+          </span>
+          <span className="text-ink-muted/40">·</span>
+          <span className="text-[11px] font-medium uppercase tracking-[0.12em] text-ink-muted">
+            {prettyFrequency(subscription.frequency)}
+          </span>
+          <span className="text-ink-muted/40">·</span>
+          <StatusBadge status={subscription.status} />
+        </div>
+        <h1 className="font-display font-bold text-[26px] md:text-[34px] tracking-[-0.02em] leading-[1.1] text-ink break-words">
+          {subscription.merchant_name}
+        </h1>
+        <div className="mt-4 font-display font-bold tracking-[-0.02em] leading-[1] text-[28px] md:text-[36px] tabular-nums text-ink">
+          {fmtCents(monthly)}
+          <span className="text-[15px] md:text-[17px] font-medium text-ink-muted">
+            /mo
+          </span>
+          <span className="ml-3 text-[13px] md:text-[14px] font-medium text-ink-muted tabular-nums">
+            · {fmtCents(yearly, { withCents: false })}/yr
+          </span>
+        </div>
+        <div className="mt-2 text-[12.5px] md:text-[13px] text-ink-body">
+          Last charged {fmtDate(stats.last_charge_date)}
+          {subscription.next_expected_charge_at && (
+            <> · Next expected {fmtDate(subscription.next_expected_charge_at)}</>
+          )}
         </div>
       </div>
-
-      {/* ─── FEEDBACK CONTROLS ────────────────────────────────────── */}
-      <SubscriptionFeedbackControls
-        subscriptionId={subscription.id}
-        merchantName={subscription.merchant_name}
-        currentAmountCents={subscription.amount_cents}
-        currentFrequency={subscription.frequency}
-      />
 
       {/* ─── 2. STATS GRID ────────────────────────────────────────── */}
       <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4">

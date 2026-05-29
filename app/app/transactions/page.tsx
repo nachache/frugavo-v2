@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { currentUser } from "@clerk/nextjs/server";
 import Link from "next/link";
 import { supabaseAdmin } from "@/lib/supabase";
+import { RescanButton } from "@/components/app/rescan-button";
 
 // /app/transactions — raw transactions view.
 //
@@ -103,14 +104,26 @@ export default async function TransactionsPage({
         </Link>
       </div>
 
-      <span className="text-[13px] font-medium text-brand">Transactions</span>
-      <h1 className="mt-2 font-display text-[32px] md:text-[40px] font-bold tracking-[-0.03em] leading-[1.05] text-ink">
-        Raw activity
-      </h1>
-      <p className="mt-3 text-[14px] md:text-[15px] leading-relaxed text-ink-body">
-        Every transaction Frugavo has pulled from your connected accounts.{" "}
-        {total.toLocaleString("en-US")} total.
-      </p>
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div className="min-w-0">
+          <span className="text-[13px] font-medium text-brand">
+            Transactions
+          </span>
+          <h1 className="mt-2 font-display text-[28px] md:text-[36px] font-bold tracking-[-0.02em] leading-[1.05] text-ink">
+            Raw activity
+          </h1>
+          <p className="mt-2 text-[13.5px] md:text-[14.5px] leading-relaxed text-ink-body">
+            Every transaction Frugavo has pulled from your connected accounts.{" "}
+            {total.toLocaleString("en-US")} total.
+          </p>
+        </div>
+        {/* In-place re-sync — same logo-spin treatment as the dashboard
+            QuickActions, no navigation, refreshes the server tree on
+            settle so the list reflects the new pull. */}
+        <div className="shrink-0">
+          <RescanButton variant="compact" label="Re-sync now" />
+        </div>
+      </div>
 
       {/* Bank filter strip — only renders when there's more than
           one connected bank. Each pill is a Link with the right

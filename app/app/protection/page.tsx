@@ -59,44 +59,58 @@ export default async function ProtectionPage() {
   const s = await buildProtectionSummary(user.id);
 
   return (
-    <section className="container-page py-6 md:py-12 max-w-[900px] space-y-6 md:space-y-8">
+    <section className="container-page py-6 md:py-10 max-w-[900px] space-y-5 md:space-y-6">
       <div>
-        <span className="text-[12px] md:text-[13px] font-medium text-brand">
-          Protection
-        </span>
-        <h1 className="mt-1.5 md:mt-2 font-display text-[30px] sm:text-[36px] md:text-[44px] font-bold tracking-[-0.03em] leading-[1.05] text-ink">
-          What we&apos;ve caught for you
-        </h1>
-        <p className="mt-2 md:mt-3 text-[14px] md:text-[15px] leading-relaxed text-ink-body">
-          Frugavo has been watching your accounts for{" "}
+        <Link
+          href="/app"
+          className="inline-flex items-center gap-1.5 text-[13px] text-ink-muted hover:text-ink transition mb-5"
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <polyline points="15 18 9 12 15 6" />
+          </svg>
+          Back to dashboard
+        </Link>
+        <div className="flex items-center gap-2.5 mb-1">
+          <span className="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-emerald-100 text-emerald-900">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+            </svg>
+          </span>
+          <h1 className="font-display text-[24px] md:text-[28px] font-bold tracking-[-0.01em] text-ink leading-tight">
+            What we&apos;ve caught for you
+          </h1>
+        </div>
+        <p className="ml-[40px] text-[13px] text-ink-body leading-relaxed">
+          Watching for{" "}
           <span className="font-medium text-ink">
             {s.days_protected} day{s.days_protected === 1 ? "" : "s"}
           </span>
-          {s.user_since ? ` (since ${fmtWhen(s.user_since)})` : ""}. Every
-          alert below is a moment where you knew about a charge before it
-          could quietly drain your account.
+          {s.user_since ? ` since ${fmtWhen(s.user_since)}` : ""}.
         </p>
       </div>
 
-      {/* Hero number */}
-      <div className="rounded-2xl border border-hairline bg-surface p-5 md:p-8 animate-fadeUp">
-        <div className="text-[11px] md:text-[12px] font-medium uppercase tracking-[0.12em] text-ink-muted">
+      {/* Hero number — light, aligned with new dash aesthetic */}
+      <div className="rounded-2xl border border-hairline bg-white shadow-soft p-5 md:p-6 animate-fadeUp">
+        <div className="text-[11.5px] font-medium uppercase tracking-[0.08em] text-ink-muted">
           Protected to date
         </div>
-        <div className="mt-2 font-display font-bold tracking-[-0.03em] leading-[1] text-[44px] sm:text-[60px] md:text-[72px] tabular-nums text-brand">
+        <div
+          className="mt-1.5 font-display font-bold tracking-[-0.02em] leading-[1] text-[40px] md:text-[52px] tabular-nums"
+          style={{ color: "#0F6E56" }}
+        >
           {fmtBig(s.dollars_protected_cents)}
         </div>
-        <div className="mt-2 text-[13px] md:text-[14px] text-ink-body">
+        <div className="mt-2 text-[12.5px] md:text-[13px] text-ink-body">
           Annualized from{" "}
           <span className="font-medium text-ink">{s.cancels_count}</span>{" "}
-          cancelled subscription{s.cancels_count === 1 ? "" : "s"} and{" "}
+          cancel{s.cancels_count === 1 ? "" : "s"} and{" "}
           <span className="font-medium text-ink">{s.price_hikes_caught}</span>{" "}
-          price increase{s.price_hikes_caught === 1 ? "" : "s"} we surfaced.
+          price hike{s.price_hikes_caught === 1 ? "" : "s"} we surfaced.
         </div>
       </div>
 
       {/* Stat grid */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <StatCard
           label="Trials caught"
           value={s.trials_stopped}
@@ -120,8 +134,8 @@ export default async function ProtectionPage() {
       </div>
 
       {/* Recent protection feed */}
-      <div className="rounded-2xl border border-hairline bg-surface p-5 md:p-7">
-        <div className="text-[15px] md:text-[16px] font-medium text-ink mb-3">
+      <div className="rounded-2xl border border-hairline bg-white shadow-soft p-5 md:p-6">
+        <div className="text-[13px] font-bold text-ink mb-3">
           Recent protection
         </div>
         {s.recent_protection.length === 0 ? (

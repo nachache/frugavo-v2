@@ -31,6 +31,8 @@ import {
 } from "lucide-react";
 import type { ActionItem } from "@/lib/selectors/dashboard";
 import { MerchantLogo } from "@/components/app/merchant-logo";
+import { CancelModal } from "@/components/app/cancel-modal";
+import type { SubLike } from "@/lib/subscription-math";
 
 type Sub = Pick<
   ActionItem,
@@ -46,10 +48,15 @@ type Sub = Pick<
   | "last_charged_at"
   | "status"
   | "confidence"
+  | "override_type"
 >;
 
 type Props = {
   subs: Sub[];
+  // Subs that have a "negative" override (not_subscription, cancelled,
+  // not_recurring). Rendered in a dimmed group below the live list
+  // with a one-tap "Mark as sub" restore.
+  excluded?: Sub[];
 };
 
 function fmtCategory(c: string): string {
@@ -71,19 +78,27 @@ function fmtDate(iso: string | null): string {
   });
 }
 
-export function SubscriptionsBrowser({ subs: initialSubs }: Props) {
+export function SubscriptionsBrowser({
+  subs: initialSubs,
+  excluded: initialExcluded = [],
+}: Props) {
   const router = useRouter();
   const [subs, setSubs] = useState<Sub[]>(initialSubs);
+  const [excluded, setExcluded] = useState<Sub[]>(initialExcluded);
   const [activeCategory, setActiveCategory] = useState<string | "all">("all");
   const [grouped, setGrouped] = useState(true);
   const [query, setQuery] = useState("");
   const [openSub, setOpenSub] = useState<Sub | null>(null);
+  const [cancelTarget, setCancelTarget] = useState<Sub | null>(null);
 
-  // Refresh local state if the parent re-renders with new data (e.g.
-  // after a router.refresh() following an override write).
+  // Refresh local state when the parent re-renders with new data
+  // (e.g. after a router.refresh() following an override write).
   useEffect(() => {
     setSubs(initialSubs);
   }, [initialSubs]);
+  useEffect(() => {
+    setExcluded(initialExcluded);
+  }, [initialExcluded]);
 
   // Categories + totals for filter chips.
   const categories = useMemo(() => {
@@ -136,9 +151,15 @@ export function SubscriptionsBrowser({ subs: initialSubs }: Props) {
   // marks it as "Not a subscription". The background API call hits
   // /api/feedback and the dashboard re-renders on settle.
   const markNotSub = async (sub: Sub) => {
+    // Optimistic — pull from active list AND push into excluded so
+    // the dimmed group reflects the move instantly.
     setSubs((prev) =>
       prev.filter((s) => s.subscription_id !== sub.subscription_id)
     );
+    setExcluded((prev) => [
+      { ...sub, override_type: "not_subscription" },
+      ...prev,
+    ]);
     setOpenSub(null);
     try {
       await fetch("/api/feedback", {
@@ -150,13 +171,51 @@ export function SubscriptionsBrowser({ subs: initialSubs }: Props) {
         }),
       });
     } catch {
-      // best-effort; the optimistic state will reconcile on next render
+      // optimistic state reconciles on next router.refresh
     }
     router.refresh();
   };
 
+  // Restore — flip an excluded sub back into the active list by
+  // overriding with "confirmed". Optimistically updates locally and
+  // refreshes the server tree so every total syncs.
+  const restoreSub = async (sub: Sub) => {
+    setExcluded((prev) =>
+      prev.filter((s) => s.subscription_id !== sub.subscription_id)
+    );
+    setSubs((prev) => [{ ...sub, override_type: "confirmed" }, ...prev]);
+    try {
+      await fetch("/api/feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          subscription_id: sub.subscription_id,
+          override_type: "confirmed",
+        }),
+      });
+    } catch {
+      // optimistic; reconciles on refresh
+    }
+    router.refresh();
+  };
+
+  // Live total + count derived from the local state so mark/restore
+  // mutations re-render the header immediately. router.refresh()
+  // then reconciles every other server-rendered surface (home card,
+  // calendar, insights, share, charts, etc.).
+  const liveMonthlyCents = subs.reduce((acc, s) => acc + s.monthly_cents, 0);
+
   return (
     <div>
+      {/* ─── Live totals strip ─────────────────────────────── */}
+      <div
+        className="mb-5 text-[13px] text-ink-body tabular-nums ml-[40px]"
+        aria-live="polite"
+      >
+        ${Math.round(liveMonthlyCents / 100).toLocaleString("en-US")}/mo
+        recurring · {subs.length} sub{subs.length === 1 ? "" : "s"}
+      </div>
+
       {/* ─── Search + view toggle ──────────────────────────── */}
       <div className="flex items-center gap-2 mb-4 flex-wrap">
         <div className="relative flex-1 min-w-[200px]">
@@ -267,13 +326,136 @@ export function SubscriptionsBrowser({ subs: initialSubs }: Props) {
         )}
       </div>
 
+      {/* ─── Excluded (dimmed) group ───────────────────────── */}
+      {excluded.length > 0 ? (
+        <ExcludedGroup excluded={excluded} onRestore={restoreSub} />
+      ) : null}
+
       {openSub ? (
         <SubscriptionModal
           sub={openSub}
           onClose={() => setOpenSub(null)}
           onMarkNotSub={() => markNotSub(openSub)}
+          onCancelAssist={(s) => {
+            setOpenSub(null);
+            setCancelTarget(s);
+          }}
         />
       ) : null}
+
+      {cancelTarget ? (
+        <CancelModal
+          sub={toCancelSubLike(cancelTarget)}
+          onClose={() => setCancelTarget(null)}
+          onConfirmed={() => {
+            // Pull from live list and into the muted "excluded" group
+            // immediately so the user sees the move. Server-side
+            // CancelModal posts the cancellation; we then refresh
+            // the server tree so totals reconcile.
+            setSubs((prev) =>
+              prev.filter(
+                (s) => s.subscription_id !== cancelTarget.subscription_id
+              )
+            );
+            setExcluded((prev) => [
+              { ...cancelTarget, override_type: "cancelled" },
+              ...prev,
+            ]);
+            setCancelTarget(null);
+            router.refresh();
+          }}
+        />
+      ) : null}
+    </div>
+  );
+}
+
+// Adapt our ActionItem-shaped Sub into the SubLike contract CancelModal
+// expects. CancelModal only reads id / merchant_name / amount_cents /
+// currency / frequency / last_charged_at / next_expected_charge_at /
+// status, so we hand it those.
+function toCancelSubLike(s: Sub): SubLike {
+  return {
+    id: s.subscription_id,
+    merchant_name: s.merchant_name,
+    amount_cents: s.amount_cents,
+    currency: s.currency,
+    frequency: s.frequency,
+    last_charged_at: s.last_charged_at,
+    next_expected_charge_at: s.next_expected_charge_at,
+    status: s.status,
+  };
+}
+
+// ─── Excluded group (cancelled + not-a-sub) ────────────────────
+
+function excludedLabel(t: string | null | undefined): string {
+  switch (t) {
+    case "cancelled":
+      return "Cancelled";
+    case "not_subscription":
+      return "Not a sub";
+    case "not_recurring":
+      return "Not recurring";
+    default:
+      return "Excluded";
+  }
+}
+
+function ExcludedGroup({
+  excluded,
+  onRestore,
+}: {
+  excluded: Sub[];
+  onRestore: (sub: Sub) => void;
+}) {
+  return (
+    <div className="mt-8 rounded-2xl border border-hairline bg-ink/[0.02] overflow-hidden">
+      <div className="flex items-center justify-between gap-3 px-4 md:px-5 py-3 border-b border-hairline/60">
+        <div className="text-[12.5px] font-bold text-ink-muted">
+          Cancelled & not-a-sub
+          <span className="ml-2 text-[11.5px] font-normal tabular-nums">
+            · {excluded.length}
+          </span>
+        </div>
+        <div className="text-[11px] text-ink-muted">
+          Tap restore to bring one back
+        </div>
+      </div>
+      <ul className="divide-y divide-hairline/60">
+        {excluded.map((s) => (
+          <li key={s.subscription_id} className="opacity-70">
+            <div className="flex items-center gap-3 px-4 md:px-5 py-3">
+              <MerchantLogo
+                name={s.merchant_name}
+                domain={s.domain}
+                size={28}
+                rounded="lg"
+              />
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-1.5">
+                  <div className="text-[13.5px] font-bold text-ink-body truncate">
+                    {s.merchant_name}
+                  </div>
+                  <span className="inline-flex items-center rounded-full bg-ink/[0.06] text-ink-muted px-1.5 h-4 text-[9.5px] font-medium uppercase tracking-[0.06em] shrink-0">
+                    {excludedLabel(s.override_type)}
+                  </span>
+                </div>
+                <div className="text-[11px] text-ink-muted truncate">
+                  {fmtCategory(s.category)} · was {fmtCents(s.monthly_cents)}/mo
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => onRestore(s)}
+                className="inline-flex items-center h-8 px-3 rounded-full border border-hairline bg-white text-[11.5px] font-medium text-ink hover:bg-ink/[0.04] transition shrink-0"
+              >
+                Mark as sub
+              </button>
+            </div>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
@@ -374,10 +556,12 @@ function SubscriptionModal({
   sub,
   onClose,
   onMarkNotSub,
+  onCancelAssist,
 }: {
   sub: Sub;
   onClose: () => void;
   onMarkNotSub: () => void;
+  onCancelAssist: (sub: Sub) => void;
 }) {
   const [mounted, setMounted] = useState(false);
   const [confirmNotSub, setConfirmNotSub] = useState(false);
@@ -508,15 +692,15 @@ function SubscriptionModal({
               link + step-by-step for the trickier merchants.
             </p>
             <div className="mt-3 flex items-center gap-2 flex-wrap">
-              <Link
-                href={`/app/subscriptions/${sub.subscription_id}?cancel=1`}
+              <button
+                type="button"
+                onClick={() => onCancelAssist(sub)}
                 className="inline-flex items-center gap-1.5 h-9 px-4 rounded-full text-[12.5px] font-medium text-white"
                 style={{ background: "#0F6E56" }}
-                onClick={onClose}
               >
                 <Scissors size={12} strokeWidth={2} />
                 Start cancel assist
-              </Link>
+              </button>
               <Link
                 href={`/app/subscriptions/${sub.subscription_id}`}
                 className="inline-flex items-center gap-1.5 h-9 px-3 rounded-full border border-hairline text-[12px] font-medium text-ink hover:bg-ink/[0.04] transition"

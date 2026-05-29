@@ -35,11 +35,12 @@ import {
   ArrowRight,
   Eye,
   ListChecks,
-  RefreshCw,
   Plus,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import type { Personality } from "@/lib/personality";
+import { HeroLoginEmojiClient } from "@/components/app/hero-login-emoji";
+import { RescanButton } from "@/components/app/rescan-button";
 
 // ─── shared helpers ──────────────────────────────────────────────
 
@@ -49,51 +50,85 @@ function fmtRound(c: number): string {
 
 // ─── Hero band ───────────────────────────────────────────────────
 
-// Curved-bottom green band that bleeds to the very top of the viewport
-// behind the sticky layout header. Page starts in green and resolves
-// into white as the user scrolls.
+// Slack-style immersive welcome band. Big curve at the bottom, gradient
+// green (not flat), generous vertical air, centered hierarchy. No
+// charts, metrics, cards, breakdowns or 3-dot menu lives here — this
+// surface only sets atmosphere and tells the user "we've been working
+// for you while you were away." Real data lives below in the floating
+// LIVE pill and the switchboard cards.
+//
+// Visible content (locked):
+//   • "Welcome back {firstName}, {sessionEmoji}"   — large, centered
+//   • "We've been watching your subscriptions."    — calm sub
+//   • "{N} things deserve your attention today."   — dynamic intel
+//
+// {sessionEmoji} resolves client-side via HeroLoginEmoji to one of
+// dove / coffee, pinned for the entire browser session.
 export function HomeHeroBand({
   monitoringCharges,
+  findingsCount,
+  firstName,
 }: {
   monitoringCharges: number;
+  findingsCount: number;
+  firstName: string | null;
 }) {
+  const attentionLine =
+    findingsCount > 0
+      ? `${findingsCount} thing${findingsCount === 1 ? "" : "s"} deserve${findingsCount === 1 ? "s" : ""} your attention today.`
+      : "Nothing needs your attention right now.";
+  const nameGreet = firstName ? `Welcome back, ${firstName}` : "Welcome back";
+
   return (
     <div
-      className="relative"
+      className="relative overflow-hidden"
       style={{
-        background: "#0F6E56",
-        // Pull up under the layout's sticky 64px header so the page
-        // starts in green. The container header has a translucent
-        // canvas backdrop, so a slight tint shows through.
+        // Soft gradient — not flat. Top is a touch lighter so the hero
+        // catches the light, bottom deepens for grounding.
+        background:
+          "radial-gradient(120% 80% at 50% 0%, #11876A 0%, #0F6E56 55%, #0B5C48 100%)",
         marginTop: "-64px",
         paddingTop: "calc(64px + env(safe-area-inset-top))",
-        // Convex curve at the bottom — generous (44px / ~50% feel)
-        // so it reads as a soft wave not a hard shape.
-        borderBottomLeftRadius: "44px",
-        borderBottomRightRadius: "44px",
+        // Big editorial curve. Larger on desktop where there's room.
+        borderBottomLeftRadius: "56px",
+        borderBottomRightRadius: "56px",
       }}
     >
-      <div className="container-page max-w-[1200px] pt-12 md:pt-16 pb-16 md:pb-20 text-center">
-        {/* Rotating emoji — picks a new one per render so the hero
-            feels alive without ever feeling gamified. The set is
-            calm, ~7 picks; we pseudo-random per minute so the same
-            visit doesn't flicker. */}
-        <HeroEmoji />
-
-        <h1 className="mt-3 font-display text-[28px] md:text-[40px] font-bold leading-[1.1] tracking-[-0.02em] text-white max-w-[680px] mx-auto">
-          Watching your subscriptions
+      {/* Decorative bloom — soft, off-center, almost imperceptible.
+          Adds the "atmosphere" without competing with the type. */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0"
+        style={{
+          background:
+            "radial-gradient(40% 28% at 18% 18%, rgba(255,255,255,0.10) 0%, transparent 70%), radial-gradient(36% 26% at 82% 12%, rgba(255,255,255,0.06) 0%, transparent 70%)",
+        }}
+      />
+      <div className="relative container-page max-w-[860px] pt-16 md:pt-24 pb-24 md:pb-32 text-center">
+        <h1 className="font-display text-[34px] md:text-[52px] font-bold leading-[1.05] tracking-[-0.02em] text-white max-w-[760px] mx-auto">
+          {nameGreet}{" "}
+          <HeroLoginEmoji />
         </h1>
-        <p className="mt-3 text-[15px] md:text-[16px] text-white/80 leading-relaxed max-w-[560px] mx-auto">
-          Everything&apos;s here — tap any card to go deeper.
+        <p className="mt-5 md:mt-6 text-[17px] md:text-[19px] text-white/85 leading-relaxed max-w-[560px] mx-auto">
+          We&apos;ve been watching your subscriptions.
+        </p>
+        <p className="mt-2.5 text-[14px] md:text-[15px] text-white/65 leading-relaxed max-w-[520px] mx-auto">
+          {attentionLine}
         </p>
       </div>
-      {/* Decorative monitoring count tucked into bottom-right; mirrors
-          the LIVE strip's content so the band has its own weight. */}
       <span className="sr-only">
         Monitoring {monitoringCharges} recurring charges
       </span>
     </div>
   );
+}
+
+// HeroLoginEmoji — client component. Picks dove OR coffee once per
+// browser session (sessionStorage), pinned across all renders in
+// that session. Server-rendered placeholder = dove so SSR doesn't
+// flash a different glyph before hydration.
+function HeroLoginEmoji() {
+  return <HeroLoginEmojiClient />;
 }
 
 // ─── LIVE status strip ──────────────────────────────────────────
@@ -475,23 +510,8 @@ export function ShareCard() {
 
 // ─── Hero emoji ─────────────────────────────────────────────────
 
-// Rotates through a small calm set, picking based on the current
-// minute so the visit doesn't flicker but a return reload changes
-// it. Renders inline above the hero h1.
-const HERO_EMOJIS = ["👋", "✨", "🌿", "🧭", "☕️", "📬", "🕊️"];
-function HeroEmoji() {
-  // Server-rendered with a per-minute bucket; deterministic during
-  // a single render and naturally varies across visits.
-  const idx = Math.floor(Date.now() / 60_000) % HERO_EMOJIS.length;
-  return (
-    <span
-      className="inline-block text-[28px] md:text-[32px] leading-none"
-      aria-hidden="true"
-    >
-      {HERO_EMOJIS[idx]}
-    </span>
-  );
-}
+// Hero emoji is owned by HeroLoginEmojiClient (client component) so
+// the pick can be pinned to sessionStorage across renders.
 
 // ─── Quick actions row ──────────────────────────────────────────
 
@@ -512,12 +532,7 @@ export function QuickActionsRow() {
         label="All transactions"
         hint="See every charge we read"
       />
-      <QuickAction
-        href="/app/scanning"
-        icon={RefreshCw}
-        label="Re-scan now"
-        hint="Pull the latest from your banks"
-      />
+      <RescanButton variant="row" />
       <QuickAction
         href="/app/settings"
         icon={Plus}

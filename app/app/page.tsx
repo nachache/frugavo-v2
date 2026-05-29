@@ -8,6 +8,8 @@ import { FounderFeedbackChip } from "@/components/app/founder-feedback-chip";
 import { AppIntro } from "@/components/app/app-intro";
 import { InstallFrugavoRow } from "@/components/app/install-frugavo-row";
 import { ProtectionAlertCard } from "@/components/app/protection-alert-card";
+import { ScanConfirmOverlay, type ConfirmCandidate } from "@/components/app/scan-confirm-overlay";
+import { loadOpenDoubts } from "@/lib/doubt/load";
 import { BillingStatusBanner } from "@/components/app/billing-status-banner";
 import { buildWatchdogDigest } from "@/lib/watchdog/digest";
 import { WatchdogOverlay } from "@/components/app/watchdog-overlay";
@@ -172,6 +174,26 @@ export default async function AppHome() {
   // Daily watchdog overlay — null when nothing notable accrued.
   const watchdogDigest = await buildWatchdogDigest(user.id);
 
+  // Post-scan confirmation candidates. We pull every OPEN doubt and
+  // turn each into a single yes/no row in the confirm overlay. Items
+  // the user has already decided on (via prior overlay submissions or
+  // legacy decisions in user_overrides) were resolved at write time
+  // and no longer appear in this list — that's how we preserve old
+  // "not a subscription" decisions through the migration.
+  const openDoubts = await loadOpenDoubts(user.id, {
+    limit: 20,
+    surface: "dashboard_module",
+  });
+  const confirmCandidates: ConfirmCandidate[] = openDoubts.map((d) => ({
+    doubt_id: d.id,
+    subscription_id: d.subscription_id,
+    merchant_name: d.display.merchant_name,
+    amount_cents: d.display.amount_cents,
+    frequency: d.display.frequency,
+    category: d.display.category,
+    confidence: d.confidence,
+  }));
+
   // Dunning banner for grace_period / cancelled_active / past_due.
   const bannerVariant:
     | "grace_period"
@@ -272,11 +294,25 @@ export default async function AppHome() {
       />
       {watchdogDigest && <WatchdogOverlay digest={watchdogDigest} />}
 
+      {/* Post-scan confirmation — auto-opens once per scan when there
+          are detections that need a yes/no. Single review workflow
+          across first scan + every re-scan. Writes propagate through
+          user_overrides; on save we router.refresh() so every total /
+          chart / share card reflects the new classifications. */}
+      <ScanConfirmOverlay
+        candidates={confirmCandidates}
+        scanId={latestScanFinishedAt}
+      />
+
       {/* BillingStatusBanner — dunning. Sticky at top of content. */}
       {bannerVariant && <BillingStatusBanner variant={bannerVariant} />}
 
       {/* ─── Hero band — bleeds under sticky header ─────────── */}
-      <HomeHeroBand monitoringCharges={monitoringCharges} />
+      <HomeHeroBand
+        monitoringCharges={monitoringCharges}
+        findingsCount={findings.length}
+        firstName={user.firstName ?? null}
+      />
 
       {/* ─── LIVE status strip — sticky, overlaps hero ──────── */}
       <HomeLiveStatusStrip
@@ -315,15 +351,15 @@ export default async function AppHome() {
         <div>
           <MoneySectionHeader />
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <RenewalsCard
-              upcomingCount={upcomingRenewals.length}
-              estimatedTotalCents={renewalsTotalCents}
-              barTicks={barTicks}
-            />
             <SpendingCard
               monthlyCents={monthlySubCents}
               subCount={monthlySubCount}
               conclusion={spendingConclusion}
+            />
+            <RenewalsCard
+              upcomingCount={upcomingRenewals.length}
+              estimatedTotalCents={renewalsTotalCents}
+              barTicks={barTicks}
             />
           </div>
         </div>

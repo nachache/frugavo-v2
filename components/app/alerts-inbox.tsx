@@ -1,10 +1,20 @@
 "use client";
 
-// Full-page alerts inbox with three tabs (Active / Acknowledged /
-// Dismissed) and the same row UX as the dashboard alerts card.
+// Full-page alerts inbox.
+//
+// PASS 2 rebuild (task 114):
+//   • Tab strip uses short labels on mobile ("Live", "Read", "Hidden")
+//     and full labels on desktop — no horizontal scroll either way.
+//   • Clicking a row opens an explanation modal (no navigation) with
+//     a clear "Mark as read" CTA. Acknowledge fires here; the row
+//     animates into the Read tab.
+//   • Match the new dashboard aesthetic — bold titles, shadow-soft,
+//     calmer empty states.
 
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
+import { X, ExternalLink, CheckCircle2, EyeOff } from "lucide-react";
 import { MerchantLogo } from "./merchant-logo";
 
 type AlertRow = {
@@ -40,6 +50,25 @@ const TYPE_LABEL: Record<string, string> = {
   duplicate_subscription: "Duplicate subscription",
 };
 
+const TYPE_EXPLANATION: Record<string, string> = {
+  new_subscription:
+    "We spotted a recurring charge we hadn't seen before — likely a new sub.",
+  price_increase:
+    "This subscription's charge amount went up recently. Worth confirming.",
+  renewal_upcoming:
+    "A regular renewal is about to hit. You've got time to keep or cancel.",
+  dormant_resumed:
+    "A charge resumed on a sub that was quiet for a while.",
+  high_charge_amount:
+    "This charge is notably higher than the usual amount for this merchant.",
+  trial_converting:
+    "A free trial is about to convert to a paid charge.",
+  missing_renewal:
+    "An expected renewal didn't arrive on time — could be cancelled or shifted.",
+  duplicate_subscription:
+    "Looks like you might be paying for the same thing twice.",
+};
+
 function fmtWhen(iso: string): string {
   return new Date(iso).toLocaleDateString("en-US", {
     month: "short",
@@ -52,6 +81,7 @@ export function AlertsInbox({ initial }: { initial: AlertRow[] }) {
   const [alerts, setAlerts] = useState<AlertRow[]>(initial);
   const [tab, setTab] = useState<Tab>("active");
   const [resolving, setResolving] = useState<Set<string>>(new Set());
+  const [openAlert, setOpenAlert] = useState<AlertRow | null>(null);
   const [, startTransition] = useTransition();
 
   const counts = useMemo(
@@ -78,11 +108,10 @@ export function AlertsInbox({ initial }: { initial: AlertRow[] }) {
         if (!j.ok) return;
         setAlerts((prev) =>
           prev.map((a) =>
-            a.id === alertId
-              ? { ...a, status: j.alert.status, ...j.alert }
-              : a
+            a.id === alertId ? { ...a, status: j.alert.status, ...j.alert } : a
           )
         );
+        setOpenAlert(null);
       } finally {
         setResolving((prev) => {
           const next = new Set(prev);
@@ -94,36 +123,65 @@ export function AlertsInbox({ initial }: { initial: AlertRow[] }) {
   }
 
   return (
-    <div className="rounded-2xl border border-hairline bg-surface p-5 md:p-7">
-      <div className="flex items-center gap-1 -mb-px overflow-x-auto border-b border-hairline">
-        <TabBtn active={tab === "active"} onClick={() => setTab("active")} label="Active" count={counts.active} />
-        <TabBtn active={tab === "acknowledged"} onClick={() => setTab("acknowledged")} label="Acknowledged" count={counts.acknowledged} />
-        <TabBtn active={tab === "dismissed"} onClick={() => setTab("dismissed")} label="Dismissed" count={counts.dismissed} />
+    <div className="rounded-2xl border border-hairline bg-white shadow-soft p-4 md:p-6">
+      {/* Tabs — no horizontal scrolling. Mobile labels are short. */}
+      <div className="grid grid-cols-3 gap-1 p-1 rounded-full bg-ink/[0.04] border border-hairline">
+        <TabBtn
+          active={tab === "active"}
+          onClick={() => setTab("active")}
+          mobile="Live"
+          desktop="Active"
+          count={counts.active}
+        />
+        <TabBtn
+          active={tab === "acknowledged"}
+          onClick={() => setTab("acknowledged")}
+          mobile="Read"
+          desktop="Read"
+          count={counts.acknowledged}
+        />
+        <TabBtn
+          active={tab === "dismissed"}
+          onClick={() => setTab("dismissed")}
+          mobile="Hidden"
+          desktop="Hidden"
+          count={counts.dismissed}
+        />
       </div>
 
       <div className="mt-4">
         {visible.length === 0 ? (
-          <div className="py-10 text-center text-[13px] text-ink-muted">
+          <div className="py-12 text-center text-[13px] text-ink-muted">
             {tab === "active"
-              ? "All caught up. We'll let you know when something needs your attention."
+              ? "All caught up. We'll ping you when something changes."
               : tab === "acknowledged"
-                ? "Nothing acknowledged yet."
-                : "Nothing dismissed yet."}
+                ? "Nothing read yet."
+                : "Nothing hidden yet."}
           </div>
         ) : (
-          <div className="divide-y divide-hairline">
+          <ul className="divide-y divide-hairline/60">
             {visible.map((a) => (
-              <Row
-                key={a.id}
-                alert={a}
-                disabled={resolving.has(a.id)}
-                onAck={() => act(a.id, "acknowledge")}
-                onDismiss={() => act(a.id, "dismiss")}
-              />
+              <li key={a.id}>
+                <Row
+                  alert={a}
+                  disabled={resolving.has(a.id)}
+                  onOpen={() => setOpenAlert(a)}
+                />
+              </li>
             ))}
-          </div>
+          </ul>
         )}
       </div>
+
+      {openAlert ? (
+        <AlertModal
+          alert={openAlert}
+          disabled={resolving.has(openAlert.id)}
+          onClose={() => setOpenAlert(null)}
+          onMarkRead={() => act(openAlert.id, "acknowledge")}
+          onHide={() => act(openAlert.id, "dismiss")}
+        />
+      ) : null}
     </div>
   );
 }
@@ -131,12 +189,14 @@ export function AlertsInbox({ initial }: { initial: AlertRow[] }) {
 function TabBtn({
   active,
   onClick,
-  label,
+  mobile,
+  desktop,
   count,
 }: {
   active: boolean;
   onClick: () => void;
-  label: string;
+  mobile: string;
+  desktop: string;
   count: number;
 }) {
   return (
@@ -144,17 +204,18 @@ function TabBtn({
       type="button"
       onClick={onClick}
       className={[
-        "relative h-10 px-3 md:px-4 border-b-2 inline-flex items-center gap-2 text-[13px] md:text-[14px] font-medium transition whitespace-nowrap",
+        "h-9 rounded-full inline-flex items-center justify-center gap-1.5 text-[12px] md:text-[13px] font-medium transition tabular-nums",
         active
-          ? "border-ink text-ink"
-          : "border-transparent text-ink-muted hover:text-ink",
+          ? "bg-white text-ink shadow-soft"
+          : "text-ink-muted hover:text-ink",
       ].join(" ")}
     >
-      {label}
+      <span className="md:hidden">{mobile}</span>
+      <span className="hidden md:inline">{desktop}</span>
       <span
         className={[
-          "inline-flex items-center justify-center min-w-[20px] h-5 rounded-full px-1.5 text-[11px] tabular-nums",
-          active ? "bg-ink text-canvas" : "bg-ink/5 text-ink-muted",
+          "inline-flex items-center justify-center min-w-[18px] h-4 rounded-full px-1 text-[10px]",
+          active ? "bg-ink/[0.06] text-ink" : "bg-ink/[0.04] text-ink-muted",
         ].join(" ")}
       >
         {count}
@@ -166,95 +227,188 @@ function TabBtn({
 function Row({
   alert,
   disabled,
-  onAck,
-  onDismiss,
+  onOpen,
 }: {
   alert: AlertRow;
   disabled: boolean;
-  onAck: () => void;
-  onDismiss: () => void;
+  onOpen: () => void;
 }) {
   const headline =
     (alert.details.headline as string | undefined) ?? alert.alert_type;
   const subLine = (alert.details.sub_line as string | undefined) ?? "";
-
-  const inner = (
-    <div className="flex items-center gap-3 md:gap-4 min-w-0 flex-1">
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      disabled={disabled}
+      className={[
+        "w-full text-left flex items-center gap-3 py-3.5 px-2 -mx-2 rounded-xl hover:bg-canvas/40 transition",
+        disabled ? "opacity-60" : "",
+      ].join(" ")}
+    >
       <span
         className={`inline-block h-2 w-2 rounded-full shrink-0 ${SEV_DOT[alert.severity] ?? "bg-ink-muted"}`}
+        aria-hidden="true"
       />
       <MerchantLogo
         name={alert.merchant_name ?? "?"}
         domain={null}
-        size={32}
+        size={30}
+        rounded="lg"
       />
       <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2 flex-wrap">
-          <div className="text-[14px] md:text-[15px] font-medium text-ink truncate">
-            {headline}
-          </div>
-          <span className="text-[10px] font-medium uppercase tracking-[0.1em] text-ink-muted shrink-0">
+        <div className="text-[13.5px] font-bold text-ink truncate">
+          {headline}
+        </div>
+        <div className="mt-0.5 text-[11.5px] text-ink-muted truncate">
+          <span className="uppercase tracking-[0.06em]">
             {TYPE_LABEL[alert.alert_type] ?? alert.alert_type}
           </span>
-        </div>
-        {subLine && (
-          <div className="mt-0.5 text-[12.5px] text-ink-body">{subLine}</div>
-        )}
-        <div className="mt-0.5 text-[11px] text-ink-muted">
-          {fmtWhen(alert.created_at)}
+          {subLine ? <> · {subLine}</> : null}
         </div>
       </div>
-    </div>
+      <span className="text-[10.5px] text-ink-muted tabular-nums shrink-0">
+        {fmtWhen(alert.created_at)}
+      </span>
+    </button>
   );
+}
 
-  return (
-    <div className={[
-      "flex items-center gap-2 py-3 md:py-4 transition",
-      disabled ? "opacity-50" : "",
-    ].join(" ")}>
-      {alert.subscription_id ? (
-        <Link
-          href={`/app/subscriptions/${alert.subscription_id}`}
-          className="flex-1 min-w-0 hover:bg-ink/[0.02] -mx-2 px-2 py-1 rounded-lg transition"
-        >
-          {inner}
-        </Link>
-      ) : (
-        <div className="flex-1 min-w-0">{inner}</div>
-      )}
+function AlertModal({
+  alert,
+  disabled,
+  onClose,
+  onMarkRead,
+  onHide,
+}: {
+  alert: AlertRow;
+  disabled: boolean;
+  onClose: () => void;
+  onMarkRead: () => void;
+  onHide: () => void;
+}) {
+  const [mounted, setMounted] = useState(false);
+  const dialogRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    dialogRef.current?.focus();
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      document.body.style.overflow = prev;
+    };
+  }, [onClose]);
+  if (!mounted) return null;
 
-      <div className="flex items-center gap-1 shrink-0">
-        {alert.status === "active" && (
-          <>
-            <button
-              type="button"
-              onClick={onAck}
-              disabled={disabled}
-              className="inline-flex items-center h-8 px-3 rounded-full text-[12px] font-medium text-ink hover:bg-ink/[0.04] transition disabled:opacity-50"
-            >
-              Got it
-            </button>
-            <button
-              type="button"
-              onClick={onDismiss}
-              disabled={disabled}
-              className="inline-flex items-center h-8 px-3 rounded-full text-[12px] font-medium text-ink-muted hover:text-ink hover:bg-ink/[0.04] transition disabled:opacity-50"
-            >
-              Dismiss
-            </button>
-          </>
-        )}
-        {alert.status === "acknowledged" && (
+  const headline =
+    (alert.details.headline as string | undefined) ?? alert.alert_type;
+  const subLine = (alert.details.sub_line as string | undefined) ?? "";
+  const explanation =
+    TYPE_EXPLANATION[alert.alert_type] ??
+    "Frugavo flagged this charge for your attention.";
+
+  return createPortal(
+    <div
+      className="fixed inset-0 z-[100] flex items-end md:items-center justify-center p-0 md:p-6"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="alert-modal-title"
+    >
+      <button
+        type="button"
+        onClick={onClose}
+        aria-label="Close"
+        className="absolute inset-0 bg-ink/40 backdrop-blur-sm"
+      />
+      <div
+        ref={dialogRef}
+        tabIndex={-1}
+        className="relative w-full md:max-w-[480px] max-h-[90vh] overflow-y-auto rounded-t-3xl md:rounded-3xl bg-white shadow-float border border-hairline outline-none"
+      >
+        <div className="sticky top-0 z-10 bg-white/95 backdrop-blur border-b border-hairline px-5 md:px-7 py-4 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <MerchantLogo
+              name={alert.merchant_name ?? "?"}
+              domain={null}
+              size={32}
+              rounded="lg"
+            />
+            <div className="min-w-0">
+              <h2
+                id="alert-modal-title"
+                className="font-display text-[16px] md:text-[17px] font-bold text-ink leading-tight truncate"
+              >
+                {headline}
+              </h2>
+              <div className="text-[11px] text-ink-muted uppercase tracking-[0.06em] truncate">
+                {TYPE_LABEL[alert.alert_type] ?? alert.alert_type}
+              </div>
+            </div>
+          </div>
           <button
             type="button"
-            onClick={onDismiss}
-            disabled={disabled}
-            className="inline-flex items-center h-8 px-3 rounded-full text-[12px] font-medium text-ink-muted hover:text-ink hover:bg-ink/[0.04] transition disabled:opacity-50"
+            onClick={onClose}
+            aria-label="Close"
+            className="inline-flex items-center justify-center w-9 h-9 rounded-full hover:bg-ink/[0.05] text-ink-muted hover:text-ink transition shrink-0"
           >
-            Archive
+            <X size={16} strokeWidth={2} />
           </button>
-        )}
+        </div>
+
+        <div className="px-5 md:px-7 py-5 md:py-6 space-y-4">
+          <p className="text-[13.5px] text-ink-body leading-relaxed">
+            {explanation}
+          </p>
+          {subLine ? (
+            <div className="rounded-xl border border-hairline bg-canvas/40 px-4 py-3 text-[13px] text-ink">
+              {subLine}
+            </div>
+          ) : null}
+          <div className="text-[12px] text-ink-muted">
+            Flagged {fmtWhen(alert.created_at)}
+          </div>
+          {alert.subscription_id ? (
+            <Link
+              href={`/app/subscriptions/${alert.subscription_id}`}
+              onClick={onClose}
+              className="inline-flex items-center gap-1.5 text-[12.5px] font-medium text-emerald-900 hover:underline"
+            >
+              View subscription
+              <ExternalLink size={11} strokeWidth={2} />
+            </Link>
+          ) : null}
+        </div>
+
+        <div className="sticky bottom-0 bg-white/95 backdrop-blur border-t border-hairline px-5 md:px-7 py-3 flex items-center justify-between gap-2">
+          <button
+            type="button"
+            onClick={onHide}
+            disabled={disabled || alert.status !== "active"}
+            className="inline-flex items-center gap-1.5 h-10 px-3 rounded-full text-[12.5px] font-medium text-ink-muted hover:text-ink hover:bg-ink/[0.04] transition disabled:opacity-50"
+          >
+            <EyeOff size={12} strokeWidth={2} />
+            Hide
+          </button>
+          <button
+            type="button"
+            onClick={onMarkRead}
+            disabled={disabled || alert.status === "acknowledged"}
+            className="inline-flex items-center gap-1.5 h-10 px-5 rounded-full text-[13px] font-medium text-white disabled:opacity-60"
+            style={{ background: "#0F6E56" }}
+          >
+            <CheckCircle2 size={13} strokeWidth={2} />
+            {alert.status === "acknowledged" ? "Read" : "Mark as read"}
+          </button>
+        </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

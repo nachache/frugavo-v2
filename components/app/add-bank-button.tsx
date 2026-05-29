@@ -71,21 +71,19 @@ export function AddBankButton({ isPaid }: Props) {
 
   return (
     <div className="mt-5 pt-4 border-t border-hairline/60">
-      <div className="flex items-start justify-between gap-3 flex-wrap">
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
         <div className="min-w-0 flex-1">
           <div className="text-[14px] font-medium text-ink">
             Add another bank or card
           </div>
           <p className="mt-0.5 text-[12.5px] text-ink-muted leading-snug">
-            Connecting your credit card issuer alongside your bank
-            usually surfaces 2–3 subscriptions Frugavo can&apos;t see
-            from one account alone.
+            Adding your credit card alongside your bank usually surfaces
+            2–3 extra subs.
           </p>
         </div>
-        <ConnectBankButton
-          variant="compact"
-          compactLabel="Connect another account"
-        />
+        <div className="sm:shrink-0">
+          <ConnectBankButton variant="compact" compactLabel="Add bank" />
+        </div>
       </div>
     </div>
   );

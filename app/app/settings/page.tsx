@@ -54,8 +54,7 @@ export default async function SettingsPage() {
         </svg>
         Back to dashboard
       </Link>
-      <span className="text-[13px] font-medium text-brand">Settings</span>
-      <h1 className="mt-2 font-display text-[36px] md:text-[44px] font-bold tracking-[-0.03em] leading-[1.05] text-ink">
+      <h1 className="font-display text-[28px] md:text-[36px] font-bold tracking-[-0.02em] leading-[1.05] text-ink">
         Your account
       </h1>
 

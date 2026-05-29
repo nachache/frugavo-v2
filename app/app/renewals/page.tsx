@@ -44,15 +44,36 @@ export default async function RenewalsPage({
   if (!user) redirect("/sign-in");
 
   const data = await buildDashboardData(user.id);
-  const upcoming: ActionItem[] = data
+  // Pull every active sub (NOT just those that already have a next_-
+  // expected_charge_at). For subs without one, we estimate from
+  // last_charged_at + cadence so the calendar shows a full picture.
+  // Estimated dates carry isApproximate=true so the UI can mark them.
+  const allSubs: ActionItem[] = data
     ? [...data.actions.worth_a_look, ...data.actions.watching].filter(
         (a) =>
-          a.next_expected_charge_at &&
           a.override_type !== "cancelled" &&
           a.override_type !== "not_subscription" &&
           a.override_type !== "not_recurring"
       )
     : [];
+  const upcoming: ActionItem[] = allSubs.map((a) => {
+    if (a.next_expected_charge_at) return a;
+    const est = estimateNextChargeIso(a.last_charged_at, a.frequency);
+    if (!est) return a;
+    // Return a shallow-cloned ActionItem with the estimated date.
+    return { ...a, next_expected_charge_at: est };
+  });
+  // Set of estimated subscription ids so the UI can render an
+  // "estimated" tag next to those rows.
+  const approximateIds = new Set<string>(
+    allSubs
+      .filter(
+        (a) =>
+          !a.next_expected_charge_at &&
+          estimateNextChargeIso(a.last_charged_at, a.frequency) !== null
+      )
+      .map((a) => a.subscription_id)
+  );
 
   // Parse the month from the URL or default to current.
   const ym = parseYearMonth(searchParams?.ym);
@@ -118,6 +139,7 @@ export default async function RenewalsPage({
           month={ym.month}
           upcoming={upcoming}
           initialSelectedIso={selectedDay}
+          approximateIds={approximateIds}
         />
       </div>
     </section>
@@ -125,6 +147,59 @@ export default async function RenewalsPage({
 }
 
 // ─── helpers ────────────────────────────────────────────────────
+
+// Estimate the next charge ISO date from last_charged_at + cadence.
+// Returns null when we don't have enough signal (no last charge, or
+// frequency is "unknown"). The estimate iterates one cadence at a
+// time from last_charged_at until the projected date is in the
+// future, so even subs that haven't been charged in months get a
+// future estimate the user can plan around.
+function estimateNextChargeIso(
+  lastChargedAt: string | null,
+  frequency: string
+): string | null {
+  if (!lastChargedAt) return null;
+  const cadenceDays = cadenceDaysFor(frequency);
+  if (!cadenceDays) return null;
+  const last = new Date(lastChargedAt);
+  if (Number.isNaN(last.getTime())) return null;
+  const out = new Date(last);
+  const now = new Date();
+  // Walk forward by cadence until we land in the future.
+  while (out.getTime() <= now.getTime()) {
+    out.setDate(out.getDate() + cadenceDays);
+  }
+  const y = out.getFullYear();
+  const m = String(out.getMonth() + 1).padStart(2, "0");
+  const d = String(out.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
+function cadenceDaysFor(frequency: string): number | null {
+  switch (frequency) {
+    case "weekly":
+      return 7;
+    case "biweekly":
+    case "bi_weekly":
+      return 14;
+    case "monthly":
+      return 30;
+    case "bimonthly":
+    case "bi_monthly":
+      return 60;
+    case "quarterly":
+      return 91;
+    case "semiannually":
+    case "semi_annually":
+      return 182;
+    case "annually":
+    case "yearly":
+      return 365;
+    default:
+      return null;
+  }
+}
+
 
 function parseYearMonth(s: string | undefined): { year: number; month: number } {
   if (s) {
