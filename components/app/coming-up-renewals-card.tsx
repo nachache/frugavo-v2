@@ -69,7 +69,7 @@ export function ComingUpRenewalsCard({
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="group flex w-full h-full flex-col text-left rounded-2xl border border-hairline bg-white shadow-soft p-5 md:p-6 transition-all hover:bg-canvas/40 hover:shadow-float min-h-[176px]"
+        className="group flex w-full max-w-full h-full flex-col text-left rounded-2xl border border-hairline bg-white shadow-soft p-5 md:p-6 transition-all hover:bg-canvas/40 hover:shadow-float min-h-[176px]"
       >
         <div className="flex items-center gap-2">
           <span

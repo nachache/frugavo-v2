@@ -292,7 +292,7 @@ export function FeaturedNoticedCard({
   return (
     <Link
       href="/app/noticed"
-      className="block h-full rounded-2xl border border-amber-200 bg-amber-50 shadow-soft p-5 md:p-6 transition-colors hover:bg-amber-100/60"
+      className="block w-full h-full rounded-2xl border border-amber-200 bg-amber-50 shadow-soft p-5 md:p-6 transition-colors hover:bg-amber-100/60"
     >
       <CardBadge icon={Eye} label="Needs a look" tone="amber" />
       <h3 className="mt-3 font-display text-[20px] md:text-[22px] font-bold tracking-[-0.01em] text-ink leading-snug">

@@ -365,11 +365,12 @@ export default async function AppHome() {
             element. */}
         <div>
           <NoticedSectionHeader count={findings.length} />
-          {/* 60/40 split — Needs a look gets a bit more room because
-              the finding headlines are denser. Same gap-4 as the row
-              below so horizontal rhythm is identical. */}
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-stretch">
-            <div className="md:col-span-3 flex">
+          {/* Strict 60/40 split — grid-cols-[3fr_2fr] enforces the
+              proportion regardless of content size. min-w-0 on the
+              wrappers prevents children from blowing out their cell
+              when text is long. */}
+          <div className="grid grid-cols-1 md:grid-cols-[3fr_2fr] gap-4 items-stretch">
+            <div className="min-w-0 flex">
               {featuredFinding ? (
                 <FeaturedNoticedCard
                   totalFindings={findings.length}
@@ -388,7 +389,7 @@ export default async function AppHome() {
                 </div>
               )}
             </div>
-            <div className="md:col-span-2 flex">
+            <div className="min-w-0 flex">
               <ComingUpRenewalsCard upcoming={upcomingRenewalsForCard} />
             </div>
           </div>
