@@ -54,12 +54,10 @@ function fmtRound(c: number): string {
 // LIVE pill and the switchboard cards.
 //
 // Visible content (locked):
-//   • "Welcome back {firstName}, {sessionEmoji}"   — large, centered
+//   • Large waving-hand (👋) above the headline
+//   • "Welcome back, {firstName}"                  — large, centered
 //   • "We've been watching your subscriptions."    — calm sub
 //   • "{N} things deserve your attention today."   — dynamic intel
-//
-// {sessionEmoji} resolves client-side via HeroLoginEmoji to one of
-// dove / coffee, pinned for the entire browser session.
 export function HomeHeroBand({
   monitoringCharges,
   findingsCount,
