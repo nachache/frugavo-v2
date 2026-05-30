@@ -3,6 +3,7 @@ import { currentUser } from "@clerk/nextjs/server";
 import Link from "next/link";
 import { supabaseAdmin } from "@/lib/supabase";
 import { RescanButton } from "@/components/app/rescan-button";
+import { BackPill } from "@/components/app/back-pill";
 
 // /app/transactions — raw transactions view.
 //
@@ -92,16 +93,7 @@ export default async function TransactionsPage({
   return (
     <section className="container-page py-8 md:py-12 max-w-[1100px]">
       <div className="mb-6 md:mb-8">
-        <Link
-          href="/app"
-          className="inline-flex items-center gap-2 text-[13px] text-ink-muted hover:text-ink transition"
-        >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <line x1="19" y1="12" x2="5" y2="12" />
-            <polyline points="12 19 5 12 12 5" />
-          </svg>
-          Back to dashboard
-        </Link>
+        <BackPill href="/app" label="Back to dashboard" />
       </div>
 
       <div className="flex items-start justify-between gap-4 flex-wrap">

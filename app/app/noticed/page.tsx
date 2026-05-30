@@ -1,7 +1,8 @@
 import { redirect } from "next/navigation";
 import { currentUser } from "@clerk/nextjs/server";
 import Link from "next/link";
-import { ChevronLeft, ChevronRight, Radar } from "lucide-react";
+import { ChevronRight, Radar } from "lucide-react";
+import { BackPill } from "@/components/app/back-pill";
 import { buildDashboardData } from "@/lib/selectors/dashboard";
 import { composeFindings, type Finding, kindLabel } from "@/lib/selectors/findings";
 import { supabaseAdmin } from "@/lib/supabase";
@@ -60,13 +61,9 @@ export default async function NoticedFeedPage() {
     <section className="container-page max-w-[780px] py-6 md:py-10">
       {/* Header — back affordance + title + count. Badge-on-top of
           the title per the locked design rule. */}
-      <Link
-        href="/app"
-        className="inline-flex items-center gap-1.5 text-[13px] text-ink-muted hover:text-ink transition mb-5"
-      >
-        <ChevronLeft size={14} strokeWidth={2} />
-        Back
-      </Link>
+      <div className="mb-5">
+        <BackPill href="/app" label="Back to dashboard" />
+      </div>
       <div className="flex items-center gap-2.5 mb-1">
         <span className="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-ink/[0.05] text-ink">
           <Radar size={14} strokeWidth={2} />

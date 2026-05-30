@@ -1,7 +1,8 @@
 import { redirect } from "next/navigation";
 import { currentUser } from "@clerk/nextjs/server";
 import Link from "next/link";
-import { ChevronLeft, Calendar } from "lucide-react";
+import { Calendar } from "lucide-react";
+import { BackPill } from "@/components/app/back-pill";
 import { buildDashboardData } from "@/lib/selectors/dashboard";
 import type { ActionItem } from "@/lib/selectors/dashboard";
 import { RenewalsCalendar } from "@/components/app/renewals-calendar";
@@ -110,13 +111,9 @@ export default async function RenewalsPage({
 
   return (
     <section className="container-page max-w-[920px] py-6 md:py-10">
-      <Link
-        href="/app"
-        className="inline-flex items-center gap-1.5 text-[13px] text-ink-muted hover:text-ink transition mb-5"
-      >
-        <ChevronLeft size={14} strokeWidth={2} />
-        Back to dashboard
-      </Link>
+      <div className="mb-5">
+        <BackPill href="/app" label="Back to dashboard" />
+      </div>
 
       <div className="flex items-center gap-2.5 mb-1">
         <span className="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-ink/[0.05] text-ink">

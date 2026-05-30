@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { currentUser } from "@clerk/nextjs/server";
-import Link from "next/link";
-import { ChevronLeft, BadgeCheck } from "lucide-react";
+import { BadgeCheck } from "lucide-react";
+import { BackPill } from "@/components/app/back-pill";
 import { buildDashboardData } from "@/lib/selectors/dashboard";
 import { getOrCreatePublicSlug } from "@/lib/users/public-slug";
 import { IdentityHero } from "@/components/app/identity-hero";
@@ -24,13 +24,9 @@ export default async function CardPage() {
 
   return (
     <section className="container-page max-w-[720px] py-6 md:py-10">
-      <Link
-        href="/app"
-        className="inline-flex items-center gap-1.5 text-[13px] text-ink-muted hover:text-ink transition mb-5"
-      >
-        <ChevronLeft size={14} strokeWidth={2} />
-        Back
-      </Link>
+      <div className="mb-5">
+        <BackPill href="/app" label="Back to dashboard" />
+      </div>
 
       <div className="flex items-center gap-2.5 mb-5">
         <span className="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-emerald-100 text-emerald-900">

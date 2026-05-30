@@ -1,10 +1,10 @@
 import { redirect } from "next/navigation";
 import { currentUser } from "@clerk/nextjs/server";
-import Link from "next/link";
 import { buildProtectionSummary } from "@/lib/protection/summary";
 import { getEntitlement } from "@/lib/billing/entitlements";
 import { isEffectivelyPaid } from "@/lib/billing/beta";
 import { ProtectionUpsellPreview } from "@/components/app/protection-upsell-preview";
+import { BackPill } from "@/components/app/back-pill";
 
 // /app/protection — the retention surface.
 //
@@ -61,15 +61,9 @@ export default async function ProtectionPage() {
   return (
     <section className="container-page py-6 md:py-10 max-w-[900px] space-y-5 md:space-y-6">
       <div>
-        <Link
-          href="/app"
-          className="inline-flex items-center gap-1.5 text-[13px] text-ink-muted hover:text-ink transition mb-5"
-        >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <polyline points="15 18 9 12 15 6" />
-          </svg>
-          Back to dashboard
-        </Link>
+        <div className="mb-5">
+          <BackPill href="/app" label="Back to dashboard" />
+        </div>
         <div className="flex items-center gap-2.5 mb-1">
           <span className="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-emerald-100 text-emerald-900">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -173,12 +167,7 @@ export default async function ProtectionPage() {
       </div>
 
       <div className="text-center">
-        <Link
-          href="/app"
-          className="inline-flex h-10 items-center gap-2 rounded-full border border-hairline bg-surface hover:bg-ink/[0.04] text-ink px-5 text-[13px] font-medium transition"
-        >
-          ← Back to dashboard
-        </Link>
+        <BackPill href="/app" label="Back to dashboard" />
       </div>
     </section>
   );
