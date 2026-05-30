@@ -366,8 +366,10 @@ export default async function AppHome() {
             element. */}
         <div>
           <NoticedSectionHeader count={findings.length} />
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-stretch">
-            <div className="md:col-span-3 flex">
+          {/* 50/50 split — matches the Your money row below so both
+              gaps read identically. */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-stretch">
+            <div className="flex">
               {featuredFinding ? (
                 <FeaturedNoticedCard
                   totalFindings={findings.length}
@@ -386,7 +388,7 @@ export default async function AppHome() {
                 </div>
               )}
             </div>
-            <div className="md:col-span-2 flex">
+            <div className="flex">
               <ComingUpRenewalsCard upcoming={upcomingRenewalsForCard} />
             </div>
           </div>
