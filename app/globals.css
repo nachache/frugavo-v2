@@ -359,6 +359,35 @@
     animation: fr-number-fade 360ms cubic-bezier(0.16, 1, 0.3, 1) both;
   }
 
+  /* Hero hand wave — gentle, infrequent. Mimics a real wave: small
+     anticipatory tilt, then two friendly tilts, then rest. Cycle is
+     long (4.2s) so it never feels gimmicky; the wave lives just at
+     the edge of perception. */
+  @keyframes fr-hand-wave {
+    0%   { transform: rotate(0deg); }
+    10%  { transform: rotate(-8deg); }
+    20%  { transform: rotate(14deg); }
+    30%  { transform: rotate(-6deg); }
+    40%  { transform: rotate(12deg); }
+    50%  { transform: rotate(0deg); }
+    100% { transform: rotate(0deg); }
+  }
+  .fr-hand-wave {
+    display: inline-block;
+    transform-origin: 75% 75%;
+    animation: fr-hand-wave 4.2s ease-in-out infinite;
+  }
+
+  /* Hero grain — barely-perceptible film grain via an SVG turbulence
+     data URI. Adds organic warmth without competing with content.
+     Honors prefers-reduced-motion (the global override below kills
+     all animation; grain is static SVG, so it persists as a subtle
+     texture either way). */
+  .fr-hero-grain {
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 220 220' opacity='0.55'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.04  0 0 0 0 0.04  0 0 0 0 0.04  0 0 0 0.06 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+    background-size: 220px 220px;
+  }
+
   /* Onboarding reveal — stage transitions + progress-bar fill. */
   @keyframes revealUp {
     0% {

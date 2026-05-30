@@ -47,36 +47,48 @@ function fmtRound(c: number): string {
 // ─── Hero band ───────────────────────────────────────────────────
 
 // Hero is a calm, warm canvas surface — not a green block. It shares
-// the page background so it flows into the dashboard rather than
-// sitting on top of it. The only "brand" colour here is a hairline
-// green accent under the hand and a tiny green dot in the LIVE pill
-// that follows. Everything else is charcoal type on warm ivory.
+// the page background so it flows into the dashboard. Atmosphere
+// comes from four small living details:
 //
-// Visible content (locked):
-//   • Large waving-hand (👋) above the headline
-//   • "Welcome back, {firstName}"                  — large, centered
-//   • "We've been watching your subscriptions."    — calm sub
+//   1. A gentle wave animation on the hand (long cycle, calm)
+//   2. An editorial serif italic accent on the user's first name
+//   3. A live status line with a pulsing dot under the subhead
+//   4. A barely-perceptible film grain across the band for organic
+//      warmth
+//
+// Everything else is charcoal type on warm ivory. No green flood.
 export function HomeHeroBand({
   monitoringCharges,
   findingsCount,
   firstName,
+  lastScanIso,
 }: {
   monitoringCharges: number;
   findingsCount: number;
   firstName: string | null;
+  lastScanIso: string | null;
 }) {
-  // findingsCount is no longer rendered in the hero (per spec) — kept
-  // in the prop list so the dashboard call site doesn't have to be
-  // refactored when intelligence lines return in a future variant.
   void findingsCount;
-  const nameGreet = firstName ? `Welcome back, ${firstName}` : "Welcome back";
+
+  // Compute the "last scan" label server-side so the hero status line
+  // is accurate on first paint. The LIVE pill below independently
+  // refreshes it; here we keep it as quiet ambient signal.
+  const lastScanLabel = (() => {
+    if (!lastScanIso) return "moments ago";
+    const ms = Date.now() - new Date(lastScanIso).getTime();
+    const minutes = Math.max(0, Math.floor(ms / 60_000));
+    if (minutes < 1) return "moments ago";
+    if (minutes < 60) return `${minutes} min ago`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours}h ago`;
+    const days = Math.floor(hours / 24);
+    return `${days}d ago`;
+  })();
 
   return (
     <div className="relative">
-      {/* The hero sits on the page canvas. A barely-perceptible warm
-          glow at the top adds depth without breaking the unified
-          surface. No hard horizontal edge — content fades straight
-          into the dashboard below. */}
+      {/* Warm glow at the top — barely there, just enough to give the
+          band depth without breaking the unified canvas. */}
       <div
         aria-hidden="true"
         className="pointer-events-none absolute inset-0"
@@ -85,19 +97,48 @@ export function HomeHeroBand({
             "radial-gradient(60% 70% at 50% 0%, rgba(4,120,87,0.06) 0%, rgba(4,120,87,0.02) 45%, transparent 80%)",
         }}
       />
+      {/* Film grain texture — organic warmth, premium-paper feel. */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 fr-hero-grain opacity-[0.35] mix-blend-multiply"
+      />
       <div className="relative container-page max-w-[860px] pt-12 md:pt-20 pb-14 md:pb-20 text-center">
-        <div
-          className="text-[56px] md:text-[72px] leading-none mb-4 md:mb-6 select-none"
-          aria-hidden="true"
-        >
-          👋
+        {/* Hand — gently waves on a 4.2s loop. */}
+        <div className="text-[56px] md:text-[72px] leading-none mb-4 md:mb-6 select-none">
+          <span className="fr-hand-wave" aria-hidden="true">
+            👋
+          </span>
         </div>
+        {/* Headline — name in editorial serif italic for warmth +
+            character. Falls back to "Welcome back" when name unknown. */}
         <h1 className="font-display text-[34px] md:text-[52px] font-bold leading-[1.05] tracking-[-0.02em] text-ink max-w-[760px] mx-auto">
-          {nameGreet}
+          Welcome back
+          {firstName ? (
+            <>
+              ,{" "}
+              <span className="font-editorial italic font-normal text-ink">
+                {firstName}
+              </span>
+            </>
+          ) : null}
         </h1>
         <p className="mt-5 md:mt-6 text-[16px] md:text-[18px] text-ink-body leading-relaxed max-w-[560px] mx-auto">
           We&apos;ve been watching your subscriptions.
         </p>
+        {/* Calm status line — pulsing dot + soft copy. Anchors the
+            hero in time and signals "the system is alive" without
+            shouting. */}
+        <div className="mt-5 inline-flex items-center gap-2 text-[12px] md:text-[12.5px] text-ink-muted tabular-nums">
+          <span
+            className="inline-flex h-1.5 w-1.5 rounded-full fr-sync-pulse"
+            style={{ background: "#10B981" }}
+            aria-hidden="true"
+          />
+          <span>
+            <span className="text-ink-body">{monitoringCharges}</span>{" "}
+            monitored · last scan {lastScanLabel}
+          </span>
+        </div>
       </div>
       <span className="sr-only">
         Monitoring {monitoringCharges} recurring charges

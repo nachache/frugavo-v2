@@ -300,7 +300,11 @@ export default async function AppHome() {
       subscription_id: a.subscription_id,
       merchant_name: a.merchant_name,
       domain: a.domain,
-      next_iso: a.next_expected_charge_at as string,
+      // Weekend-safer: if the engine predicts a Saturday or Sunday,
+      // surface the Friday before — most merchants pull a day or two
+      // earlier when the cycle hits a weekend, so this gives the user
+      // a safer "have it ready by" target.
+      next_iso: shiftWeekendToFridayIso(a.next_expected_charge_at as string),
       monthly_cents: a.monthly_cents,
       amount_cents: a.amount_cents,
       currency: a.currency,
@@ -343,6 +347,7 @@ export default async function AppHome() {
         monitoringCharges={monitoringCharges}
         findingsCount={findings.length}
         firstName={user.firstName ?? null}
+        lastScanIso={latestScanFinishedAt}
       />
 
       {/* ─── LIVE status strip — sticky, overlaps hero ──────── */}
@@ -452,6 +457,32 @@ export default async function AppHome() {
 }
 
 // ─── helpers ────────────────────────────────────────────────────
+
+// Shift Saturday/Sunday → preceding Friday. Used to make the Coming-up
+// surface "safer to plan against" — most merchants charge a day or
+// two earlier when the cycle lands on a weekend, so anchoring on the
+// Friday before is the most defensive read. Returns the input
+// untouched on weekdays or for malformed dates.
+function shiftWeekendToFridayIso(iso: string): string {
+  if (!iso) return iso;
+  // Parse a YYYY-MM-DD as a local date to avoid UTC drift flipping
+  // a Friday into Saturday for users east of UTC at midnight.
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso);
+  if (!m) return iso;
+  const y = Number(m[1]);
+  const mo = Number(m[2]) - 1;
+  const d = Number(m[3]);
+  const date = new Date(y, mo, d);
+  if (Number.isNaN(date.getTime())) return iso;
+  const dow = date.getDay(); // 0 = Sun, 6 = Sat
+  if (dow === 6) date.setDate(date.getDate() - 1); // Sat → Fri
+  else if (dow === 0) date.setDate(date.getDate() - 2); // Sun → Fri
+  else return iso;
+  const yy = date.getFullYear();
+  const mm = String(date.getMonth() + 1).padStart(2, "0");
+  const dd = String(date.getDate()).padStart(2, "0");
+  return `${yy}-${mm}-${dd}`;
+}
 
 // Load the set of finding_ids the user has resolved (either
 // "look_into_it" or "looks_fine"). Read from feedback_finding_resolve
