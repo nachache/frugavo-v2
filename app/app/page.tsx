@@ -347,7 +347,6 @@ export default async function AppHome() {
         monitoringCharges={monitoringCharges}
         findingsCount={findings.length}
         firstName={user.firstName ?? null}
-        lastScanIso={latestScanFinishedAt}
       />
 
       {/* ─── LIVE status strip — sticky, overlaps hero ──────── */}
@@ -366,10 +365,11 @@ export default async function AppHome() {
             element. */}
         <div>
           <NoticedSectionHeader count={findings.length} />
-          {/* 50/50 split — matches the Your money row below so both
-              gaps read identically. */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-stretch">
-            <div className="flex">
+          {/* 60/40 split — Needs a look gets a bit more room because
+              the finding headlines are denser. Same gap-4 as the row
+              below so horizontal rhythm is identical. */}
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-stretch">
+            <div className="md:col-span-3 flex">
               {featuredFinding ? (
                 <FeaturedNoticedCard
                   totalFindings={findings.length}
@@ -388,7 +388,7 @@ export default async function AppHome() {
                 </div>
               )}
             </div>
-            <div className="flex">
+            <div className="md:col-span-2 flex">
               <ComingUpRenewalsCard upcoming={upcomingRenewalsForCard} />
             </div>
           </div>

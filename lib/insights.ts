@@ -568,6 +568,24 @@ function fmtCents(c: number): string {
   return `$${(c / 100).toFixed(c % 100 === 0 ? 0 : 2)}`;
 }
 
+// Format a YYYY-MM-DD string as a human "Apr 11, 2026". Parses
+// manually to avoid timezone drift on bare date strings.
+function fmtIsoDate(iso: string): string {
+  if (!iso) return iso;
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso);
+  if (!m) return iso;
+  const y = Number(m[1]);
+  const mo = Number(m[2]) - 1;
+  const d = Number(m[3]);
+  const date = new Date(y, mo, d);
+  if (Number.isNaN(date.getTime())) return iso;
+  return date.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
 export function computeShockInsights(args: {
   subs: LedgerSubscription[];
   charges: LedgerCharge[];
@@ -658,7 +676,7 @@ export function computeShockInsights(args: {
       id: `biggest_day_${biggest.date}`,
       kind: "biggest_billing_day",
       headline: `One billing day cost you ${fmtCents(biggest.total)}.`,
-      detail: `On ${biggest.date}, ${biggest.ids.size} subscriptions billed at once.`,
+      detail: `On ${fmtIsoDate(biggest.date)}, ${biggest.ids.size} subscriptions billed at once.`,
       source: {
         charge_dates: [biggest.date],
         subscription_ids: Array.from(biggest.ids),
@@ -757,7 +775,7 @@ export function computeShockInsights(args: {
         id: `highest_charge_${highest.subscription_id}`,
         kind: "highest_single_charge",
         headline: `Your biggest recurring charge: ${fmtCents(highest.amount_cents)}.`,
-        detail: `${sub.merchant_name}, on ${highest.posted_date}.`,
+        detail: `${sub.merchant_name}, on ${fmtIsoDate(highest.posted_date)}.`,
         source: {
           subscription_ids: [highest.subscription_id],
           charge_dates: [highest.posted_date],

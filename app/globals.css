@@ -18,22 +18,32 @@
        — two soft warm blooms — gives the page depth like premium
        paper under daylight without any visible color stops. Fixed
        background so the wash doesn't repeat or shift on scroll. */
-    background-color: #FAF8F4;
+    background-color: #F4EFE5;
+    /* Layered warmth — four soft cream/peach blooms over a slightly
+       deeper ivory base. The increased saturation gives the cards a
+       distinct "floating" feel without breaking the unified surface,
+       and fills the hero area with subtle atmosphere. Fixed
+       background so the wash doesn't repeat or shift on scroll. */
     background-image:
       radial-gradient(
-        80% 60% at 20% 0%,
-        rgba(255, 244, 222, 0.55) 0%,
-        rgba(255, 244, 222, 0) 60%
+        80% 60% at 15% 0%,
+        rgba(255, 232, 198, 0.85) 0%,
+        rgba(255, 232, 198, 0) 60%
       ),
       radial-gradient(
-        70% 55% at 90% 30%,
-        rgba(240, 232, 218, 0.45) 0%,
-        rgba(240, 232, 218, 0) 60%
+        75% 55% at 90% 18%,
+        rgba(247, 224, 200, 0.70) 0%,
+        rgba(247, 224, 200, 0) 60%
+      ),
+      radial-gradient(
+        90% 60% at 50% 55%,
+        rgba(255, 248, 232, 0.75) 0%,
+        rgba(255, 248, 232, 0) 65%
       ),
       radial-gradient(
         100% 80% at 50% 100%,
-        rgba(248, 240, 224, 0.35) 0%,
-        rgba(248, 240, 224, 0) 70%
+        rgba(238, 220, 192, 0.55) 0%,
+        rgba(238, 220, 192, 0) 70%
       );
     background-attachment: fixed;
     background-repeat: no-repeat;

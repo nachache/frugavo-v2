@@ -29,7 +29,6 @@ import {
   Calendar,
   Wallet,
   ChevronRight,
-  ArrowRight,
   Eye,
   ListChecks,
   Plus,
@@ -61,40 +60,24 @@ export function HomeHeroBand({
   monitoringCharges,
   findingsCount,
   firstName,
-  lastScanIso,
 }: {
   monitoringCharges: number;
   findingsCount: number;
   firstName: string | null;
-  lastScanIso: string | null;
 }) {
   void findingsCount;
 
-  // Compute the "last scan" label server-side so the hero status line
-  // is accurate on first paint. The LIVE pill below independently
-  // refreshes it; here we keep it as quiet ambient signal.
-  const lastScanLabel = (() => {
-    if (!lastScanIso) return "moments ago";
-    const ms = Date.now() - new Date(lastScanIso).getTime();
-    const minutes = Math.max(0, Math.floor(ms / 60_000));
-    if (minutes < 1) return "moments ago";
-    if (minutes < 60) return `${minutes} min ago`;
-    const hours = Math.floor(minutes / 60);
-    if (hours < 24) return `${hours}h ago`;
-    const days = Math.floor(hours / 24);
-    return `${days}d ago`;
-  })();
-
   return (
     <div className="relative">
-      {/* Warm glow at the top — barely there, just enough to give the
-          band depth without breaking the unified canvas. */}
+      {/* Hero atmosphere — a touch of brand green at the top and a
+          warm peach bloom underneath the type. Enough to give the
+          hero its own presence without breaking the unified canvas. */}
       <div
         aria-hidden="true"
         className="pointer-events-none absolute inset-0"
         style={{
           background:
-            "radial-gradient(60% 70% at 50% 0%, rgba(4,120,87,0.06) 0%, rgba(4,120,87,0.02) 45%, transparent 80%)",
+            "radial-gradient(55% 65% at 50% -10%, rgba(4,120,87,0.10) 0%, rgba(4,120,87,0.03) 45%, transparent 80%), radial-gradient(45% 50% at 50% 60%, rgba(255,224,184,0.35) 0%, rgba(255,224,184,0) 70%)",
         }}
       />
       {/* Film grain texture — organic warmth, premium-paper feel. */}
@@ -125,20 +108,8 @@ export function HomeHeroBand({
         <p className="mt-5 md:mt-6 text-[16px] md:text-[18px] text-ink-body leading-relaxed max-w-[560px] mx-auto">
           We&apos;ve been watching your subscriptions.
         </p>
-        {/* Calm status line — pulsing dot + soft copy. Anchors the
-            hero in time and signals "the system is alive" without
-            shouting. */}
-        <div className="mt-5 inline-flex items-center gap-2 text-[12px] md:text-[12.5px] text-ink-muted tabular-nums">
-          <span
-            className="inline-flex h-1.5 w-1.5 rounded-full fr-sync-pulse"
-            style={{ background: "#10B981" }}
-            aria-hidden="true"
-          />
-          <span>
-            <span className="text-ink-body">{monitoringCharges}</span>{" "}
-            monitored · last scan {lastScanLabel}
-          </span>
-        </div>
+        {/* Hero status line removed — the floating LIVE pill below
+            is the canonical system indicator; no need to duplicate. */}
       </div>
       <span className="sr-only">
         Monitoring {monitoringCharges} recurring charges
@@ -362,7 +333,7 @@ export function RenewalsCard({
   return (
     <Link
       href="/app/renewals"
-      className="group block rounded-2xl border border-hairline bg-white shadow-soft p-5 md:p-6 transition-all hover:bg-canvas/40 hover:shadow-float"
+      className="group block w-full rounded-2xl border border-hairline bg-white shadow-soft p-5 md:p-6 fr-soft-lift fr-tactile hover:bg-canvas/40 hover:shadow-float"
     >
       <div className="flex items-start justify-between gap-3">
         <CardBadge icon={Calendar} label="Renewals" />
@@ -380,8 +351,7 @@ export function RenewalsCard({
           ~{fmtRound(estimatedTotalCents)} · next 14 days
         </div>
       </div>
-      {/* Thin segmented bar hinting at charge days. Empty unless ticks
-          are passed. The track is hairline, the marks are brand. */}
+      {/* Thin segmented bar hinting at charge days. */}
       <div className="mt-5 relative h-1 rounded-full bg-ink/[0.06]">
         {(barTicks ?? []).map((t, i) => (
           <span
@@ -395,6 +365,9 @@ export function RenewalsCard({
           />
         ))}
       </div>
+      <span className="mt-5 inline-flex h-9 items-center justify-center rounded-full border border-hairline bg-white px-4 text-[12.5px] font-medium text-ink group-hover:bg-ink/[0.04] transition">
+        See renewals
+      </span>
     </Link>
   );
 }
@@ -414,10 +387,10 @@ export function SpendingCard({
   return (
     <Link
       href="/app/spending"
-      className="group block rounded-2xl border border-sky-200 bg-sky-50 shadow-soft p-5 md:p-6 transition-colors hover:bg-sky-100/60"
+      className="group block w-full rounded-2xl border border-hairline bg-white shadow-soft p-5 md:p-6 fr-soft-lift fr-tactile hover:bg-canvas/40 hover:shadow-float"
     >
       <div className="flex items-start justify-between gap-3">
-        <CardBadge icon={Wallet} label="Your subs" tone="blue" />
+        <CardBadge icon={Wallet} label="Your subs" />
         <ChevronRight
           size={16}
           strokeWidth={2}
@@ -433,11 +406,13 @@ export function SpendingCard({
         </div>
       </div>
       {conclusion ? (
-        <div className="mt-5 flex items-center gap-1.5 text-[14px] text-ink leading-snug">
-          <span>{conclusion}</span>
-          <ArrowRight size={12} strokeWidth={2.2} className="text-ink-muted" />
+        <div className="mt-4 text-[13px] text-ink-body leading-snug">
+          {conclusion}
         </div>
       ) : null}
+      <span className="mt-5 inline-flex h-9 items-center justify-center rounded-full border border-hairline bg-white px-4 text-[12.5px] font-medium text-ink group-hover:bg-ink/[0.04] transition">
+        See your subs
+      </span>
     </Link>
   );
 }
