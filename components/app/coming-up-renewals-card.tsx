@@ -9,11 +9,20 @@
 // links to the subscription detail.
 
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { createPortal } from "react-dom";
-import Link from "next/link";
 import { Calendar, ChevronRight, X } from "lucide-react";
 import { MerchantLogo } from "@/components/app/merchant-logo";
+import {
+  SubscriptionDetailModal,
+  type DetailSub,
+} from "@/components/app/subscription-detail-modal";
+import { CancelModal } from "@/components/app/cancel-modal";
+import type { SubLike } from "@/lib/subscription-math";
 
+// Full payload — carries every field the shared detail modal needs so
+// clicking a row in the Coming-up overlay opens the same overlay as
+// the Your-subs browser without a second fetch.
 export type UpcomingRenewal = {
   subscription_id: string;
   merchant_name: string;
@@ -22,6 +31,11 @@ export type UpcomingRenewal = {
   monthly_cents: number;
   amount_cents: number;
   currency: string;
+  category: string;
+  frequency: string;
+  last_charged_at: string | null;
+  status: string;
+  confidence: number | null;
 };
 
 function fmtCents(c: number): string {
@@ -55,7 +69,7 @@ export function ComingUpRenewalsCard({
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="group block w-full text-left rounded-2xl border border-hairline bg-white shadow-soft p-5 md:p-6 transition-all hover:bg-canvas/40 hover:shadow-float min-h-[176px]"
+        className="group flex w-full h-full flex-col text-left rounded-2xl border border-hairline bg-white shadow-soft p-5 md:p-6 transition-all hover:bg-canvas/40 hover:shadow-float min-h-[176px]"
       >
         <div className="flex items-center gap-2">
           <span
@@ -128,15 +142,26 @@ function UpcomingOverlay({
   upcoming: UpcomingRenewal[];
   onClose: () => void;
 }) {
+  const router = useRouter();
   const [mounted, setMounted] = useState(false);
   const dialogRef = useRef<HTMLDivElement | null>(null);
+  // Stacked overlays: a row click opens the shared SubscriptionDetailModal
+  // ABOVE this list. Cancel assist opens CancelModal on top of that.
+  const [openSub, setOpenSub] = useState<UpcomingRenewal | null>(null);
+  const [cancelTarget, setCancelTarget] = useState<UpcomingRenewal | null>(
+    null
+  );
 
   useEffect(() => {
     setMounted(true);
   }, []);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") {
+        // If a sub detail is open, let its own listener close it first.
+        if (openSub || cancelTarget) return;
+        onClose();
+      }
     };
     window.addEventListener("keydown", onKey);
     const prev = document.body.style.overflow;
@@ -146,7 +171,24 @@ function UpcomingOverlay({
       window.removeEventListener("keydown", onKey);
       document.body.style.overflow = prev;
     };
-  }, [onClose]);
+  }, [onClose, openSub, cancelTarget]);
+
+  const markNotSub = async (r: UpcomingRenewal) => {
+    setOpenSub(null);
+    try {
+      await fetch("/api/feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          subscription_id: r.subscription_id,
+          override_type: "not_subscription",
+        }),
+      });
+    } catch {
+      // optimistic — reconciles on refresh
+    }
+    router.refresh();
+  };
 
   if (!mounted) return null;
 
@@ -197,10 +239,10 @@ function UpcomingOverlay({
           <ul className="flex-1 overflow-y-auto divide-y divide-hairline/60">
             {upcoming.map((r) => (
               <li key={r.subscription_id}>
-                <Link
-                  href={`/app/subscriptions/${r.subscription_id}`}
-                  onClick={onClose}
-                  className="flex items-center gap-3 px-5 md:px-7 py-3.5 hover:bg-canvas/40 transition"
+                <button
+                  type="button"
+                  onClick={() => setOpenSub(r)}
+                  className="w-full text-left flex items-center gap-3 px-5 md:px-7 py-3.5 hover:bg-canvas/40 transition"
                 >
                   <MerchantLogo
                     name={r.merchant_name}
@@ -224,13 +266,71 @@ function UpcomingOverlay({
                     strokeWidth={2}
                     className="text-ink-muted shrink-0"
                   />
-                </Link>
+                </button>
               </li>
             ))}
           </ul>
         )}
       </div>
+
+      {/* Stacked: shared sub detail overlay opens on top of the list. */}
+      {openSub ? (
+        <SubscriptionDetailModal
+          sub={toDetailSub(openSub)}
+          onClose={() => setOpenSub(null)}
+          onMarkNotSub={() => markNotSub(openSub)}
+          onCancelAssist={() => {
+            const target = openSub;
+            setOpenSub(null);
+            setCancelTarget(target);
+          }}
+        />
+      ) : null}
+
+      {/* CancelModal stacks on top when the user picks cancel assist. */}
+      {cancelTarget ? (
+        <CancelModal
+          sub={toCancelSubLike(cancelTarget)}
+          onClose={() => setCancelTarget(null)}
+          onConfirmed={() => {
+            setCancelTarget(null);
+            router.refresh();
+          }}
+        />
+      ) : null}
     </div>,
     document.body
   );
+}
+
+// Adapt our UpcomingRenewal into the shared modal contract.
+function toDetailSub(r: UpcomingRenewal): DetailSub {
+  return {
+    subscription_id: r.subscription_id,
+    merchant_name: r.merchant_name,
+    domain: r.domain,
+    category: r.category,
+    monthly_cents: r.monthly_cents,
+    amount_cents: r.amount_cents,
+    currency: r.currency,
+    frequency: r.frequency,
+    next_expected_charge_at: r.next_iso,
+    last_charged_at: r.last_charged_at,
+    status: r.status,
+    confidence: r.confidence,
+  };
+}
+
+// Adapt our UpcomingRenewal into the SubLike contract CancelModal wants.
+function toCancelSubLike(r: UpcomingRenewal): SubLike {
+  return {
+    id: r.subscription_id,
+    merchant_name: r.merchant_name,
+    amount_cents: r.amount_cents,
+    currency: r.currency,
+    frequency: r.frequency,
+    last_charged_at: r.last_charged_at,
+    next_expected_charge_at: r.next_iso,
+    status: r.status,
+  };
 }

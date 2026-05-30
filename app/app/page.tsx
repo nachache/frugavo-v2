@@ -304,6 +304,11 @@ export default async function AppHome() {
       monthly_cents: a.monthly_cents,
       amount_cents: a.amount_cents,
       currency: a.currency,
+      category: a.category,
+      frequency: a.frequency,
+      last_charged_at: a.last_charged_at,
+      status: a.status,
+      confidence: a.confidence,
     }));
 
   return (
@@ -356,8 +361,8 @@ export default async function AppHome() {
             element. */}
         <div>
           <NoticedSectionHeader count={findings.length} />
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-            <div className="md:col-span-3">
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-stretch">
+            <div className="md:col-span-3 flex">
               {featuredFinding ? (
                 <FeaturedNoticedCard
                   totalFindings={findings.length}
@@ -365,7 +370,7 @@ export default async function AppHome() {
                   topConclusion={featuredFinding.conclusion}
                 />
               ) : (
-                <div className="rounded-2xl border border-hairline bg-white p-5 md:p-6 min-h-[176px]">
+                <div className="w-full rounded-2xl border border-hairline bg-white p-5 md:p-6 min-h-[176px]">
                   <div className="text-[14px] font-medium text-ink">
                     Nothing flagged right now
                   </div>
@@ -376,7 +381,7 @@ export default async function AppHome() {
                 </div>
               )}
             </div>
-            <div className="md:col-span-2">
+            <div className="md:col-span-2 flex">
               <ComingUpRenewalsCard upcoming={upcomingRenewalsForCard} />
             </div>
           </div>
