@@ -10,6 +10,8 @@ import { InstallFrugavoRow } from "@/components/app/install-frugavo-row";
 import { ProtectionAlertCard } from "@/components/app/protection-alert-card";
 import { ScanConfirmOverlay, type ConfirmCandidate } from "@/components/app/scan-confirm-overlay";
 import { loadOpenDoubts } from "@/lib/doubt/load";
+import { LoginAutoSync } from "@/components/app/login-auto-sync";
+import { ComingUpRenewalsCard, type UpcomingRenewal } from "@/components/app/coming-up-renewals-card";
 import { BillingStatusBanner } from "@/components/app/billing-status-banner";
 import { buildWatchdogDigest } from "@/lib/watchdog/digest";
 import { WatchdogOverlay } from "@/components/app/watchdog-overlay";
@@ -284,6 +286,26 @@ export default async function AppHome() {
   const monitoringCharges = monthlySubCount;
   const watchingRenewals = upcomingRenewals.length;
 
+  // Coming-up renewals payload for the small home card. Sorted soonest
+  // first. We surface the full 14-day window in the overlay; the home
+  // card itself shows 2–3 preview rows.
+  const upcomingRenewalsForCard: UpcomingRenewal[] = upcomingRenewals
+    .slice()
+    .sort((a, b) => {
+      const ta = new Date(a.next_expected_charge_at as string).getTime();
+      const tb = new Date(b.next_expected_charge_at as string).getTime();
+      return ta - tb;
+    })
+    .map((a) => ({
+      subscription_id: a.subscription_id,
+      merchant_name: a.merchant_name,
+      domain: a.domain,
+      next_iso: a.next_expected_charge_at as string,
+      monthly_cents: a.monthly_cents,
+      amount_cents: a.amount_cents,
+      currency: a.currency,
+    }));
+
   return (
     <>
       {/* AppIntro — first-paint splash, one-shot per session. */}
@@ -307,6 +329,10 @@ export default async function AppHome() {
       {/* BillingStatusBanner — dunning. Sticky at top of content. */}
       {bannerVariant && <BillingStatusBanner variant={bannerVariant} />}
 
+      {/* Auto-sync on login — fires once per browser session, shows
+          a thin pulsing bar while in flight, fades on completion. */}
+      <LoginAutoSync />
+
       {/* ─── Hero band — bleeds under sticky header ─────────── */}
       <HomeHeroBand
         monitoringCharges={monitoringCharges}
@@ -322,29 +348,38 @@ export default async function AppHome() {
       />
 
       {/* ─── Switchboard cards ───────────────────────────────── */}
-      <section className="container-page max-w-[1100px] mt-6 md:mt-8 space-y-8 md:space-y-10 pb-16">
-        {/* "Frugavo noticed" — featured card */}
+      <section className="container-page max-w-[1100px] mt-6 md:mt-8 space-y-8 md:space-y-10 pb-16 fr-cascade">
+        {/* "Frugavo noticed" — featured + coming-up renewals.
+            2-up layout: 3/5 for the featured card (where the headline
+            lives), 2/5 for the smaller coming-up card so the renewals
+            preview reads as a companion glance, not a competing
+            element. */}
         <div>
           <NoticedSectionHeader count={findings.length} />
-          {featuredFinding ? (
-            <FeaturedNoticedCard
-              totalFindings={findings.length}
-              topHeadline={featuredFinding.headline}
-              topConclusion={featuredFinding.conclusion}
-            />
-          ) : (
-            // Empty state — nothing flagged. Calm placeholder so the
-            // section header doesn't dangle.
-            <div className="rounded-2xl border border-hairline bg-white p-5 md:p-6">
-              <div className="text-[14px] font-medium text-ink">
-                Nothing flagged right now
-              </div>
-              <p className="mt-1 text-[12.5px] text-ink-muted leading-relaxed">
-                We&apos;ll surface findings here as soon as something
-                changes — price moves, new recurring charges, overlaps.
-              </p>
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+            <div className="md:col-span-3">
+              {featuredFinding ? (
+                <FeaturedNoticedCard
+                  totalFindings={findings.length}
+                  topHeadline={featuredFinding.headline}
+                  topConclusion={featuredFinding.conclusion}
+                />
+              ) : (
+                <div className="rounded-2xl border border-hairline bg-white p-5 md:p-6 min-h-[176px]">
+                  <div className="text-[14px] font-medium text-ink">
+                    Nothing flagged right now
+                  </div>
+                  <p className="mt-1 text-[12.5px] text-ink-muted leading-relaxed">
+                    We&apos;ll surface findings here as soon as something
+                    changes — price moves, new recurring charges, overlaps.
+                  </p>
+                </div>
+              )}
             </div>
-          )}
+            <div className="md:col-span-2">
+              <ComingUpRenewalsCard upcoming={upcomingRenewalsForCard} />
+            </div>
+          </div>
         </div>
 
         {/* "Your money" — 2-up */}

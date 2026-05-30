@@ -95,8 +95,18 @@ export default async function RenewalsPage({
     month: "long",
     year: "numeric",
   });
-  const prevYm = yearMonthOffset(ym, -1);
-  const nextYm = yearMonthOffset(ym, +1);
+  // Calendar is intentionally scoped to current month + ONE month
+  // ahead. The renewals view exists to surface what's coming, not
+  // archive history — so prev navigation is disabled on the current
+  // month and forward navigation caps at exactly +1.
+  const today = new Date();
+  const currentYm = { year: today.getFullYear(), month: today.getMonth() };
+  const isCurrentMonth =
+    ym.year === currentYm.year && ym.month === currentYm.month;
+  const isNextMonth =
+    ym.year + ym.month / 12 === currentYm.year + (currentYm.month + 1) / 12;
+  const prevYm = isCurrentMonth ? null : yearMonthOffset(currentYm, 0);
+  const nextYm = isNextMonth ? null : yearMonthOffset(currentYm, +1);
 
   return (
     <section className="container-page max-w-[920px] py-6 md:py-10">
@@ -125,11 +135,19 @@ export default async function RenewalsPage({
           </span>
         </div>
         <div className="inline-flex items-center gap-1.5">
-          <MonthNavLink href={`/app/renewals?ym=${prevYm}`} prev />
+          {prevYm ? (
+            <MonthNavLink href={`/app/renewals?ym=${prevYm}`} prev />
+          ) : (
+            <MonthNavDisabled prev />
+          )}
           <span className="text-[12.5px] font-medium text-ink min-w-[120px] text-center">
             {monthLabel}
           </span>
-          <MonthNavLink href={`/app/renewals?ym=${nextYm}`} />
+          {nextYm ? (
+            <MonthNavLink href={`/app/renewals?ym=${nextYm}`} />
+          ) : (
+            <MonthNavDisabled />
+          )}
         </div>
       </div>
 
@@ -148,31 +166,42 @@ export default async function RenewalsPage({
 
 // ─── helpers ────────────────────────────────────────────────────
 
-// Estimate the next charge ISO date from last_charged_at + cadence.
-// Returns null when we don't have enough signal (no last charge, or
-// frequency is "unknown"). The estimate iterates one cadence at a
-// time from last_charged_at until the projected date is in the
-// future, so even subs that haven't been charged in months get a
-// future estimate the user can plan around.
+// Estimate the next charge ISO date. We are aggressive on purpose —
+// every sub has a recurrence by definition, so we always project a
+// future date the user can plan around. Fallback chain:
+//   1. last_charged_at + cadence, walked forward until > today
+//   2. last_charged_at + 30 days when cadence is unknown
+//   3. today + cadence/2 when there's no last_charged_at at all
+// The "est." badge in the agenda already signals approximation,
+// so we don't over-engineer accuracy here.
 function estimateNextChargeIso(
   lastChargedAt: string | null,
   frequency: string
 ): string | null {
-  if (!lastChargedAt) return null;
-  const cadenceDays = cadenceDaysFor(frequency);
-  if (!cadenceDays) return null;
-  const last = new Date(lastChargedAt);
-  if (Number.isNaN(last.getTime())) return null;
-  const out = new Date(last);
+  const cadenceDays = cadenceDaysFor(frequency) ?? 30; // default monthly
   const now = new Date();
-  // Walk forward by cadence until we land in the future.
-  while (out.getTime() <= now.getTime()) {
-    out.setDate(out.getDate() + cadenceDays);
+  if (lastChargedAt) {
+    const last = new Date(lastChargedAt);
+    if (!Number.isNaN(last.getTime())) {
+      const out = new Date(last);
+      while (out.getTime() <= now.getTime()) {
+        out.setDate(out.getDate() + cadenceDays);
+      }
+      return isoOf(out);
+    }
   }
-  const y = out.getFullYear();
-  const m = String(out.getMonth() + 1).padStart(2, "0");
-  const d = String(out.getDate()).padStart(2, "0");
-  return `${y}-${m}-${d}`;
+  // No last_charged_at — project half a cadence into the future as a
+  // calm placeholder. Better than excluding the sub from the calendar.
+  const out = new Date(now);
+  out.setDate(out.getDate() + Math.max(1, Math.round(cadenceDays / 2)));
+  return isoOf(out);
+}
+
+function isoOf(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
 }
 
 function cadenceDaysFor(frequency: string): number | null {
@@ -182,6 +211,8 @@ function cadenceDaysFor(frequency: string): number | null {
     case "biweekly":
     case "bi_weekly":
       return 14;
+    case "semi_monthly":
+      return 15;
     case "monthly":
       return 30;
     case "bimonthly":
@@ -246,19 +277,38 @@ function MonthNavLink({ href, prev = false }: { href: string; prev?: boolean }) 
       className="inline-flex items-center justify-center w-7 h-7 rounded-full border border-hairline bg-white text-ink-muted hover:text-ink hover:bg-ink/[0.04] transition"
       aria-label={prev ? "Previous month" : "Next month"}
     >
-      <svg
-        width="12"
-        height="12"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2.2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        style={{ transform: prev ? undefined : "scaleX(-1)" }}
-      >
-        <polyline points="15 18 9 12 15 6" />
-      </svg>
+      <NavArrow prev={prev} />
     </Link>
+  );
+}
+
+// Greyed-out arrow used when navigation in that direction is
+// disabled — calendar is scoped to current + next month only.
+function MonthNavDisabled({ prev = false }: { prev?: boolean }) {
+  return (
+    <span
+      aria-hidden="true"
+      className="inline-flex items-center justify-center w-7 h-7 rounded-full border border-hairline/40 bg-canvas/40 text-ink-muted/30 cursor-not-allowed"
+    >
+      <NavArrow prev={prev} />
+    </span>
+  );
+}
+
+function NavArrow({ prev }: { prev: boolean }) {
+  return (
+    <svg
+      width="12"
+      height="12"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      style={{ transform: prev ? undefined : "scaleX(-1)" }}
+    >
+      <polyline points="15 18 9 12 15 6" />
+    </svg>
   );
 }

@@ -212,8 +212,14 @@ export function SubscriptionsBrowser({
         className="mb-5 text-[13px] text-ink-body tabular-nums ml-[40px]"
         aria-live="polite"
       >
-        ${Math.round(liveMonthlyCents / 100).toLocaleString("en-US")}/mo
-        recurring · {subs.length} sub{subs.length === 1 ? "" : "s"}
+        <span key={liveMonthlyCents} className="fr-number-fade inline-block">
+          ${Math.round(liveMonthlyCents / 100).toLocaleString("en-US")}/mo
+          recurring
+        </span>{" "}
+        ·{" "}
+        <span key={subs.length} className="fr-number-fade inline-block">
+          {subs.length} sub{subs.length === 1 ? "" : "s"}
+        </span>
       </div>
 
       {/* ─── Search + view toggle ──────────────────────────── */}
@@ -594,7 +600,7 @@ function SubscriptionModal({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[100] flex items-end md:items-center justify-center p-0 md:p-6"
+      className="fixed inset-0 z-[100] flex items-end md:items-center justify-center p-0 md:p-6 fr-modal-fade-in"
       role="dialog"
       aria-modal="true"
       aria-labelledby="sub-modal-title"
@@ -608,7 +614,7 @@ function SubscriptionModal({
       <div
         ref={dialogRef}
         tabIndex={-1}
-        className="relative w-full md:max-w-[520px] max-h-[90vh] overflow-y-auto rounded-t-3xl md:rounded-3xl bg-white shadow-float border border-hairline outline-none"
+        className="relative w-full md:max-w-[520px] max-h-[90vh] overflow-y-auto rounded-t-3xl md:rounded-3xl bg-white shadow-float border border-hairline outline-none fr-modal-pop"
       >
         <div className="sticky top-0 z-10 bg-white/95 backdrop-blur border-b border-hairline px-5 md:px-7 py-4 flex items-center justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0">

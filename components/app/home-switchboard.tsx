@@ -36,7 +36,6 @@ import {
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import type { Personality } from "@/lib/personality";
-import { HeroLoginEmojiClient } from "@/components/app/hero-login-emoji";
 import { RescanButton } from "@/components/app/rescan-button";
 
 // ─── shared helpers ──────────────────────────────────────────────
@@ -101,10 +100,19 @@ export function HomeHeroBand({
             "radial-gradient(40% 28% at 18% 18%, rgba(255,255,255,0.10) 0%, transparent 70%), radial-gradient(36% 26% at 82% 12%, rgba(255,255,255,0.06) 0%, transparent 70%)",
         }}
       />
-      <div className="relative container-page max-w-[860px] pt-16 md:pt-24 pb-24 md:pb-32 text-center">
+      <div className="relative container-page max-w-[860px] pt-12 md:pt-20 pb-24 md:pb-32 text-center">
+        {/* Waving hand — large logo above the welcome message. Sits
+            on its own line for editorial weight. Hand-emoji renders
+            with native SF Pro / Apple Color Emoji on iOS, Noto on
+            Android — no asset bundling needed. */}
+        <div
+          className="text-[56px] md:text-[72px] leading-none mb-4 md:mb-6 select-none"
+          aria-hidden="true"
+        >
+          👋
+        </div>
         <h1 className="font-display text-[34px] md:text-[52px] font-bold leading-[1.05] tracking-[-0.02em] text-white max-w-[760px] mx-auto">
-          {nameGreet}{" "}
-          <HeroLoginEmoji />
+          {nameGreet}
         </h1>
         <p className="mt-5 md:mt-6 text-[17px] md:text-[19px] text-white/85 leading-relaxed max-w-[560px] mx-auto">
           We&apos;ve been watching your subscriptions.
@@ -120,13 +128,8 @@ export function HomeHeroBand({
   );
 }
 
-// HeroLoginEmoji — client component. Picks dove OR coffee once per
-// browser session (sessionStorage), pinned across all renders in
-// that session. Server-rendered placeholder = dove so SSR doesn't
-// flash a different glyph before hydration.
-function HeroLoginEmoji() {
-  return <HeroLoginEmojiClient />;
-}
+// Hero now uses a static waving-hand glyph rendered server-side above
+// the headline. The session-pinned dove/coffee picker was removed.
 
 // ─── LIVE status strip ──────────────────────────────────────────
 
@@ -449,7 +452,7 @@ function DiscoverCard({
   return (
     <Link
       href={href}
-      className="group relative block rounded-2xl border border-hairline bg-white shadow-soft p-5 md:p-6 pr-[120px] md:pr-[140px] min-h-[176px] md:min-h-[200px] overflow-hidden transition-all hover:bg-canvas/40 hover:shadow-float"
+      className="group relative block rounded-2xl border border-hairline bg-white shadow-soft p-5 md:p-6 pr-[120px] md:pr-[140px] min-h-[176px] md:min-h-[200px] overflow-hidden fr-soft-lift fr-tactile hover:bg-canvas/40 hover:shadow-float"
     >
       <div>
         <div className="text-[18px] md:text-[20px] font-bold text-ink leading-snug">

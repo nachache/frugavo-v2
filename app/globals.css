@@ -204,6 +204,138 @@
   .stagger-7 .animate-fadeUp { animation-delay: 560ms; }
   .stagger-8 .animate-fadeUp { animation-delay: 640ms; }
 
+  /* ─── PASS 3 animation polish ───────────────────────────────────
+     Calm, premium, alive — not flashy. Subtle fade + small upward
+     slide on section entrances, soft modal fade+scale, skeleton
+     shimmer, sync indicator pulse, removal animation, gentle
+     section stagger via auto-cascade on direct children. */
+
+  @keyframes fr-fadeSlide {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .fr-fade-slide {
+    animation: fr-fadeSlide 520ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+
+  /* Auto-stagger: when a parent carries .fr-cascade, each direct
+     child fades up with a 110ms offset. Caps at the 8th child to
+     keep the cascade brief. */
+  .fr-cascade > * {
+    opacity: 0;
+    animation: fr-fadeSlide 520ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+  .fr-cascade > *:nth-child(1) { animation-delay: 60ms; }
+  .fr-cascade > *:nth-child(2) { animation-delay: 170ms; }
+  .fr-cascade > *:nth-child(3) { animation-delay: 280ms; }
+  .fr-cascade > *:nth-child(4) { animation-delay: 390ms; }
+  .fr-cascade > *:nth-child(5) { animation-delay: 500ms; }
+  .fr-cascade > *:nth-child(6) { animation-delay: 610ms; }
+  .fr-cascade > *:nth-child(7) { animation-delay: 720ms; }
+  .fr-cascade > *:nth-child(n+8) { animation-delay: 830ms; }
+
+  /* Modal/overlay entrance — fade + slight translate + 0.985→1
+     scale. Slower than a pop, calmer. */
+  @keyframes fr-modal-pop {
+    from { opacity: 0; transform: translateY(6px) scale(0.985); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
+  }
+  @keyframes fr-modal-fade-in {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+  .fr-modal-pop {
+    animation: fr-modal-pop 220ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+  .fr-modal-fade-in {
+    animation: fr-modal-fade-in 200ms ease-out both;
+  }
+
+  /* Skeleton shimmer — calm horizontal wash for loading
+     placeholders. */
+  @keyframes fr-shimmer {
+    0%   { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+  }
+  .fr-skeleton {
+    background-color: rgba(10, 10, 10, 0.04);
+    background-image: linear-gradient(
+      90deg,
+      rgba(10, 10, 10, 0) 0%,
+      rgba(10, 10, 10, 0.05) 50%,
+      rgba(10, 10, 10, 0) 100%
+    );
+    background-size: 200% 100%;
+    background-repeat: no-repeat;
+    animation: fr-shimmer 1.6s linear infinite;
+    border-radius: 8px;
+  }
+
+  /* Calm sync pulse — soft breath, not aggressive ping. */
+  @keyframes fr-sync-pulse {
+    0%, 100% { opacity: 0.55; transform: scale(1); }
+    50%      { opacity: 1;    transform: scale(1.18); }
+  }
+  .fr-sync-pulse {
+    animation: fr-sync-pulse 1.8s ease-in-out infinite;
+  }
+
+  /* Soft hover lift for cards. */
+  .fr-soft-lift {
+    transition:
+      transform 220ms cubic-bezier(0.16, 1, 0.3, 1),
+      box-shadow 220ms cubic-bezier(0.16, 1, 0.3, 1),
+      border-color 220ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .fr-soft-lift:hover {
+    transform: translateY(-1px);
+    border-color: rgba(10, 10, 10, 0.12);
+  }
+
+  /* Tactile button press. No bounce. */
+  .fr-tactile {
+    transition:
+      transform 180ms cubic-bezier(0.16, 1, 0.3, 1),
+      opacity 180ms cubic-bezier(0.16, 1, 0.3, 1),
+      background-color 180ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .fr-tactile:active {
+    transform: scale(0.975);
+    opacity: 0.92;
+  }
+
+  /* Row removal — opacity + slide + height collapse. ~260ms. */
+  @keyframes fr-remove {
+    from {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+      max-height: 240px;
+    }
+    to {
+      opacity: 0;
+      transform: translateY(-4px) scale(0.98);
+      max-height: 0;
+      margin-top: 0;
+      margin-bottom: 0;
+      padding-top: 0;
+      padding-bottom: 0;
+    }
+  }
+  .fr-removing {
+    animation: fr-remove 260ms cubic-bezier(0.4, 0, 0.6, 1) forwards;
+    overflow: hidden;
+  }
+
+  /* Smooth number-fade for value changes. Pair with React
+     `key={value}` so the element remounts. */
+  @keyframes fr-number-fade {
+    from { opacity: 0; transform: translateY(2px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .fr-number-fade {
+    animation: fr-number-fade 360ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+
   /* Onboarding reveal — stage transitions + progress-bar fill. */
   @keyframes revealUp {
     0% {

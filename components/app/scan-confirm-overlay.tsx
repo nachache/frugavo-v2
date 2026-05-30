@@ -196,7 +196,7 @@ export function ScanConfirmOverlay({ candidates, scanId }: Props) {
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[120] flex items-end md:items-center justify-center p-0 md:p-6"
+      className="fixed inset-0 z-[120] flex items-end md:items-center justify-center p-0 md:p-6 fr-modal-fade-in"
       role="dialog"
       aria-modal="true"
       aria-labelledby="scan-confirm-title"
@@ -210,7 +210,7 @@ export function ScanConfirmOverlay({ candidates, scanId }: Props) {
       <div
         ref={dialogRef}
         tabIndex={-1}
-        className="relative w-full md:max-w-[560px] max-h-[92vh] flex flex-col rounded-t-3xl md:rounded-3xl bg-white shadow-float border border-hairline outline-none overflow-hidden"
+        className="relative w-full md:max-w-[560px] max-h-[92vh] flex flex-col rounded-t-3xl md:rounded-3xl bg-white shadow-float border border-hairline outline-none overflow-hidden fr-modal-pop"
       >
         <div className="px-5 md:px-7 pt-5 md:pt-7 pb-4 border-b border-hairline flex items-start justify-between gap-3">
           <div className="min-w-0">
