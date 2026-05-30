@@ -6,6 +6,7 @@ import { GaDebug } from "@/components/shared/ga-debug";
 import { ConsentBanner, ConsentGate } from "@/components/shared/consent";
 import { SwRegister } from "@/components/shared/sw-register";
 import { StandaloneModeClass } from "@/components/shared/standalone-mode-class";
+import { XPixel } from "@/components/shared/x-pixel";
 import "./globals.css";
 
 // next/font self-hosts the typefaces — no runtime CDN call.
@@ -148,17 +149,23 @@ export default function RootLayout({
         <StandaloneModeClass />
       </body>
 
-      {/* GA4 — only renders when (a) the Measurement ID is configured and
-          (b) the visitor has explicitly granted consent via the banner.
-          @next/third-parties loads the gtag script lazily after hydration. */}
-      {process.env.NEXT_PUBLIC_GA_ID && (
-        <ConsentGate>
-          <GoogleAnalytics gaId={process.env.NEXT_PUBLIC_GA_ID} />
-          {/* Appending ?ga_debug=1 to any URL turns on GA4 debug_mode so
-              events appear in Admin → DebugView. */}
-          <GaDebug gaId={process.env.NEXT_PUBLIC_GA_ID} />
-        </ConsentGate>
-      )}
+      {/* GA4 + X Ads pixel — only render when the visitor has explicitly
+          granted consent via the banner. Both load with afterInteractive
+          strategy so they don't block first paint. */}
+      <ConsentGate>
+        {process.env.NEXT_PUBLIC_GA_ID && (
+          <>
+            <GoogleAnalytics gaId={process.env.NEXT_PUBLIC_GA_ID} />
+            {/* Appending ?ga_debug=1 to any URL turns on GA4 debug_mode so
+                events appear in Admin → DebugView. */}
+            <GaDebug gaId={process.env.NEXT_PUBLIC_GA_ID} />
+          </>
+        )}
+        {/* X Ads conversion pixel — fires page-view on load; per-route
+            twq('event', ...) calls can be added later for sign-up /
+            connect conversion events the pixel needs to attribute. */}
+        <XPixel />
+      </ConsentGate>
     </html>
     </ClerkProvider>
   );
