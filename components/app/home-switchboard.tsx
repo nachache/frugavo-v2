@@ -46,18 +46,16 @@ function fmtRound(c: number): string {
 
 // ─── Hero band ───────────────────────────────────────────────────
 
-// Slack-style immersive welcome band. Big curve at the bottom, gradient
-// green (not flat), generous vertical air, centered hierarchy. No
-// charts, metrics, cards, breakdowns or 3-dot menu lives here — this
-// surface only sets atmosphere and tells the user "we've been working
-// for you while you were away." Real data lives below in the floating
-// LIVE pill and the switchboard cards.
+// Hero is a calm, warm canvas surface — not a green block. It shares
+// the page background so it flows into the dashboard rather than
+// sitting on top of it. The only "brand" colour here is a hairline
+// green accent under the hand and a tiny green dot in the LIVE pill
+// that follows. Everything else is charcoal type on warm ivory.
 //
 // Visible content (locked):
 //   • Large waving-hand (👋) above the headline
 //   • "Welcome back, {firstName}"                  — large, centered
 //   • "We've been watching your subscriptions."    — calm sub
-//   • "{N} things deserve your attention today."   — dynamic intel
 export function HomeHeroBand({
   monitoringCharges,
   findingsCount,
@@ -67,56 +65,38 @@ export function HomeHeroBand({
   findingsCount: number;
   firstName: string | null;
 }) {
-  const attentionLine =
-    findingsCount > 0
-      ? `${findingsCount} thing${findingsCount === 1 ? "" : "s"} deserve${findingsCount === 1 ? "s" : ""} your attention today.`
-      : "Nothing needs your attention right now.";
+  // findingsCount is no longer rendered in the hero (per spec) — kept
+  // in the prop list so the dashboard call site doesn't have to be
+  // refactored when intelligence lines return in a future variant.
+  void findingsCount;
   const nameGreet = firstName ? `Welcome back, ${firstName}` : "Welcome back";
 
   return (
-    <div
-      className="relative overflow-hidden"
-      style={{
-        // Soft gradient — not flat. Top is a touch lighter so the hero
-        // catches the light, bottom deepens for grounding.
-        background:
-          "radial-gradient(120% 80% at 50% 0%, #11876A 0%, #0F6E56 55%, #0B5C48 100%)",
-        marginTop: "-64px",
-        paddingTop: "calc(64px + env(safe-area-inset-top))",
-        // Big editorial curve. Larger on desktop where there's room.
-        borderBottomLeftRadius: "56px",
-        borderBottomRightRadius: "56px",
-      }}
-    >
-      {/* Decorative bloom — soft, off-center, almost imperceptible.
-          Adds the "atmosphere" without competing with the type. */}
+    <div className="relative">
+      {/* The hero sits on the page canvas. A barely-perceptible warm
+          glow at the top adds depth without breaking the unified
+          surface. No hard horizontal edge — content fades straight
+          into the dashboard below. */}
       <div
         aria-hidden="true"
         className="pointer-events-none absolute inset-0"
         style={{
           background:
-            "radial-gradient(40% 28% at 18% 18%, rgba(255,255,255,0.10) 0%, transparent 70%), radial-gradient(36% 26% at 82% 12%, rgba(255,255,255,0.06) 0%, transparent 70%)",
+            "radial-gradient(60% 70% at 50% 0%, rgba(4,120,87,0.06) 0%, rgba(4,120,87,0.02) 45%, transparent 80%)",
         }}
       />
-      <div className="relative container-page max-w-[860px] pt-12 md:pt-20 pb-24 md:pb-32 text-center">
-        {/* Waving hand — large logo above the welcome message. Sits
-            on its own line for editorial weight. Hand-emoji renders
-            with native SF Pro / Apple Color Emoji on iOS, Noto on
-            Android — no asset bundling needed. */}
+      <div className="relative container-page max-w-[860px] pt-12 md:pt-20 pb-14 md:pb-20 text-center">
         <div
           className="text-[56px] md:text-[72px] leading-none mb-4 md:mb-6 select-none"
           aria-hidden="true"
         >
           👋
         </div>
-        <h1 className="font-display text-[34px] md:text-[52px] font-bold leading-[1.05] tracking-[-0.02em] text-white max-w-[760px] mx-auto">
+        <h1 className="font-display text-[34px] md:text-[52px] font-bold leading-[1.05] tracking-[-0.02em] text-ink max-w-[760px] mx-auto">
           {nameGreet}
         </h1>
-        <p className="mt-5 md:mt-6 text-[17px] md:text-[19px] text-white/85 leading-relaxed max-w-[560px] mx-auto">
+        <p className="mt-5 md:mt-6 text-[16px] md:text-[18px] text-ink-body leading-relaxed max-w-[560px] mx-auto">
           We&apos;ve been watching your subscriptions.
-        </p>
-        <p className="mt-2.5 text-[14px] md:text-[15px] text-white/65 leading-relaxed max-w-[520px] mx-auto">
-          {attentionLine}
         </p>
       </div>
       <span className="sr-only">
@@ -125,9 +105,6 @@ export function HomeHeroBand({
     </div>
   );
 }
-
-// Hero now uses a static waving-hand glyph rendered server-side above
-// the headline. The session-pinned dove/coffee picker was removed.
 
 // ─── LIVE status strip ──────────────────────────────────────────
 
@@ -158,31 +135,31 @@ export function HomeLiveStatusStrip({
   })();
 
   return (
-    // Outer container: stickies just below the layout header. We
-    // add a translucent canvas wash + backdrop blur so when the
-    // page scrolls under it, content doesn't ghost through the
-    // pill's negative space.
+    // Calm system-status pill sitting on the warm canvas. No more
+    // overlap into the hero (there's no green block to overlap
+    // anymore). Sticky just below the layout header so it follows
+    // the user on scroll. A subtle canvas wash + backdrop blur keeps
+    // page content from ghosting through.
     <div
-      className="sticky z-30"
-      style={{
-        top: "64px",
-        // Pull up so the strip overlaps the hero's curved bottom.
-        marginTop: "-32px",
-        marginBottom: "8px",
-      }}
+      className="sticky z-30 mb-3 md:mb-4"
+      style={{ top: "64px" }}
     >
-      <div className="bg-canvas/80 backdrop-blur-md py-2">
+      <div
+        className="py-2"
+        style={{
+          background:
+            "linear-gradient(180deg, rgba(250,248,244,0.92) 0%, rgba(250,248,244,0.65) 100%)",
+          backdropFilter: "blur(8px)",
+          WebkitBackdropFilter: "blur(8px)",
+        }}
+      >
         <div className="container-page max-w-[1200px]">
-          <div className="inline-flex max-w-full items-center gap-2 sm:gap-2.5 rounded-full bg-white border border-hairline shadow-soft px-3 sm:px-3.5 h-9 text-[11.5px] sm:text-[12.5px] text-ink whitespace-nowrap overflow-hidden">
+          <div className="inline-flex max-w-full items-center gap-2 sm:gap-2.5 rounded-full bg-surface/85 border border-hairline shadow-soft px-3 sm:px-3.5 h-9 text-[11.5px] sm:text-[12.5px] text-ink whitespace-nowrap overflow-hidden">
             <span className="relative inline-flex items-center justify-center shrink-0">
               <span
-                className="absolute inline-flex h-2.5 w-2.5 rounded-full opacity-60 animate-ping"
+                className="inline-flex h-2 w-2 rounded-full fr-sync-pulse"
                 style={{ background: "#10B981" }}
                 aria-hidden="true"
-              />
-              <span
-                className="relative inline-flex h-2 w-2 rounded-full"
-                style={{ background: "#10B981" }}
               />
             </span>
             <span className="font-medium shrink-0">Live</span>

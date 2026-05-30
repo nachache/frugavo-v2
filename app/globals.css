@@ -12,8 +12,31 @@
   }
 
   body {
-    @apply bg-canvas text-ink-body antialiased;
+    @apply text-ink-body antialiased;
     font-feature-settings: "ss01", "cv11";
+    /* Unified warm-ivory canvas. A barely-noticeable ambient gradient
+       — two soft warm blooms — gives the page depth like premium
+       paper under daylight without any visible color stops. Fixed
+       background so the wash doesn't repeat or shift on scroll. */
+    background-color: #FAF8F4;
+    background-image:
+      radial-gradient(
+        80% 60% at 20% 0%,
+        rgba(255, 244, 222, 0.55) 0%,
+        rgba(255, 244, 222, 0) 60%
+      ),
+      radial-gradient(
+        70% 55% at 90% 30%,
+        rgba(240, 232, 218, 0.45) 0%,
+        rgba(240, 232, 218, 0) 60%
+      ),
+      radial-gradient(
+        100% 80% at 50% 100%,
+        rgba(248, 240, 224, 0.35) 0%,
+        rgba(248, 240, 224, 0) 70%
+      );
+    background-attachment: fixed;
+    background-repeat: no-repeat;
   }
 
   h1, h2, h3, h4 {
