@@ -206,7 +206,25 @@ export async function runMonitoringForUser(args: {
     console.warn("[monitoring] detectMissingRenewals failed", e);
   }
   try {
-    candidates.push(...detectDuplicateSubscriptions({ current }));
+    const rawDuplicates = detectDuplicateSubscriptions({ current });
+    // Suppress duplicates the user has already dismissed via
+    // /api/learning/duplicate-dismiss. Each row keys on (user, root)
+    // — if the root matches a prior dismissal we drop the alert
+    // before it ever surfaces. This is the closed loop that turns
+    // the first-word matcher from "noisy forever" into "noisy until
+    // the user teaches it, then quiet."
+    const { data: dismissals } = await supabaseAdmin
+      .from("duplicate_dismissals")
+      .select("root")
+      .eq("clerk_user_id", userId);
+    const dismissedRoots = new Set(
+      ((dismissals ?? []) as Array<{ root: string }>).map((r) => r.root)
+    );
+    for (const d of rawDuplicates) {
+      const root = (d.details?.root as string | undefined) ?? "";
+      if (dismissedRoots.has(root)) continue;
+      candidates.push(d);
+    }
   } catch (e) {
     console.warn("[monitoring] detectDuplicateSubscriptions failed", e);
   }

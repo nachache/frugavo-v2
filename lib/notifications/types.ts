@@ -5,6 +5,7 @@
 // per-user preferences, and dispatch records.
 
 import type { Alert, AlertType } from "@/lib/monitoring/types";
+import { isPrimary } from "@/lib/monitoring/tiers";
 
 // Alert types that bypass the digest and send immediately. Per user
 // answer: trial converting, price increase >20%, charge spike,
@@ -70,13 +71,20 @@ export type DispatchRecord = {
   error_msg?: string | null;
 };
 
-// Decides if a given alert should bypass the digest. Combines the
-// type-based URGENT list with a severity check — a 6% price increase
-// is not urgent enough to interrupt; a 25% one is.
+// Decides if a given alert should bypass the digest and fire an
+// urgent push/email. Combines:
+//   1. Tier gate — only PRIMARY alerts are ever allowed to be
+//      urgent. Secondary alerts go to the dashboard quietly,
+//      silent alerts go nowhere visible. See lib/monitoring/tiers.ts.
+//   2. Type-based escalation — within the primary tier, certain
+//      types are always urgent (trial conversion, high charge).
+//   3. Severity check — a 6% price increase is not urgent enough
+//      to interrupt; a 25% one is.
 export function isUrgent(alert: Alert): boolean {
+  // Tier gate — demoted detectors NEVER fire urgent.
+  if (!isPrimary(alert.alert_type)) return false;
   if (alert.alert_type === "trial_converting") return true;
   if (alert.alert_type === "high_charge_amount") return true;
-  if (alert.alert_type === "duplicate_subscription") return true;
   if (alert.alert_type === "price_increase") {
     const pct = (alert.details?.delta_pct as number | undefined) ?? 0;
     return pct >= 0.2;

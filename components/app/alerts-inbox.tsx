@@ -14,8 +14,9 @@
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
-import { X, ExternalLink, CheckCircle2, EyeOff } from "lucide-react";
+import { X, ExternalLink, CheckCircle2, EyeOff, ChevronDown } from "lucide-react";
 import { MerchantLogo } from "./merchant-logo";
+import { tierFor } from "@/lib/monitoring/tiers";
 
 type AlertRow = {
   id: string;
@@ -82,18 +83,76 @@ export function AlertsInbox({ initial }: { initial: AlertRow[] }) {
   const [tab, setTab] = useState<Tab>("active");
   const [resolving, setResolving] = useState<Set<string>>(new Set());
   const [openAlert, setOpenAlert] = useState<AlertRow | null>(null);
+  // Secondary group is collapsed by default so it stays out of the
+  // way unless the user opts in.
+  const [secondaryOpen, setSecondaryOpen] = useState(false);
   const [, startTransition] = useTransition();
 
+  // Counts use PRIMARY alerts only — the tab badges reflect the
+  // alerts the user is actually being asked to engage with. Secondary
+  // (demoted) alerts get their own collapsed group at the bottom.
   const counts = useMemo(
     () => ({
-      active: alerts.filter((a) => a.status === "active").length,
-      acknowledged: alerts.filter((a) => a.status === "acknowledged").length,
-      dismissed: alerts.filter((a) => a.status === "dismissed").length,
+      active: alerts.filter(
+        (a) => a.status === "active" && tierFor(a.alert_type) === "primary"
+      ).length,
+      acknowledged: alerts.filter(
+        (a) =>
+          a.status === "acknowledged" && tierFor(a.alert_type) === "primary"
+      ).length,
+      dismissed: alerts.filter(
+        (a) => a.status === "dismissed" && tierFor(a.alert_type) === "primary"
+      ).length,
     }),
     [alerts]
   );
 
-  const visible = alerts.filter((a) => a.status === tab);
+  // Primary feed for the selected tab.
+  const visible = alerts.filter(
+    (a) => a.status === tab && tierFor(a.alert_type) === "primary"
+  );
+
+  // Secondary group — surface only in the Active tab and only when
+  // there's at least one item. Collapsed by default.
+  const secondaryActive = alerts.filter(
+    (a) => a.status === "active" && tierFor(a.alert_type) === "secondary"
+  );
+
+  // "Not a duplicate" — sends to /api/learning/duplicate-dismiss
+  // which records the labelled negative AND marks the alert
+  // dismissed. Closes the modal optimistically.
+  function dismissDuplicate(alertId: string) {
+    setResolving((prev) => new Set(prev).add(alertId));
+    startTransition(async () => {
+      try {
+        const res = await fetch("/api/learning/duplicate-dismiss", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ alert_id: alertId }),
+        });
+        if (!res.ok) return;
+        // Mirror the server: mark dismissed in local state.
+        setAlerts((prev) =>
+          prev.map((a) =>
+            a.id === alertId
+              ? {
+                  ...a,
+                  status: "dismissed",
+                  dismissed_at: new Date().toISOString(),
+                }
+              : a
+          )
+        );
+        setOpenAlert(null);
+      } finally {
+        setResolving((prev) => {
+          const next = new Set(prev);
+          next.delete(alertId);
+          return next;
+        });
+      }
+    });
+  }
 
   function act(alertId: string, action: "acknowledge" | "dismiss") {
     setResolving((prev) => new Set(prev).add(alertId));
@@ -173,6 +232,52 @@ export function AlertsInbox({ initial }: { initial: AlertRow[] }) {
         )}
       </div>
 
+      {/* Secondary feed — demoted detectors. Only renders on the
+          Active tab, only when there's at least one item. Collapsed
+          by default so primary alerts aren't visually competed with.
+          Honest framing in the label: these are less certain. */}
+      {tab === "active" && secondaryActive.length > 0 ? (
+        <div className="mt-6 pt-5 border-t border-hairline/60">
+          <button
+            type="button"
+            onClick={() => setSecondaryOpen((v) => !v)}
+            className="w-full flex items-center justify-between gap-3 text-left fr-tactile"
+          >
+            <div>
+              <div className="text-[12.5px] font-bold text-ink-body">
+                Other things we noticed
+              </div>
+              <div className="text-[11.5px] text-ink-muted">
+                {secondaryActive.length} less-certain item
+                {secondaryActive.length === 1 ? "" : "s"} — review at your
+                own pace
+              </div>
+            </div>
+            <ChevronDown
+              size={16}
+              strokeWidth={2}
+              className={[
+                "text-ink-muted shrink-0 transition-transform",
+                secondaryOpen ? "rotate-180" : "",
+              ].join(" ")}
+            />
+          </button>
+          {secondaryOpen ? (
+            <ul className="mt-3 divide-y divide-hairline/60 opacity-90">
+              {secondaryActive.map((a) => (
+                <li key={a.id}>
+                  <Row
+                    alert={a}
+                    disabled={resolving.has(a.id)}
+                    onOpen={() => setOpenAlert(a)}
+                  />
+                </li>
+              ))}
+            </ul>
+          ) : null}
+        </div>
+      ) : null}
+
       {openAlert ? (
         <AlertModal
           alert={openAlert}
@@ -180,6 +285,11 @@ export function AlertsInbox({ initial }: { initial: AlertRow[] }) {
           onClose={() => setOpenAlert(null)}
           onMarkRead={() => act(openAlert.id, "acknowledge")}
           onHide={() => act(openAlert.id, "dismiss")}
+          onNotDuplicate={
+            openAlert.alert_type === "duplicate_subscription"
+              ? () => dismissDuplicate(openAlert.id)
+              : undefined
+          }
         />
       ) : null}
     </div>
@@ -280,12 +390,17 @@ function AlertModal({
   onClose,
   onMarkRead,
   onHide,
+  onNotDuplicate,
 }: {
   alert: AlertRow;
   disabled: boolean;
   onClose: () => void;
   onMarkRead: () => void;
   onHide: () => void;
+  // Only provided for duplicate_subscription alerts. Clicking the
+  // button records labelled feedback for the v2 matcher AND
+  // dismisses the alert.
+  onNotDuplicate?: () => void;
 }) {
   const [mounted, setMounted] = useState(false);
   const dialogRef = useRef<HTMLDivElement | null>(null);
@@ -386,16 +501,28 @@ function AlertModal({
           ) : null}
         </div>
 
-        <div className="sticky bottom-0 bg-white/95 backdrop-blur border-t border-hairline px-5 md:px-7 py-3 flex items-center justify-between gap-2">
-          <button
-            type="button"
-            onClick={onHide}
-            disabled={disabled || alert.status !== "active"}
-            className="inline-flex items-center gap-1.5 h-10 px-3 rounded-full text-[12.5px] font-medium text-ink-muted hover:text-ink hover:bg-ink/[0.04] transition disabled:opacity-50"
-          >
-            <EyeOff size={12} strokeWidth={2} />
-            Hide
-          </button>
+        <div className="sticky bottom-0 bg-white/95 backdrop-blur border-t border-hairline px-5 md:px-7 py-3 flex items-center justify-between gap-2 flex-wrap">
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={onHide}
+              disabled={disabled || alert.status !== "active"}
+              className="inline-flex items-center gap-1.5 h-10 px-3 rounded-full text-[12.5px] font-medium text-ink-muted hover:text-ink hover:bg-ink/[0.04] transition disabled:opacity-50"
+            >
+              <EyeOff size={12} strokeWidth={2} />
+              Hide
+            </button>
+            {onNotDuplicate ? (
+              <button
+                type="button"
+                onClick={onNotDuplicate}
+                disabled={disabled || alert.status !== "active"}
+                className="inline-flex items-center gap-1.5 h-10 px-3 rounded-full text-[12.5px] font-medium text-ink-muted hover:text-ink hover:bg-ink/[0.04] transition disabled:opacity-50"
+              >
+                Not a duplicate
+              </button>
+            ) : null}
+          </div>
           <button
             type="button"
             onClick={onMarkRead}

@@ -3,6 +3,7 @@ import { currentUser } from "@clerk/nextjs/server";
 import { supabaseAdmin } from "@/lib/supabase";
 import { AlertsInbox } from "@/components/app/alerts-inbox";
 import { BackPill } from "@/components/app/back-pill";
+import { tierFor } from "@/lib/monitoring/tiers";
 
 // /app/alerts — full Peace of Mind inbox.
 //
@@ -56,8 +57,14 @@ export default async function AlertsPage() {
       )
       .map((r) => r.id as string)
   );
+  // Tier gate (lib/monitoring/tiers.ts) — silent detectors never
+  // appear in the alerts feed even though their rows exist in
+  // monitoring_alerts. Primary + secondary both flow through; the
+  // AlertsInbox UI splits them visually.
   const alerts = ((data ?? []) as AlertRow[]).filter(
-    (a) => !a.subscription_id || !nonSubIds.has(a.subscription_id)
+    (a) =>
+      (!a.subscription_id || !nonSubIds.has(a.subscription_id)) &&
+      tierFor(a.alert_type) !== "silent"
   );
 
   return (
