@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { usePlaidLink, type PlaidLinkOnSuccessMetadata } from "react-plaid-link";
 import { Loader2, ShieldCheck } from "lucide-react";
+import { track } from "@/lib/learning/track";
 
 // Connect-bank button.
 //
@@ -242,6 +243,11 @@ export function ConnectBankButton({
       <div className="flex flex-col items-start gap-1.5">
         <button
           onClick={() => {
+            // Funnel signal — fires before Plaid Link opens so we
+            // capture intent regardless of whether the user completes
+            // the connect flow. Same event name in both the compact
+            // and primary variants so the funnel aggregates cleanly.
+            track("connect_clicked", { variant: "compact" });
             if (ready && linkToken && status !== "queued") {
               setStatus("connecting");
               open();
@@ -296,6 +302,8 @@ export function ConnectBankButton({
 
       <button
         onClick={() => {
+          // Funnel signal — see compact variant note above.
+          track("connect_clicked", { variant: "primary" });
           // If the link token + plaidLink hooks are both ready, open
           // immediately. Otherwise queue — the useEffect above will
           // auto-open as soon as both become ready.

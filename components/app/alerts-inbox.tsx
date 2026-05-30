@@ -17,6 +17,7 @@ import Link from "next/link";
 import { X, ExternalLink, CheckCircle2, EyeOff, ChevronDown } from "lucide-react";
 import { MerchantLogo } from "./merchant-logo";
 import { tierFor } from "@/lib/monitoring/tiers";
+import { track } from "@/lib/learning/track";
 
 type AlertRow = {
   id: string;
@@ -499,6 +500,13 @@ function AlertModal({
               <ExternalLink size={11} strokeWidth={2} />
             </Link>
           ) : null}
+
+          {/* Quality-of-finding reaction. Single tap writes to the
+              events table with the alert_type so the tier framework
+              (lib/monitoring/tiers.ts) can promote/demote detectors
+              based on aggregate user reaction over time, not just
+              the founder's judgement. */}
+          <AlertReactionRow alertId={alert.id} alertType={alert.alert_type} />
         </div>
 
         <div className="sticky bottom-0 bg-white/95 backdrop-blur border-t border-hairline px-5 md:px-7 py-3 flex items-center justify-between gap-2 flex-wrap">
@@ -537,5 +545,78 @@ function AlertModal({
       </div>
     </div>,
     document.body
+  );
+}
+
+
+// ─── Reaction row ──────────────────────────────────────────────
+//
+// One-tap quality signal. Shown inside the modal body. After tap:
+//   • Writes to events table via track() — feeds tier framework
+//   • Replaces the row with a quiet "Thanks" so the user doesn't
+//     feel like the click was lost
+//   • Stores a dedupe flag in sessionStorage so the same alert
+//     doesn't ask twice in the same session
+
+function AlertReactionRow({
+  alertId,
+  alertType,
+}: {
+  alertId: string;
+  alertType: string;
+}) {
+  const dedupeKey = `frugavo:alert-reaction:${alertId}`;
+  const [reacted, setReacted] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    return Boolean(window.sessionStorage.getItem(dedupeKey));
+  });
+
+  function react(reaction: "helpful" | "neutral" | "noise") {
+    if (reacted) return;
+    track("alert_reaction", {
+      alert_id: alertId,
+      alert_type: alertType,
+      reaction,
+    });
+    if (typeof window !== "undefined") {
+      window.sessionStorage.setItem(dedupeKey, "1");
+    }
+    setReacted(true);
+  }
+
+  if (reacted) {
+    return (
+      <div className="mt-3 text-[11.5px] text-ink-muted">Thanks — noted.</div>
+    );
+  }
+
+  return (
+    <div className="mt-3 flex items-center gap-2 text-[11.5px] text-ink-muted">
+      <span>Was this useful?</span>
+      <button
+        type="button"
+        onClick={() => react("helpful")}
+        aria-label="Helpful"
+        className="inline-flex h-7 px-2 rounded-full border border-hairline bg-white hover:bg-canvas/40 transition fr-tactile"
+      >
+        👍
+      </button>
+      <button
+        type="button"
+        onClick={() => react("neutral")}
+        aria-label="Meh"
+        className="inline-flex h-7 px-2 rounded-full border border-hairline bg-white hover:bg-canvas/40 transition fr-tactile"
+      >
+        🤷
+      </button>
+      <button
+        type="button"
+        onClick={() => react("noise")}
+        aria-label="Noise"
+        className="inline-flex h-7 px-2 rounded-full border border-hairline bg-white hover:bg-canvas/40 transition fr-tactile"
+      >
+        👎
+      </button>
+    </div>
   );
 }

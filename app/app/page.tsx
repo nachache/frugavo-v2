@@ -12,6 +12,7 @@ import { ScanConfirmOverlay, type ConfirmCandidate } from "@/components/app/scan
 import { loadOpenDoubts } from "@/lib/doubt/load";
 import { LoginAutoSync } from "@/components/app/login-auto-sync";
 import { ComingUpRenewalsCard, type UpcomingRenewal } from "@/components/app/coming-up-renewals-card";
+import { PostScanPoll } from "@/components/app/post-scan-poll";
 import { BillingStatusBanner } from "@/components/app/billing-status-banner";
 import { buildWatchdogDigest } from "@/lib/watchdog/digest";
 import { WatchdogOverlay } from "@/components/app/watchdog-overlay";
@@ -341,6 +342,10 @@ export default async function AppHome() {
       {/* Auto-sync on login — fires once per browser session, shows
           a thin pulsing bar while in flight, fades on completion. */}
       <LoginAutoSync />
+
+      {/* Post-scan quality reaction — appears once per scan, ≥24h
+          after the scan finished. Single-tap 👍 🤷 👎, then quiet. */}
+      <PostScanPoll lastScanIso={latestScanFinishedAt} />
 
       {/* ─── Hero band — bleeds under sticky header ─────────── */}
       <HomeHeroBand

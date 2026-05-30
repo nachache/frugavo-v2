@@ -28,6 +28,7 @@ import {
   CheckCircle2,
 } from "lucide-react";
 import { MerchantLogo } from "@/components/app/merchant-logo";
+import { track } from "@/lib/learning/track";
 
 export type DetailSub = {
   subscription_id: string;
@@ -235,7 +236,22 @@ export function SubscriptionDetailModal({
             <div className="mt-3 flex items-center gap-2 flex-wrap">
               <button
                 type="button"
-                onClick={() => onCancelAssist(sub)}
+                onClick={() => {
+                  // High-signal behavioural event — feeds the
+                  // cancel-providers directory prioritization. Tells
+                  // us which subs people actually want to kill, so
+                  // the next directory expansion targets the right
+                  // merchants first. Sent before opening the cancel
+                  // flow so the event captures intent regardless of
+                  // whether the user completes the cancellation.
+                  track("cancel_intent", {
+                    subscription_id: sub.subscription_id,
+                    category: sub.category,
+                    monthly_cents: sub.monthly_cents,
+                    frequency: sub.frequency,
+                  });
+                  onCancelAssist(sub);
+                }}
                 className="inline-flex items-center gap-1.5 h-9 px-4 rounded-full text-[12.5px] font-medium text-white fr-tactile"
                 style={{ background: "#0F6E56" }}
               >
