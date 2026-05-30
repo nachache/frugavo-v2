@@ -273,11 +273,19 @@ function UpcomingOverlay({
         )}
       </div>
 
-      {/* Stacked: shared sub detail overlay opens on top of the list. */}
+      {/* Stacked drill-down: sub detail slides over the upcoming list
+          with a back arrow that returns to the list. onBack triggers
+          stacked-mode (slide animation + higher z-index + back arrow);
+          onClose dismisses BOTH overlays so the user lands back on
+          the dashboard. */}
       {openSub ? (
         <SubscriptionDetailModal
           sub={toDetailSub(openSub)}
-          onClose={() => setOpenSub(null)}
+          onBack={() => setOpenSub(null)}
+          onClose={() => {
+            setOpenSub(null);
+            onClose();
+          }}
           onMarkNotSub={() => markNotSub(openSub)}
           onCancelAssist={() => {
             const target = openSub;

@@ -274,6 +274,28 @@
     animation: fr-modal-fade-in 200ms ease-out both;
   }
 
+  /* fr-modal-slide-in — for STACKED overlays. The child slides in
+     from the right like a card on top of its parent so the user
+     reads it as "drilling in" rather than "another popup". On mobile
+     where the parent occupies the full bottom-sheet, the slide
+     animates upward from the bottom instead. */
+  @keyframes fr-modal-slide-in-right {
+    from { opacity: 0; transform: translateX(24px); }
+    to   { opacity: 1; transform: translateX(0); }
+  }
+  @keyframes fr-modal-slide-in-bottom {
+    from { opacity: 0; transform: translateY(24px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .fr-modal-slide-in {
+    animation: fr-modal-slide-in-bottom 260ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+  @media (min-width: 768px) {
+    .fr-modal-slide-in {
+      animation: fr-modal-slide-in-right 260ms cubic-bezier(0.16, 1, 0.3, 1) both;
+    }
+  }
+
   /* Skeleton shimmer — calm horizontal wash for loading
      placeholders. */
   @keyframes fr-shimmer {

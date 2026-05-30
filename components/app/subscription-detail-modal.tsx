@@ -20,6 +20,7 @@ import { createPortal } from "react-dom";
 import Link from "next/link";
 import {
   X,
+  ChevronLeft,
   Scissors,
   Eye,
   ExternalLink,
@@ -67,11 +68,19 @@ export function SubscriptionDetailModal({
   onClose,
   onMarkNotSub,
   onCancelAssist,
+  // Optional: when provided, the modal renders in "stacked-over"
+  // mode — a back arrow replaces the close X, the entrance animation
+  // slides in from the right (desktop) / up (mobile) like a card
+  // drilling on top of the parent overlay, and the z-index sits
+  // above any other open overlay. Use from any parent overlay (e.g.
+  // the Coming-up renewals list) that wants drill-down behaviour.
+  onBack,
 }: {
   sub: DetailSub;
   onClose: () => void;
   onMarkNotSub: (sub: DetailSub) => void;
   onCancelAssist: (sub: DetailSub) => void;
+  onBack?: () => void;
 }) {
   const [mounted, setMounted] = useState(false);
   const [confirmNotSub, setConfirmNotSub] = useState(false);
@@ -83,7 +92,11 @@ export function SubscriptionDetailModal({
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (e.key !== "Escape") return;
+      // Stacked-over mode: Esc pops back to the parent overlay rather
+      // than dismissing the whole stack. Standalone mode: Esc closes.
+      if (typeof onBack === "function") onBack();
+      else onClose();
     };
     window.addEventListener("keydown", onKey);
     const prevOverflow = document.body.style.overflow;
@@ -93,7 +106,7 @@ export function SubscriptionDetailModal({
       window.removeEventListener("keydown", onKey);
       document.body.style.overflow = prevOverflow;
     };
-  }, [onClose]);
+  }, [onClose, onBack]);
 
   if (!mounted) return null;
 
@@ -102,26 +115,48 @@ export function SubscriptionDetailModal({
   const lastDate = fmtDate(sub.last_charged_at);
   const freq = sub.frequency === "unknown" ? "—" : sub.frequency;
 
+  const stacked = typeof onBack === "function";
+
   return createPortal(
     <div
-      className="fixed inset-0 z-[105] flex items-end md:items-center justify-center p-0 md:p-6 fr-modal-fade-in"
+      // Higher z-index when stacked over another overlay so the new
+      // card sits on TOP rather than ghosting behind. fr-modal-fade-in
+      // is dropped for stacked mode because the parent already has
+      // its own scrim — we only animate the card itself.
+      className={[
+        "fixed inset-0 flex items-end md:items-center justify-center p-0 md:p-6",
+        stacked ? "z-[130]" : "z-[105] fr-modal-fade-in",
+      ].join(" ")}
       role="dialog"
       aria-modal="true"
       aria-labelledby="sub-detail-modal-title"
     >
       <button
         type="button"
-        onClick={onClose}
-        aria-label="Close"
+        onClick={stacked ? onBack : onClose}
+        aria-label={stacked ? "Back" : "Close"}
         className="absolute inset-0 bg-ink/40 backdrop-blur-sm"
       />
       <div
         ref={dialogRef}
         tabIndex={-1}
-        className="relative w-full md:max-w-[520px] max-h-[90vh] overflow-y-auto rounded-t-3xl md:rounded-3xl bg-white shadow-float border border-hairline outline-none fr-modal-pop"
+        className={[
+          "relative w-full md:max-w-[520px] max-h-[90vh] overflow-y-auto rounded-t-3xl md:rounded-3xl bg-white shadow-float border border-hairline outline-none",
+          stacked ? "fr-modal-slide-in" : "fr-modal-pop",
+        ].join(" ")}
       >
         <div className="sticky top-0 z-10 bg-white/95 backdrop-blur border-b border-hairline px-5 md:px-7 py-4 flex items-center justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0">
+            {stacked ? (
+              <button
+                type="button"
+                onClick={onBack}
+                aria-label="Back"
+                className="inline-flex items-center justify-center w-9 h-9 rounded-full hover:bg-ink/[0.05] text-ink-muted hover:text-ink transition shrink-0 -ml-1 fr-tactile"
+              >
+                <ChevronLeft size={18} strokeWidth={2.2} />
+              </button>
+            ) : null}
             <MerchantLogo
               name={sub.merchant_name}
               domain={sub.domain}
@@ -144,7 +179,7 @@ export function SubscriptionDetailModal({
             type="button"
             onClick={onClose}
             aria-label="Close"
-            className="inline-flex items-center justify-center w-9 h-9 rounded-full hover:bg-ink/[0.05] text-ink-muted hover:text-ink transition shrink-0"
+            className="inline-flex items-center justify-center w-9 h-9 rounded-full hover:bg-ink/[0.05] text-ink-muted hover:text-ink transition shrink-0 fr-tactile"
           >
             <X size={16} strokeWidth={2} />
           </button>
