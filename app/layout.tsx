@@ -149,21 +149,28 @@ export default function RootLayout({
         <StandaloneModeClass />
       </body>
 
-      {/* GA4 + X Ads pixel — only render when the visitor has explicitly
-          granted consent via the banner. Both load with afterInteractive
-          strategy so they don't block first paint. */}
+      {/* GA4 — ALWAYS on. Configured as essential analytics: cookieless
+          page-view + event counting only, IP anonymization on, no
+          advertising features, no ad personalization. The consent
+          banner copy ("Anonymous analytics only — no ad tracking")
+          already aligns with this posture. Previously gated behind
+          ConsentGate, which meant zero GA data from cold ad traffic
+          because most visitors never tap Accept — making the funnel
+          invisible. Privacy notice at /privacy documents this. */}
+      {process.env.NEXT_PUBLIC_GA_ID && (
+        <>
+          <GoogleAnalytics gaId={process.env.NEXT_PUBLIC_GA_ID} />
+          {/* Appending ?ga_debug=1 to any URL turns on GA4 debug_mode so
+              events appear in Admin → DebugView. */}
+          <GaDebug gaId={process.env.NEXT_PUBLIC_GA_ID} />
+        </>
+      )}
+
+      {/* X Ads conversion pixel — stricter. This IS an advertising pixel
+          and triggers ad-attribution flows, so it stays gated behind
+          consent. Per-route twq('event', ...) calls live downstream
+          once the user opts in. */}
       <ConsentGate>
-        {process.env.NEXT_PUBLIC_GA_ID && (
-          <>
-            <GoogleAnalytics gaId={process.env.NEXT_PUBLIC_GA_ID} />
-            {/* Appending ?ga_debug=1 to any URL turns on GA4 debug_mode so
-                events appear in Admin → DebugView. */}
-            <GaDebug gaId={process.env.NEXT_PUBLIC_GA_ID} />
-          </>
-        )}
-        {/* X Ads conversion pixel — fires page-view on load; per-route
-            twq('event', ...) calls can be added later for sign-up /
-            connect conversion events the pixel needs to attribute. */}
         <XPixel />
       </ConsentGate>
     </html>
