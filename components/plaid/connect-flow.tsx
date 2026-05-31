@@ -12,6 +12,11 @@ import { ConnectBankButton } from "./connect-bank-button";
 // other surface that imported it, but is now a thin pass-through
 // to the actual Plaid Link button.
 
-export function ConnectFlow() {
-  return <ConnectBankButton />;
+export function ConnectFlow({ autoOpen = false }: { autoOpen?: boolean } = {}) {
+  // autoOpen is forwarded for the post-signup velocity path on
+  // /app/connect. When true, the hero button auto-fires Plaid Link
+  // 1.5s after mount so cold ad traffic doesn't have to click a
+  // second CTA after sign-up. See ConnectBankButton for the
+  // sessionStorage guard and OAuth-resume exclusion.
+  return <ConnectBankButton autoOpen={autoOpen} />;
 }

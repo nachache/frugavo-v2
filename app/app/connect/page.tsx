@@ -78,9 +78,16 @@ function Hero() {
           forgotten subscription we can find in about 30 seconds.
         </p>
 
-        {/* CTA */}
+        {/* CTA — autoOpen=true makes Plaid Link pop on its own 1.5s
+            after mount. Trust copy ("read-only via Plaid", "free
+            during early access") gets one breath of visibility before
+            the modal arrives, so the velocity gain doesn't come at
+            the cost of the warm-up. The FinalCTA below intentionally
+            does NOT autoOpen — only one auto-open per page, and the
+            sessionStorage flag in ConnectBankButton enforces that
+            even on re-mounts. */}
         <div className="mt-7">
-          <ConnectFlow />
+          <ConnectFlow autoOpen />
         </div>
 
         {/* Supporting trust line */}

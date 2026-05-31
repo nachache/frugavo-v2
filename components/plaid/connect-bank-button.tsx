@@ -40,10 +40,16 @@ type Status =
   | "error";
 
 const OAUTH_TOKEN_KEY = "frugavo:plaid:link_token";
+// Session-scoped flag so the post-signup auto-open fires AT MOST once
+// per browser session. Without this, back-navigating to /app/connect
+// (or any second mount of the hero button) would re-pop Plaid Link,
+// which feels broken. Cleared automatically when the tab closes.
+const AUTO_OPEN_FIRED_KEY = "frugavo:plaid:auto_opened";
 
 export function ConnectBankButton({
   variant = "hero",
   compactLabel = "Connect another account",
+  autoOpen = false,
 }: {
   // 'hero'    — first-connect /app/connect CTA. Big shadowed pill with
   //             "Free scan" eyebrow and "Takes about 30 seconds." subline.
@@ -52,6 +58,16 @@ export function ConnectBankButton({
   //             No eyebrow / subline; smaller height; uses compactLabel.
   variant?: "hero" | "compact";
   compactLabel?: string;
+  // When true, auto-fires open() after a 1.5s grace window once the
+  // Plaid Link is ready. Used on /app/connect right after sign-up so
+  // cold ad traffic doesn't have to click through a second CTA after
+  // the sign-up form. The grace window lets the user register the
+  // trust copy ("read-only via Plaid") for one breath before the
+  // modal pops; sessionStorage guarantees it only fires once per
+  // tab so closing the modal doesn't re-trigger it on navigation
+  // back. OAuth resume has its own auto-open path and is not
+  // affected by this flag.
+  autoOpen?: boolean;
 } = {}) {
   const router = useRouter();
   const [linkToken, setLinkToken] = useState<string | null>(null);
@@ -202,6 +218,37 @@ export function ConnectBankButton({
       open();
     }
   }, [status, ready, linkToken, open]);
+
+  // Post-signup auto-open (Option A from the funnel debug).
+  //
+  // When autoOpen=true (passed by the hero CTA on /app/connect right
+  // after sign-up), wait 1.5s after Plaid Link is ready, then fire
+  // open() automatically. The grace window lets the visitor read the
+  // hero copy + trust line for one breath so the modal feels invited
+  // rather than thrown at them. sessionStorage prevents re-firing on
+  // back-navigation or a second hero mount in the same tab. OAuth
+  // resume has its own auto-open path above and is excluded here.
+  useEffect(() => {
+    if (!autoOpen) return;
+    if (isOAuthResume) return;
+    if (status !== "ready") return;
+    if (!ready || !linkToken) return;
+    if (typeof window === "undefined") return;
+    if (window.sessionStorage.getItem(AUTO_OPEN_FIRED_KEY) === "1") return;
+
+    const timer = window.setTimeout(() => {
+      // Re-check the flag inside the timer in case a sibling button
+      // mounted in the same render cycle already raced ahead and
+      // opened the modal.
+      if (window.sessionStorage.getItem(AUTO_OPEN_FIRED_KEY) === "1") return;
+      window.sessionStorage.setItem(AUTO_OPEN_FIRED_KEY, "1");
+      track("plaid_auto_opened", { surface: "connect_hero" });
+      setStatus("connecting");
+      open();
+    }, 1500);
+
+    return () => window.clearTimeout(timer);
+  }, [autoOpen, isOAuthResume, status, ready, linkToken, open]);
 
   // Disabled only while Plaid Link is actively opening or we're
   // exchanging the token. "idle" and "queued" remain clickable —
