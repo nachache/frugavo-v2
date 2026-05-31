@@ -22,8 +22,12 @@ const base =
   "disabled:pointer-events-none whitespace-nowrap cursor-pointer";
 
 const variants: Record<Variant, string> = {
+  // Brand-green primary. Replaced the orange accent (which clashed
+  // with the warm-ivory + green system everywhere else in the
+  // product) so the public landing page CTA matches the in-app
+  // visual identity. The shadow color shifts to match.
   primary:
-    "bg-accent text-white hover:bg-accent-hover shadow-[0_1px_0_rgba(255,255,255,0.16)_inset,0_8px_24px_-8px_rgba(234,88,12,0.45)]",
+    "bg-brand text-white hover:bg-brand/90 shadow-[0_1px_0_rgba(255,255,255,0.16)_inset,0_8px_24px_-8px_rgba(4,120,87,0.45)]",
   ghost: "text-ink hover:bg-ink/[0.04]",
   outline:
     "border border-hairline bg-white text-ink hover:border-ink/30 hover:shadow-soft",

@@ -9,21 +9,25 @@ export const nav = {
     { label: "FAQ", href: "/#faq" },
   ],
   signIn: { label: "Sign in", href: "/sign-in" },
-  cta: { label: "Start your analysis", href: "/sign-up" },
+  cta: { label: "Find my subscriptions", href: "/sign-up" },
 };
 
+// Discovery-first hero, ported from /app/connect after the X ad
+// data showed 0% conversion on the previous "protection intelligence"
+// framing. Cold paid traffic responds to anticipation ("what would
+// it find in mine?") not feature copy ("intelligence layer"). The
+// dollar number stays because it's the strongest scroll-stopper,
+// but the framing flips from teaching about Frugavo to making the
+// reader curious about themselves.
 export const hero = {
-  // "Founder Access" sets the tone before the headline lands —
-  // privilege framing, not a generic "Beta" badge.
   eyebrow: "Founder Access · Open during early access",
-  headline: "Your subscription protection intelligence.",
+  headline: "You don't know all your subscriptions.",
+  subheadline: "Most people don't.",
   stat: "You think you pay $86 in subscriptions. It's really $219.",
   sourceCitation: "Source: C+R Research, 2026",
-  // Calm, observational voice. The product notices what the user
-  // can't, instead of "killing" or "watchdog'ing" subscriptions.
   subhead:
-    "Frugavo quietly observes every recurring charge across your accounts and surfaces what changes — before you notice.",
-  primaryCta: { label: "Start your analysis", href: "/sign-up" },
+    "We'll show every recurring charge, upcoming renewal, and forgotten subscription we can find — in about 30 seconds.",
+  primaryCta: { label: "Find my subscriptions", href: "/sign-up" },
   secondaryCta: { label: "See how it works", href: "#demo" },
   trust:
     "Read-only access via Plaid · We don’t store bank credentials · 12,000+ banks across the US and Canada",
