@@ -5,6 +5,26 @@ const nextConfig = {
     optimizePackageImports: ["framer-motion", "lucide-react"],
   },
 
+  // Marketing redirects — catch-all for paid-traffic URLs that point
+  // at slugs we never built or that have been renamed. /protect was
+  // used in an X ad campaign and 404'd; redirecting to the canonical
+  // landing page preserves the click and the UTM params. Add more
+  // here as ad campaigns rotate. statusCode 302 (temporary) so we
+  // can change destinations later without browsers caching the
+  // wrong target.
+  async redirects() {
+    return [
+      {
+        source: "/protect",
+        destination: "/",
+        permanent: false,
+      },
+      // Add future ad-only landing slugs here. Always 302 for
+      // marketing redirects — gives us room to change the
+      // destination if a campaign's funnel changes.
+    ];
+  },
+
   // Security headers are set here (not in netlify.toml) because Netlify's
   // [[headers]] config only applies to static files, not to Next.js
   // dynamic routes served by serverless functions. Next.js headers() runs
