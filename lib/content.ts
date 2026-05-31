@@ -21,16 +21,34 @@ export const nav = {
 // reader curious about themselves.
 export const hero = {
   eyebrow: "Founder Access · Open during early access",
-  headline: "You don't know all your subscriptions.",
-  subheadline: "Most people don't.",
-  stat: "You think you pay $86 in subscriptions. It's really $219.",
-  sourceCitation: "Source: C+R Research, 2026",
-  subhead:
-    "We'll show every recurring charge, upcoming renewal, and forgotten subscription we can find — in about 30 seconds.",
+  // Rewritten to continue the tension from the X ad ("You're paying
+  // for 14 subscriptions and can name 9"). The previous landing
+  // headline ("You don't know all your subscriptions") reset the
+  // conversation for a visitor arriving from the ad; this version
+  // names the actual outcome the ad implied — forgotten charges still
+  // billing today — and primes the visitor to expect a discovery,
+  // not a pitch.
+  headline:
+    "You're probably paying for subscriptions you've forgotten about.",
+  subheadline:
+    "Most people miss 3–5 recurring charges. Connect your bank and see every subscription charging you today.",
+  // Single-action hero post-funnel-debug: dropped the secondary CTA
+  // ("See how it works") so the page has one obvious next step. The
+  // hero scrolls into the existing How-it-works section anyway, so
+  // curious readers still get the explanation without us having to
+  // compete with the primary action above the fold.
   primaryCta: { label: "Find my subscriptions", href: "/sign-up" },
-  secondaryCta: { label: "See how it works", href: "#demo" },
-  trust:
-    "Read-only access via Plaid · We don’t store bank credentials · 12,000+ banks across the US and Canada",
+  // Trust signals moved INTO the CTA area (above the button) instead
+  // of a single muted line below. Same content, presented as four
+  // checkmarks so the visitor sees the credential-safety story
+  // BEFORE being asked to connect a bank — which is the largest
+  // conversion barrier here.
+  trustChecks: [
+    "Read-only access",
+    "Powered by Plaid",
+    "We never store banking credentials",
+    "Disconnect anytime",
+  ],
 };
 
 export type DemoSub = {

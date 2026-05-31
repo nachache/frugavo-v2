@@ -27,24 +27,22 @@ const HeroDemoCard = dynamic(
 );
 import { hero } from "@/lib/content";
 
-// The hero previously displayed a live-incrementing dollar counter labeled
-// "saved by Frugavo users this month". Pre-launch, Frugavo has no real users
-// and no real savings, so that counter was a misleading social-proof claim
-// under both Google Ads (Personal Finance policy) and Meta Ads (financial
-// services policy). Removed pending a real server-tracked metric.
+// Hero is wired for ad-to-page continuity. A visitor arriving from the
+// "You're paying for 14 subscriptions and can name 9" X post should
+// land here and immediately feel: "Frugavo is about to show me the
+// ones I forgot." Every element supports that single narrative:
 //
-// In its place: three static value-prop chips. Each describes a structural
-// product feature, not a personalized financial outcome.
-
-// Founder-Access-era value props. No "trial," no "cancel any time"
-// (there's no billing to cancel). What we promise: the system unlocks
-// in seconds, never asks for a card, and never feels noisy. The third
-// line is intentionally about the experience, not the price.
-const VALUE_PROPS = [
-  "Open access during beta",
-  "No credit card, ever",
-  "Calm by design",
-];
+//   • Headline names the outcome the ad implied (forgotten charges
+//     still billing today), instead of resetting the conversation.
+//   • Demo card on the right shows shell-company-style merchant
+//     names (Paddle.net, Apple Services) — the ones cold readers
+//     don't recognize on their own statements.
+//   • Trust signals sit ABOVE the CTA because bank-credential
+//     anxiety is the largest barrier here, and it has to be
+//     addressed before we ask.
+//   • Single CTA. The previous "See how it works" secondary action
+//     was conversion drag — How-it-works lives one scroll down and
+//     curious readers still get there.
 
 export function Hero() {
   return (
@@ -80,45 +78,63 @@ export function Hero() {
               delay: 0.08,
               ease: [0.16, 1, 0.3, 1],
             }}
-            className="mt-6 font-display font-bold text-ink text-[36px] md:text-[56px] leading-[1.02] tracking-[-0.03em]"
+            className="mt-6 font-display font-bold text-ink text-[34px] md:text-[52px] leading-[1.04] tracking-[-0.03em]"
           >
             {hero.headline}
           </motion.h1>
+
           <motion.p
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{
               duration: 0.6,
-              delay: 0.12,
+              delay: 0.14,
               ease: [0.16, 1, 0.3, 1],
             }}
-            className="mt-3 text-[18px] md:text-[22px] text-ink-muted leading-snug"
+            className="mt-5 max-w-[560px] text-[16.5px] md:text-[19px] leading-relaxed text-ink-body"
           >
             {hero.subheadline}
           </motion.p>
 
-          <motion.p
+          {/* Trust signals — sits ABOVE the CTA. Cold ad traffic needs
+              to see the credential-safety story before the bank-connect
+              ask, not after. Compact two-column grid on desktop so the
+              row doesn't visually compete with the headline. */}
+          <motion.ul
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{
               duration: 0.6,
-              delay: 0.18,
+              delay: 0.22,
               ease: [0.16, 1, 0.3, 1],
             }}
-            className="mt-6 max-w-[560px] text-[15.5px] md:text-[17px] leading-relaxed text-ink-body"
+            className="mt-7 grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2.5 max-w-[460px]"
           >
-            {hero.subhead}
-          </motion.p>
+            {hero.trustChecks.map((t) => (
+              <li
+                key={t}
+                className="inline-flex items-center gap-2 text-[13.5px] text-ink-body"
+              >
+                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-brand-light shrink-0">
+                  <Check size={11} className="text-brand" strokeWidth={3} />
+                </span>
+                <span className="leading-tight">{t}</span>
+              </li>
+            ))}
+          </motion.ul>
 
+          {/* Single CTA. The page has ONE obvious action above the
+              fold; the rest of the page handles the rest of the
+              conversation. */}
           <motion.div
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{
               duration: 0.7,
-              delay: 0.24,
+              delay: 0.3,
               ease: [0.16, 1, 0.3, 1],
             }}
-            className="mt-8 flex flex-wrap items-center gap-3"
+            className="mt-6"
           >
             <Button asChild size="lg" className="group">
               <a href={hero.primaryCta.href}>
@@ -129,40 +145,12 @@ export function Hero() {
                 />
               </a>
             </Button>
-            <Button asChild variant="ghost" size="lg">
-              <a href={hero.secondaryCta.href}>{hero.secondaryCta.label}</a>
-            </Button>
           </motion.div>
-
-          <motion.p
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.5, delay: 0.32 }}
-            className="mt-5 text-[13px] text-ink-muted"
-          >
-            {hero.trust}
-          </motion.p>
-
-          <motion.ul
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.4 }}
-            className="mt-8 flex flex-wrap gap-x-5 gap-y-2 text-[13.5px] text-ink-body"
-          >
-            {VALUE_PROPS.map((v) => (
-              <li key={v} className="inline-flex items-center gap-1.5">
-                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-brand-light">
-                  <Check size={11} className="text-brand" strokeWidth={3} />
-                </span>
-                {v}
-              </li>
-            ))}
-          </motion.ul>
         </div>
 
-        {/* RIGHT — animated demo card. Visible on mobile too;
-            the user prefers the motion / visual proof above the
-            fold even at the cost of a bit more scroll. */}
+        {/* RIGHT — animated discovery scan. Visible on mobile too;
+            the visual proof reinforces the headline by showing the
+            kind of merchant names users typically don't recognize. */}
         <div className="relative">
           <HeroDemoCard />
         </div>
