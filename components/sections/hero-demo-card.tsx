@@ -293,6 +293,14 @@ export function HeroDemoCard() {
           position: relative;
           width: 100%;
           max-width: 420px;
+          /* Reserve the steady-state height so the card never grows
+             as rows stream in. Without this, the card starts ~100px
+             tall (empty list) and expands to ~560px as the
+             animation fills it — pushing every section below the
+             hero down each loop. min-height locks the footprint
+             to the final state so the page is layout-stable. The
+             SSR placeholder uses the same 560 value to match. */
+          min-height: 560px;
           background: white;
           border: 1px solid var(--hairline, #E7E5E0);
           border-radius: 22px;
