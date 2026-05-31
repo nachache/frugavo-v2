@@ -7,6 +7,7 @@ import { ConsentBanner, ConsentGate } from "@/components/shared/consent";
 import { SwRegister } from "@/components/shared/sw-register";
 import { StandaloneModeClass } from "@/components/shared/standalone-mode-class";
 import { XPixel } from "@/components/shared/x-pixel";
+import { InAppBrowserBanner } from "@/components/shared/in-app-browser-banner";
 import "./globals.css";
 
 // next/font self-hosts the typefaces — no runtime CDN call.
@@ -129,6 +130,15 @@ export default function RootLayout({
         >
           Skip to content
         </a>
+
+        {/* In-app browser banner — shows ONLY when the visitor is
+            viewing the site inside X / Instagram / Facebook /
+            LinkedIn / TikTok in-app browsers. Google blocks OAuth
+            from WebViews (Error 403 disallowed_useragent), so we
+            warn before they tap Google sign-in and provide a
+            platform-specific deep-link out. Dismissible per
+            session. See component for detection rules. */}
+        <InAppBrowserBanner />
 
         {/*
           Netlify Forms registration lives in /public/__forms.html. That file
