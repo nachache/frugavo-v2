@@ -3,28 +3,32 @@
 // it calls maybeNotifySignup(), which is a no-op if the user was
 // already notified.
 //
-// Three independent channels, all best-effort:
+// Two independent channels, both best-effort:
 //
-//   1. hello@frugavo.com — the canonical ops mailbox.
-//   2. OPS_NOTIFY_EMAILS (env) — comma-separated personal addresses
-//      that get the same email. Set this to your real inbox so the
-//      ping reaches you whether or not hello@ forwards correctly.
-//   3. SLACK_OPS_WEBHOOK_URL (env) — optional Slack incoming webhook.
-//      When set, posts a compact JSON message so you get a real-time
-//      notification in your phone / desktop Slack the moment a signup
-//      lands.
+//   1. OPS_NOTIFY_EMAILS (env) — comma-separated addresses that
+//      receive the signup ping. This is the ONLY email destination
+//      for ops alerts. Use personal Gmail / Outlook addresses
+//      (different domain from the sender) so deliverability is
+//      independent of frugavo.com's customer-facing mailbox.
+//   2. SLACK_OPS_WEBHOOK_URL (env) — Slack incoming webhook for
+//      real-time push notifications on phone/desktop.
 //
-// All three fan out from the SAME reservation pass; the dispatch row
-// (signup_notified_at) is stamped exactly once per user. If any
-// channel fails, the others still run — none of them block dashboard
+// Previously this hardcoded hello@frugavo.com as a primary recipient.
+// That created a same-domain self-send (Resend sender on frugavo.com
+// → recipient on frugavo.com) which PrivateEmail's anti-spoofing
+// filter silently drops. Removed: ops alerts no longer touch any
+// frugavo.com address. The customer-facing hello@ inbox is free to
+// handle actual customer email without competing with internal noise.
+//
+// Both channels fan out from the SAME reservation pass; the dispatch
+// row (signup_notified_at) is stamped exactly once per user. If a
+// channel fails, the other still runs — none of them block dashboard
 // render and none of them prevent the row from being stamped.
 
 import { supabaseAdmin } from "@/lib/supabase";
 import { sendEmail } from "@/lib/notifications/send-email";
 
-const PRIMARY_NOTIFY_TO = "hello@frugavo.com";
-
-function extraEmailRecipients(): string[] {
+function opsEmailRecipients(): string[] {
   return (process.env.OPS_NOTIFY_EMAILS ?? "")
     .split(",")
     .map((s) => s.trim())
@@ -90,28 +94,30 @@ export async function maybeNotifySignup(args: {
   const text = lines.join("\n");
   const html = `<pre style="font-family: ui-monospace, monospace; font-size: 13px; line-height: 1.55;">${escapeHtml(text)}</pre>`;
 
-  // ── Channel 1+2: email recipients ──────────────────────────────
-  // Single Resend call to the primary + any OPS_NOTIFY_EMAILS extras.
-  // Treating it as one send keeps Resend logs tidy and means a single
-  // failure path to log if it fails.
-  const allEmailRecipients: string[] = [
-    PRIMARY_NOTIFY_TO,
-    ...extraEmailRecipients(),
-  ];
-  const result = await sendEmail({
-    to: allEmailRecipients,
-    subject,
-    html,
-    text,
-    tags: { kind: "ops", type: "new_signup" },
-  });
+  // ── Channel 1: email recipients ──────────────────────────────
+  // Single Resend call to whatever addresses are in OPS_NOTIFY_EMAILS.
+  // No hardcoded hello@frugavo.com — see file header for why.
+  // If OPS_NOTIFY_EMAILS is unset, we skip email entirely and let
+  // Slack handle the notification alone. That's a deliberate
+  // degradation: zero email beats a misconfigured email going
+  // somewhere unread.
+  const emailRecipients = opsEmailRecipients();
+  if (emailRecipients.length > 0) {
+    const result = await sendEmail({
+      to: emailRecipients,
+      subject,
+      html,
+      text,
+      tags: { kind: "ops", type: "new_signup" },
+    });
 
-  if (!result.ok) {
-    // eslint-disable-next-line no-console
-    console.error(
-      "[signup-notify] email send failed (non-fatal)",
-      result.error
-    );
+    if (!result.ok) {
+      // eslint-disable-next-line no-console
+      console.error(
+        "[signup-notify] email send failed (non-fatal)",
+        result.error
+      );
+    }
   }
 
   // ── Channel 3: Slack webhook ───────────────────────────────────
