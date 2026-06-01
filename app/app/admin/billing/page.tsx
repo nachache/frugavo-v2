@@ -37,7 +37,8 @@ type EventRow = {
 export default async function AdminBillingPage() {
   const user = await currentUser();
   if (!user) redirect("/sign-in");
-  if (!isBillingAdmin(user.id)) redirect("/app");
+  const email = user.emailAddresses[0]?.emailAddress ?? null;
+  if (!isBillingAdmin(user.id, email)) redirect("/app");
   if (!supabaseAdmin) redirect("/app");
 
   // 1. State counts.

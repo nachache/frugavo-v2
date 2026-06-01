@@ -72,7 +72,10 @@ function relativeTime(iso: string | null): string {
 export default async function AdminOverviewPage() {
   const user = await currentUser();
   if (!user) redirect("/sign-in");
-  if (!isBillingAdmin(user.id)) redirect("/app");
+  // Pass email so the founder fallback in isBillingAdmin unlocks the
+  // page even when FRUGAVO_ADMIN_USER_IDS hasn't been set in env.
+  const email = user.emailAddresses[0]?.emailAddress ?? null;
+  if (!isBillingAdmin(user.id, email)) redirect("/app");
   if (!supabaseAdmin) redirect("/app");
 
   // ─── KPI counts ─────────────────────────────────────────────

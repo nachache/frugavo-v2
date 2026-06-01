@@ -22,7 +22,8 @@ export async function POST(req: NextRequest) {
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  if (!isBillingAdmin(user.id)) {
+  const email = user.emailAddresses[0]?.emailAddress ?? null;
+  if (!isBillingAdmin(user.id, email)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
   if (!supabaseAdmin) {

@@ -32,7 +32,8 @@ export default async function AppLayout({
   try {
     const user = await currentUser();
     if (user) {
-      isAdmin = isBillingAdmin(user.id);
+      const email = user.emailAddresses[0]?.emailAddress ?? null;
+      isAdmin = isBillingAdmin(user.id, email);
       if (supabaseAdmin) {
         const { count } = await supabaseAdmin
           .from("monitoring_alerts")
