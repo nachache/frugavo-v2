@@ -123,11 +123,22 @@ export default async function AdminOverviewPage() {
       .from("app_users")
       .select("*", { count: "exact", head: true })
       .not("welcomed_at", "is", null),
+    // Defensive recent-signups query.
+    //
+    // Previously selected 8 specific columns including
+    // first_ready_email_sent_at + checkin_email_sent_at. If any one
+    // of those columns is missing in production Supabase (migrations
+    // 032 + 035 may not have been applied everywhere), PostgREST
+    // returns empty data WITHOUT a thrown error — the table just
+    // appeared "No signups yet" even when count(*) showed 20 users.
+    //
+    // Fix: select * so the query works against any reasonable
+    // schema. We map only the fields we use downstream, with
+    // `?? null` fallbacks so missing columns degrade gracefully
+    // rather than blanking the whole page.
     supabaseAdmin
       .from("app_users")
-      .select(
-        "id, email, created_at, welcomed_at, first_ready_at, dashboard_first_session_at, first_ready_email_sent_at, checkin_email_sent_at"
-      )
+      .select("*")
       .order("created_at", { ascending: false })
       .limit(30),
     supabaseAdmin
@@ -161,7 +172,17 @@ export default async function AdminOverviewPage() {
   const bankConnectedCount = usersWithActiveBank.size;
   void bankConnectedRes;
 
-  // Build per-user dashboards
+  // Build per-user dashboards. Log the query state so we can see
+  // in Netlify function logs whether Supabase returned an error
+  // OR a successful-but-empty result. Previously this was silent
+  // and "No signups yet" could mean either.
+  if (allUsersRes.error) {
+    // eslint-disable-next-line no-console
+    console.error(
+      "[admin/overview] recent signups query failed",
+      allUsersRes.error
+    );
+  }
   const recentSignups = (allUsersRes.data ?? []) as SignupRow[];
   const scanByUser = new Map<string, ScanRow>();
   for (const s of (scanRunsRes.data ?? []) as ScanRow[]) {

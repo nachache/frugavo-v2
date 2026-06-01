@@ -10,39 +10,36 @@ import { ExternalLink, X } from "lucide-react";
 // inside the host app's WebView (UIWebView / WKWebView on iOS,
 // android.webkit.WebView on Android) instead of Safari or Chrome.
 // Google blocks "Sign in with Google" OAuth requests from WebViews
-// since 2016 as a phishing-prevention measure — the user sees
-// "Access blocked: Frugavo's request does not comply with Google's
-// policies" with Error 403 disallowed_useragent. Microsoft, GitHub,
-// and most major OAuth providers have similar rules. This silently
-// destroys conversion on every paid social channel.
+// (Error 403 disallowed_useragent). This silently destroys
+// conversion on every paid social channel.
 //
 // Strategy:
-//   1. Detect known in-app browsers from navigator.userAgent.
+//   1. Detect in-app browsers via two layers:
+//        a. Specific app UA tokens (Twitter, Facebook, Instagram, etc.)
+//        b. Generic heuristic: iOS UA with "Mobile" but no "Safari/"
+//           suffix is almost certainly a WKWebView (real Safari
+//           always includes "Safari/<version>"). Android UA with
+//           "; wv)" token is a WebView. These catch X ads even
+//           when the X app changes its UA string.
 //   2. Show a slim amber banner at the top of every page warning
 //      the visitor BEFORE they tap a sign-in button.
 //   3. Offer a platform-specific deep link out:
-//        • Android  → intent:// scheme that launches Chrome with
-//                     the current URL. Reliable.
-//        • iOS      → tap-to-copy URL + instructions to use the
-//                     share sheet. (x-safari-https:// is unreliable
-//                     on modern iOS; Apple doesn't expose a public
-//                     "open in Safari" intent.)
-//   4. Banner is dismissible per session via sessionStorage so a
-//      visitor who reads it and chooses to stay in the app doesn't
-//      see it again until the next session.
-//
-// Detection is intentionally conservative — false positives would
-// annoy normal Safari/Chrome users. Only specific app UA tokens
-// trigger the banner; generic WebView heuristics are NOT used
-// because they fire on legitimate browsers.
+//        • Android  → intent:// scheme launches Chrome with the
+//                     current URL.
+//        • iOS      → tap-to-copy URL + instructions to paste in
+//                     Safari (Apple blocks public force-open schemes).
+//   4. ALWAYS-ON. No sessionStorage persistence. The banner shows on
+//      every page load for in-app browser visitors regardless of
+//      prior dismissals — the user explicitly wants it that way
+//      because the 403 risk recurs on every signup attempt.
+//   5. ?force_banner=1 URL override forces the banner on for any
+//      browser so the founder can verify the design from any device.
 
 type InAppDetection = {
   detected: boolean;
   app: string | null;
   platform: "ios" | "android" | null;
 };
-
-const DISMISS_KEY = "frugavo:in-app-dismissed";
 
 function detectInAppBrowser(ua: string): InAppDetection {
   if (!ua) return { detected: false, app: null, platform: null };
@@ -62,22 +59,53 @@ function detectInAppBrowser(ua: string): InAppDetection {
     return { detected: true, app: "TikTok", platform };
   if (/LinkedInApp/i.test(ua))
     return { detected: true, app: "LinkedIn", platform };
-  if (/Twitter/i.test(ua))
+  if (/Twitter|TwitterAndroid|X-App/i.test(ua))
     return { detected: true, app: "X", platform };
   if (/MicroMessenger/i.test(ua))
     return { detected: true, app: "WeChat", platform };
-  if (/Line/i.test(ua))
+  if (/Line\//i.test(ua))
     return { detected: true, app: "Line", platform };
   if (/Snapchat/i.test(ua))
     return { detected: true, app: "Snapchat", platform };
   if (/Pinterest/i.test(ua))
     return { detected: true, app: "Pinterest", platform };
 
+  // ─── Generic heuristics (catch unknown in-app browsers) ────
+  // iOS: real Safari ALWAYS includes "Safari/<version>" in its UA.
+  // Any UA with "iPhone|iPad" + "Mobile" + AppleWebKit but missing
+  // "Safari/" is almost certainly a WKWebView embedded in some
+  // app. This catches X (if Twitter renames their UA), Reddit,
+  // and most other social/messaging in-app browsers.
+  if (isIOS && /Mobile/.test(ua) && !/Safari\//.test(ua)) {
+    return { detected: true, app: "this app", platform: "ios" };
+  }
+
+  // Android: WebView UA includes the "; wv)" token before the
+  // closing paren of the platform string. Real Chrome doesn't.
+  if (isAndroid && /;\s*wv\)/i.test(ua)) {
+    return { detected: true, app: "this app", platform: "android" };
+  }
+
   return { detected: false, app: null, platform };
+}
+
+// Manual override — ?force_banner=1 forces the banner regardless of
+// detection. Used for QA from desktop / iOS Safari where the banner
+// would normally not show. Param survives navigation if preserved
+// in links; otherwise it's a one-pageload visibility flip.
+function isForcedOn(): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    return new URL(window.location.href).searchParams.get("force_banner") === "1";
+  } catch {
+    return false;
+  }
 }
 
 export function InAppBrowserBanner() {
   const [detection, setDetection] = useState<InAppDetection | null>(null);
+  // dismissed is React state only — not persisted to storage. Every
+  // fresh page load re-shows the banner. See file header comment 4.
   const [dismissed, setDismissed] = useState(false);
   const [copied, setCopied] = useState(false);
 
@@ -85,15 +113,17 @@ export function InAppBrowserBanner() {
     if (typeof window === "undefined") return;
     const ua = window.navigator.userAgent;
     const result = detectInAppBrowser(ua);
-    setDetection(result);
-
-    try {
-      if (window.sessionStorage.getItem(DISMISS_KEY) === "1") {
-        setDismissed(true);
-      }
-    } catch {
-      /* ignore */
+    // ?force_banner=1 override — synthesize a generic detection so
+    // the banner renders even on desktop Safari for QA.
+    if (!result.detected && isForcedOn()) {
+      setDetection({
+        detected: true,
+        app: "QA mode",
+        platform: /Android/i.test(ua) ? "android" : "ios",
+      });
+      return;
     }
+    setDetection(result);
   }, []);
 
   if (!detection || !detection.detected || dismissed) return null;
@@ -131,14 +161,9 @@ export function InAppBrowserBanner() {
     }
   };
 
-  const dismiss = () => {
-    try {
-      window.sessionStorage.setItem(DISMISS_KEY, "1");
-    } catch {
-      /* ignore */
-    }
-    setDismissed(true);
-  };
+  // Dismiss only affects this render — no sessionStorage write, so
+  // the next page load (or signin click → new page) shows it again.
+  const dismiss = () => setDismissed(true);
 
   // Tone is amber not red — this is a "heads up" not an emergency.
   // Sits above everything (z-100) so it doesn't get buried under
