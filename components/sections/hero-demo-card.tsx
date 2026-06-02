@@ -180,11 +180,19 @@ export function HeroDemoCard() {
     const run = () => {
       clearAll();
 
+      // Phase indices are 0-based into the PHASES array. Earlier the
+      // calls used 1-based indices (setPhase(1), setPhase(2), setPhase(3))
+      // which read PHASES[3] = undefined and threw "Cannot read
+      // properties of undefined (reading 'label')" 100+ times in the
+      // console as the loop re-fired every 11 seconds. Corrected to
+      // 0-based: 0 = Connecting securely, 1 = Reading transactions,
+      // 2 = Spotting forgotten charges.
+
       // PHASE 1 — Connect (0 → 0.9s)
-      schedule(700, () => setPhase(1));
+      schedule(700, () => setPhase(0));
 
       // PHASE 2 — Stream the rows (0.9s → 2.7s, 280ms stagger × 5)
-      schedule(900, () => setPhase(2));
+      schedule(900, () => setPhase(1));
       let runningCount = 0;
       let runningReview = 0;
       SUBS.forEach((s, i) => {
@@ -200,7 +208,7 @@ export function HeroDemoCard() {
       schedule(1100, () => counter(0, TOTAL, 2400));
 
       // PHASE 3 — Spotting (~3s) + "+2 more detected" pseudo-row.
-      schedule(2900, () => setPhase(3));
+      schedule(2900, () => setPhase(2));
       schedule(3200, () => {
         // Bump the detected count from 5 → 7 to reconcile with the
         // visible list + the +2 more row.

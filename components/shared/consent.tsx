@@ -68,16 +68,44 @@ export function ConsentBanner() {
   const [delayed, setDelayed] = useState(false);
 
   useEffect(() => {
-    // Long delay before showing the banner. Previous 800ms was too
-    // fast — on mobile the cookie banner slid up while the user was
-    // still reading the hero, and on narrow viewports it overlapped
-    // the "Find my subscriptions" CTA. 3.5s gives cold ad traffic
-    // time to read the headline + see the CTA at full prominence
-    // before the banner intrudes. GDPR/PIPEDA don't mandate timing;
-    // they only require analytics-after-consent (already handled by
-    // ConsentGate around the X pixel).
-    const t = window.setTimeout(() => setDelayed(true), 3500);
-    return () => window.clearTimeout(t);
+    // Scroll-triggered display. The banner only appears once the user
+    // has scrolled past the first viewport (about one screen down).
+    // This guarantees it never overlaps the hero CTA on the initial
+    // above-the-fold view, no matter how long the user lingers there.
+    //
+    // A 30-second fallback timer fires the banner if the user hasn't
+    // scrolled at all — so we still satisfy "show consent banner
+    // before non-trivial analytics" while protecting first-paint UX.
+    //
+    // Previous time-only triggers (800ms, then 3.5s) failed because
+    // a user reading the hero for >3s would have the banner slide
+    // up beneath the CTA on narrow mobile viewports.
+    if (typeof window === "undefined") return;
+
+    let fired = false;
+    const fire = () => {
+      if (fired) return;
+      fired = true;
+      setDelayed(true);
+    };
+
+    const onScroll = () => {
+      // ~0.8 of viewport height — far enough that the hero is no
+      // longer the user's focus, close enough that we're not waiting
+      // forever before showing.
+      if (window.scrollY > window.innerHeight * 0.8) {
+        fire();
+        window.removeEventListener("scroll", onScroll);
+      }
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+
+    const fallback = window.setTimeout(fire, 30_000);
+
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      window.clearTimeout(fallback);
+    };
   }, []);
 
   const visible = delayed && state === "unknown";
