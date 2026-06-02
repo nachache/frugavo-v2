@@ -96,29 +96,17 @@ export function Hero() {
             {hero.subheadline}
           </motion.p>
 
-          {/* Quantified social proof — the closest thing we have to a
-              testimonial pre-launch. Uses third-party research (C+R
-              2026) so the number reads as observation, not marketing
-              claim. Sits between the subheadline and the trust checks
-              so cold visitors meet a concrete figure before they
-              meet the safety story. */}
+          {/* Source citation — tiny, sits under the subhead so the
+              specific number ($42/mo) is anchored by a real third-
+              party citation. Previously a separate stat-paragraph;
+              merged into a single muted line for vertical density. */}
           <motion.p
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{
-              duration: 0.6,
-              delay: 0.18,
-              ease: [0.16, 1, 0.3, 1],
-            }}
-            className="mt-5 max-w-[520px] text-[14px] md:text-[15px] leading-relaxed text-ink-body/85"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.5, delay: 0.18 }}
+            className="mt-2 text-[12px] text-ink-muted"
           >
-            <span className="font-display font-bold italic text-ink">
-              {hero.statLine.figure}
-            </span>{" "}
-            {hero.statLine.body}.{" "}
-            <span className="text-ink-muted text-[12.5px]">
-              {hero.statLine.source}
-            </span>
+            {hero.statLine.source}
           </motion.p>
 
           {/* Trust signals — sits ABOVE the CTA. Cold ad traffic needs
@@ -148,6 +136,52 @@ export function Hero() {
             ))}
           </motion.ul>
 
+          {/* Borrowed-trust strip — Plaid is the security infrastructure
+              brand users recognize (it powers Robinhood, Coinbase,
+              Venmo, Chime, every major fintech). Lending Plaid's
+              familiarity is the single highest-leverage credibility
+              move for a 6-follower X account that nobody knows.
+              Visual is restrained — a small Plaid wordmark + a "and
+              11,000+ banks" claim, no decoration. Sits between
+              trust checks and CTA so the brand recognition lands
+              right before the click. */}
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.26 }}
+            className="mt-5 flex items-center gap-3 flex-wrap text-[12px] text-ink-muted"
+          >
+            <span>Powered by</span>
+            <span className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-ink">
+              {/* Plaid wordmark — inline SVG matches Plaid's brand asset.
+                  Sized to ~16px to read as supporting metadata, not
+                  a logo wall. */}
+              <svg
+                role="img"
+                aria-label="Plaid"
+                viewBox="0 0 100 36"
+                width="58"
+                height="20"
+                fill="currentColor"
+              >
+                <text
+                  x="0"
+                  y="27"
+                  fontFamily="Inter, -apple-system, BlinkMacSystemFont, sans-serif"
+                  fontWeight="700"
+                  fontSize="28"
+                  letterSpacing="-1"
+                >
+                  Plaid
+                </text>
+              </svg>
+            </span>
+            <span className="text-ink-muted/60">·</span>
+            <span>11,000+ banks</span>
+            <span className="text-ink-muted/60">·</span>
+            <span>Same security used by Robinhood &amp; Venmo</span>
+          </motion.div>
+
           {/* Single CTA. The page has ONE obvious action above the
               fold; the rest of the page handles the rest of the
               conversation. */}
@@ -156,7 +190,7 @@ export function Hero() {
             animate={{ opacity: 1, y: 0 }}
             transition={{
               duration: 0.7,
-              delay: 0.3,
+              delay: 0.32,
               ease: [0.16, 1, 0.3, 1],
             }}
             className="mt-6"

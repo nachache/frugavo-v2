@@ -68,9 +68,15 @@ export function ConsentBanner() {
   const [delayed, setDelayed] = useState(false);
 
   useEffect(() => {
-    // Slight delay so the banner doesn't flash up before the page itself
-    // is on screen.
-    const t = window.setTimeout(() => setDelayed(true), 800);
+    // Long delay before showing the banner. Previous 800ms was too
+    // fast — on mobile the cookie banner slid up while the user was
+    // still reading the hero, and on narrow viewports it overlapped
+    // the "Find my subscriptions" CTA. 3.5s gives cold ad traffic
+    // time to read the headline + see the CTA at full prominence
+    // before the banner intrudes. GDPR/PIPEDA don't mandate timing;
+    // they only require analytics-after-consent (already handled by
+    // ConsentGate around the X pixel).
+    const t = window.setTimeout(() => setDelayed(true), 3500);
     return () => window.clearTimeout(t);
   }, []);
 

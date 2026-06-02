@@ -30,8 +30,12 @@ export const hero = {
   // not a pitch.
   headline:
     "You're probably paying for subscriptions you've forgotten about.",
+  // Subhead combines the discovery promise + the C+R 2026 stat in one
+  // line. Previous version had a separate stat-line paragraph below
+  // the subhead — visually crowded on mobile + duplicated the same
+  // idea twice. Merged for density.
   subheadline:
-    "Most people miss 3–5 recurring charges. Connect your bank and see every subscription charging you today.",
+    "Most people miss 3–5 recurring charges averaging $42/mo. See every one in 30 seconds.",
   // Single-action hero post-funnel-debug: dropped the secondary CTA
   // ("See how it works") so the page has one obvious next step. The
   // hero scrolls into the existing How-it-works section anyway, so
