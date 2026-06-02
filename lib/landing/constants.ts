@@ -67,17 +67,21 @@ export const LANDING = {
   // Robinhood/Venmo caption do separate jobs and stay distinct.
   trustLine:
     "Bank-grade security, powered by Plaid · read-only · we never store your credentials",
-  // Bank-logo placeholders (R4). Abstract pill badges with brand colors
-  // and 2-letter initials to read as "we connect to all major banks"
-  // without exposing us to trademark concerns. Real wordmarks can be
-  // swapped in once brand-usage permission is confirmed.
+  // Bank wordmark pills (R4, US-only). Short readable wordmark in
+  // each bank's brand color so cold visitors recognize the names at
+  // a glance (the prior 2-letter "CH / BA / WF" abbreviations were
+  // unreadable). Use of name + brand color in a "we connect to these"
+  // context is nominative fair use; no exact logo files reproduced.
+  // Canadian banks dropped — Reddit + Google search ads currently
+  // weighted to US-first traffic; revisit when Canada-only ad groups
+  // launch.
   bankPlaceholders: [
-    { id: "chase",   label: "CH", color: "#117ACA", country: "us" },
-    { id: "bofa",    label: "BA", color: "#E61030", country: "us" },
-    { id: "wells",   label: "WF", color: "#D71E28", country: "us" },
-    { id: "td",      label: "TD", color: "#00805B", country: "ca" },
-    { id: "rbc",     label: "RB", color: "#006AC3", country: "ca" },
-    { id: "bmo",     label: "BM", color: "#0079C1", country: "ca" },
+    { id: "chase",      label: "Chase",       color: "#117ACA" },
+    { id: "bofa",       label: "BofA",        color: "#E61030" },
+    { id: "wells",      label: "Wells Fargo", color: "#D71E28" },
+    { id: "capitalone", label: "Capital One", color: "#D03027" },
+    { id: "citi",       label: "Citi",        color: "#0056AB" },
+    { id: "amex",       label: "Amex",        color: "#016FD0" },
   ] as const,
   // Currency — defaulting to USD with explicit suffix because ads run
   // US + Canada and geo-aware currency is bigger lift than scope allows.

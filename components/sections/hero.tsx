@@ -245,16 +245,19 @@ export function Hero({ variant = "default", headlineOverride }: HeroProps) {
               infrastructure used by {LANDING.plaidPartners.join(" & ")}.
             </p>
 
-            {/* 6. Bank-logo placeholder row (R4 second bullet). Abstract
-                pill badges with brand colors — see constants
-                bankPlaceholders. Real wordmarks can be swapped in
-                once usage permission is confirmed. */}
-            <div className="mt-3.5 flex items-center gap-2 flex-wrap">
+            {/* Bank wordmark row — US banks, brand-colored pills,
+                readable short wordmark on each. Replaces the prior
+                2-letter abbreviations that were unreadable. Variable
+                width per pill so each name fits without truncation.
+                aria-hidden because the names are decorative — the
+                real trust signal is rendered as text in the strip
+                above. */}
+            <div className="mt-3.5 flex items-center gap-1.5 flex-wrap">
               {LANDING.bankPlaceholders.map((b) => (
                 <span
                   key={b.id}
                   aria-hidden="true"
-                  className="inline-flex items-center justify-center w-9 h-7 rounded-md text-[10px] font-bold text-white tracking-tight"
+                  className="inline-flex items-center justify-center h-7 px-2.5 rounded-md text-[11px] font-bold text-white tracking-tight whitespace-nowrap"
                   style={{ background: b.color }}
                   title={b.label}
                 >
@@ -262,7 +265,7 @@ export function Hero({ variant = "default", headlineOverride }: HeroProps) {
                 </span>
               ))}
               <span className="text-[11.5px] text-ink-body/85 ml-1">
-                +{(LANDING.banks.count - 6).toLocaleString("en-US")} banks
+                +{(LANDING.banks.count - 6).toLocaleString("en-US")} more
               </span>
             </div>
           </motion.div>
