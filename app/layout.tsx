@@ -6,6 +6,7 @@ import { ConsentBanner, ConsentGate } from "@/components/shared/consent";
 import { SwRegister } from "@/components/shared/sw-register";
 import { StandaloneModeClass } from "@/components/shared/standalone-mode-class";
 import { XPixel } from "@/components/shared/x-pixel";
+import { RedditPixel } from "@/components/shared/reddit-pixel";
 import { InAppBrowserBanner } from "@/components/shared/in-app-browser-banner";
 import "./globals.css";
 
@@ -177,12 +178,14 @@ export default function RootLayout({
         </>
       )}
 
-      {/* X Ads conversion pixel — stricter. This IS an advertising pixel
-          and triggers ad-attribution flows, so it stays gated behind
-          consent. Per-route twq('event', ...) calls live downstream
-          once the user opts in. */}
+      {/* Advertising pixels — both stricter than GA. They trigger
+          ad-attribution flows on third-party servers, so they stay
+          gated behind explicit consent. Per-route conversion events
+          (twq('event',...) / rdt('track',...)) fire downstream when
+          the user opts in. */}
       <ConsentGate>
         <XPixel />
+        <RedditPixel />
       </ConsentGate>
     </html>
   );
