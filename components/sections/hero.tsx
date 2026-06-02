@@ -1,94 +1,79 @@
 "use client";
 
 import { motion, useReducedMotion } from "framer-motion";
-import { ArrowRight, Check, EyeOff, Lock } from "lucide-react";
+import { ArrowRight, EyeOff, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import dynamic from "next/dynamic";
 import {
   HERO_VARIANTS,
   LANDING,
   type VariantKey,
 } from "@/lib/landing/constants";
 import { hero as legacyHero } from "@/lib/content";
+import { HeroResultsPreview } from "@/components/sections/hero-results-preview";
 
-// Client-only: the HeroDemoCard relies on refs, animation loops, and
-// CSS-in-JS that only kick in after hydration. SSR'd it bleeds raw
-// "Step 1 of 3 / Connecting securely / $0.00/mo / 0 charges" text
-// into the first paint before styles apply. Disabling SSR + a sized
-// placeholder eliminates the flash and prevents layout shift.
-const HeroDemoCard = dynamic(
-  () =>
-    import("@/components/sections/hero-demo-card").then((m) => m.HeroDemoCard),
-  {
-    ssr: false,
-    loading: () => (
-      <div
-        aria-hidden="true"
-        className="rounded-3xl border border-hairline bg-canvas/40"
-        style={{ minHeight: 560 }}
-      />
-    ),
-  }
-);
-
-// Hero is wired for ad-to-page continuity and per-channel variant
-// targeting. A visitor arriving from the X "$1,847 hidden bill" ad
-// should land here and immediately feel: "Frugavo is about to show
-// me the ones I forgot." A visitor arriving from a Mint-refugee
-// Google search should land here and feel: "this is the Mint
-// replacement."
+// Hero — revision pass (R1–R6).
 //
-// Architecture:
-//   • `variant` prop (set server-side by app/page.tsx via ?v=)
-//     selects the headline + subheadline copy from HERO_VARIANTS.
-//   • `headlineOverride` prop (set by ?h=control|a|b) overrides
-//     just the headline for orthogonal headline A/B testing.
-//   • All numbers (dollar figures, time-to-value, source) come from
-//     lib/landing/constants so ad creatives and the page can't drift.
-//   • Trust block stays right above the primary CTA — bank-credential
-//     anxiety is the largest barrier on cold finance traffic.
-//   • Secondary CTA "See a sample report" links to /sample, a static
-//     zero-bank-required preview page. Cold visitors get to see the
-//     output before being asked to connect a bank.
+// Layout, mobile order:
+//   1. Eyebrow badge
+//   2. Editorial serif headline (Fraunces) with italic accent on the
+//      key phrase "forgotten about"
+//   3. ONE-line value statement (the $42/mo forgotten figure only —
+//      $1,847/yr is removed from the hero per R2)
+//   4. Primary CTA + Secondary "See a sample report" + lock badge
+//   5. Single consolidated Plaid trust strip (replaces 4 checkmarks +
+//      the duplicate Plaid mention from the previous version)
+//   6. Bank-logo placeholder row + "+11,000 banks" caption
+//   7. Static results preview (replaces the animated demo card)
+//   8. Disconnect-anytime reassurance line
+//
+// Desktop: left column = items 1-6 + 8; right column = the preview.
+//
+// Trust copy reduced from four overlapping statements (read-only,
+// never-store, powered by Plaid, Robinhood-Venmo security) to one
+// consolidated line + one quiet Robinhood/Venmo caption. Plaid named
+// exactly once. Every number reads from LANDING constants.
 
 type HeroProps = {
   variant?: VariantKey;
   headlineOverride?: string | undefined;
 };
 
-// Trust checks are kept in the component (not in constants) because
-// they're never varied per channel — they're the floor of safety
-// signals every visitor needs to see before the bank ask.
-const TRUST_CHECKS = [
-  "Read-only access",
-  "Powered by Plaid",
-  "We never store banking credentials",
-  "Disconnect anytime",
-];
+// Headline splitter — applies Fraunces italic emphasis only to the
+// phrase "forgotten about" when it appears in the headline. Falls
+// back to the full headline in the default serif if the phrase isn't
+// present (e.g. on `?v=cancel` or `?v=tracker` variants).
+//
+// Returns either:
+//   { before: "…", emph: "…", after: "…" }  (split happened)
+//   { before: full, emph: "", after: "" }    (no split)
+const EMPH_PHRASE = "forgotten about";
+function splitHeadline(text: string): { before: string; emph: string; after: string } {
+  const idx = text.toLowerCase().indexOf(EMPH_PHRASE);
+  if (idx === -1) return { before: text, emph: "", after: "" };
+  return {
+    before: text.slice(0, idx),
+    emph: text.slice(idx, idx + EMPH_PHRASE.length),
+    after: text.slice(idx + EMPH_PHRASE.length),
+  };
+}
 
 export function Hero({ variant = "default", headlineOverride }: HeroProps) {
-  // Resolve the active copy. Fall back to the legacy hero object only
-  // if HERO_VARIANTS[variant] is missing (should never happen — the
-  // type guards prevent it — but defensive against future renames).
   const v = HERO_VARIANTS[variant] ?? HERO_VARIANTS.default;
   const headline = headlineOverride ?? v.headline;
   const subheadline = v.subheadline;
   const eyebrow = v.eyebrow ?? legacyHero.eyebrow;
+  const { before, emph, after } = splitHeadline(headline);
 
-  // Respect prefers-reduced-motion. With reduced motion enabled, every
-  // framer-motion `initial` state collapses to the final state so the
-  // hero paints in one frame with no movement. Important for vestibular
-  // accessibility (motion sickness, vertigo).
+  // Respect prefers-reduced-motion — every framer-motion animation
+  // collapses to its end state in one frame.
   const reduce = useReducedMotion();
-  const m = (
-    base: Record<string, unknown>
-  ): Record<string, unknown> =>
+  const m = (base: Record<string, unknown>): Record<string, unknown> =>
     reduce ? { initial: false, animate: base.animate } : base;
 
   return (
     <section
-      className="relative pt-12 md:pt-20 pb-20 md:pb-28 overflow-hidden"
+      className="relative pt-10 md:pt-16 pb-16 md:pb-24 overflow-hidden"
       aria-labelledby="hero-headline"
     >
       {/* Drifting blob backdrop — emerald onto cream, very low opacity. */}
@@ -100,14 +85,15 @@ export function Hero({ variant = "default", headlineOverride }: HeroProps) {
         <div className="absolute top-[20%] -left-32 h-[480px] w-[480px] rounded-full bg-gradient-to-br from-amber-100/30 to-transparent blur-3xl animate-blob [animation-delay:-8s]" />
       </div>
 
-      <div className="container-page grid lg:grid-cols-[55fr_45fr] gap-12 lg:gap-16 items-center">
+      <div className="container-page grid lg:grid-cols-[1.05fr_1fr] gap-10 lg:gap-14 items-start">
         {/* LEFT */}
         <div className="max-w-[640px]">
+          {/* 1. Eyebrow badge */}
           <motion.div
             {...m({
-              initial: { opacity: 0, y: 16 },
+              initial: { opacity: 0, y: 12 },
               animate: { opacity: 1, y: 0 },
-              transition: { duration: 0.6, ease: [0.16, 1, 0.3, 1] },
+              transition: { duration: 0.5, ease: [0.16, 1, 0.3, 1] },
             })}
           >
             <Badge tone="brand">
@@ -116,141 +102,70 @@ export function Hero({ variant = "default", headlineOverride }: HeroProps) {
             </Badge>
           </motion.div>
 
+          {/* 2. Editorial headline — Fraunces serif. Italic accent
+              applied only to the "forgotten about" phrase when present
+              (default variant). Other variants render the full
+              headline in Fraunces regular. Tracking pulled in tight
+              for editorial serif character. */}
           <motion.h1
             id="hero-headline"
             {...m({
-              initial: { opacity: 0, y: 24 },
-              animate: { opacity: 1, y: 0 },
-              transition: {
-                duration: 0.7,
-                delay: 0.08,
-                ease: [0.16, 1, 0.3, 1],
-              },
-            })}
-            className="mt-6 font-display font-bold text-ink text-[34px] md:text-[52px] leading-[1.04] tracking-[-0.03em]"
-          >
-            {headline}
-          </motion.h1>
-
-          <motion.p
-            {...m({
-              initial: { opacity: 0, y: 16 },
+              initial: { opacity: 0, y: 18 },
               animate: { opacity: 1, y: 0 },
               transition: {
                 duration: 0.6,
-                delay: 0.14,
+                delay: 0.06,
                 ease: [0.16, 1, 0.3, 1],
               },
             })}
-            className="mt-5 max-w-[560px] text-[16.5px] md:text-[19px] leading-relaxed text-ink-body"
+            className="mt-6 font-editorial text-ink text-[36px] md:text-[54px] leading-[1.04] tracking-[-0.02em] font-medium"
+          >
+            {emph ? (
+              <>
+                {before}
+                <em className="font-editorial italic font-medium">{emph}</em>
+                {after}
+              </>
+            ) : (
+              headline
+            )}
+          </motion.h1>
+
+          {/* 3. One-line value — the $42/mo forgotten figure ONLY.
+              $1,847/yr no longer appears in the hero (R2). Per-variant
+              subhead from constants — most variants already contain
+              the $42 figure; if a future variant strips it, the page
+              still leads with a single-number promise. */}
+          <motion.p
+            {...m({
+              initial: { opacity: 0, y: 12 },
+              animate: { opacity: 1, y: 0 },
+              transition: {
+                duration: 0.55,
+                delay: 0.12,
+                ease: [0.16, 1, 0.3, 1],
+              },
+            })}
+            className="mt-5 max-w-[540px] text-[16.5px] md:text-[18.5px] leading-relaxed text-ink-body"
           >
             {subheadline}
           </motion.p>
 
-          {/* Source citation — small, muted, but high-enough contrast to
-              clear WCAG AA against the cream gradient. Was previously
-              `text-ink-muted` which dropped to ~3.8:1 on the cream
-              backdrop. Bumped to `text-ink-body` (~7.1:1) and kept the
-              size small so it reads as supporting metadata. */}
-          <motion.p
+          {/* 4. CTA pair — moved ABOVE the trust strip so the primary
+              action is reachable above the fold on mobile (R6). Lock
+              badge sits directly under to put a trust cue at the
+              moment of the ask. */}
+          <motion.div
             {...m({
-              initial: { opacity: 0 },
-              animate: { opacity: 1 },
-              transition: { duration: 0.5, delay: 0.18 },
-            })}
-            className="mt-2 text-[12.5px] text-ink-body/80"
-          >
-            Source: {LANDING.source}. Average household pays $
-            {LANDING.household.annualUsd.toLocaleString("en-US")}/yr in
-            subscriptions (USD).
-          </motion.p>
-
-          {/* Trust signals — sits ABOVE the CTA. Cold ad traffic needs
-              to see the credential-safety story before the bank-connect
-              ask, not after. Compact two-column grid on desktop so the
-              row doesn't visually compete with the headline. */}
-          <motion.ul
-            {...m({
-              initial: { opacity: 0, y: 16 },
+              initial: { opacity: 0, y: 14 },
               animate: { opacity: 1, y: 0 },
               transition: {
                 duration: 0.6,
-                delay: 0.22,
+                delay: 0.18,
                 ease: [0.16, 1, 0.3, 1],
               },
             })}
-            className="mt-7 grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2.5 max-w-[460px]"
-          >
-            {TRUST_CHECKS.map((t) => (
-              <li
-                key={t}
-                className="inline-flex items-center gap-2 text-[13.5px] text-ink-body"
-              >
-                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-brand-light shrink-0">
-                  <Check size={11} className="text-brand" strokeWidth={3} />
-                </span>
-                <span className="leading-tight">{t}</span>
-              </li>
-            ))}
-          </motion.ul>
-
-          {/* Borrowed-trust strip — Plaid + recognizable fintech names.
-              The strongest single credibility move for a small-followers
-              brand: lend the familiarity of brands every visitor knows.
-              Text color bumped from text-ink-muted to text-ink-body for
-              WCAG AA contrast on the cream backdrop. */}
-          <motion.div
-            {...m({
-              initial: { opacity: 0, y: 12 },
-              animate: { opacity: 1, y: 0 },
-              transition: { duration: 0.6, delay: 0.26 },
-            })}
-            className="mt-5 flex items-center gap-3 flex-wrap text-[12.5px] text-ink-body"
-          >
-            <span>Powered by</span>
-            <span className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-ink">
-              <svg
-                role="img"
-                aria-label="Plaid"
-                viewBox="0 0 100 36"
-                width="58"
-                height="20"
-                fill="currentColor"
-              >
-                <text
-                  x="0"
-                  y="27"
-                  fontFamily="Inter, -apple-system, BlinkMacSystemFont, sans-serif"
-                  fontWeight="700"
-                  fontSize="28"
-                  letterSpacing="-1"
-                >
-                  Plaid
-                </text>
-              </svg>
-            </span>
-            <span aria-hidden="true" className="text-ink-body/40">·</span>
-            <span>{LANDING.banks.display} banks</span>
-            <span aria-hidden="true" className="text-ink-body/40">·</span>
-            <span>Same security used by {LANDING.plaidPartners.join(" & ")}</span>
-          </motion.div>
-
-          {/* CTA pair. Primary triggers the Plaid flow (via /sign-up).
-              Secondary opens /sample — a zero-bank-required preview of
-              what the report looks like. This is THE conversion-rate
-              fix for cold traffic that's not ready to link a bank: it
-              lets them see the value FIRST, then decide. */}
-          <motion.div
-            {...m({
-              initial: { opacity: 0, y: 16 },
-              animate: { opacity: 1, y: 0 },
-              transition: {
-                duration: 0.7,
-                delay: 0.32,
-                ease: [0.16, 1, 0.3, 1],
-              },
-            })}
-            className="mt-6 flex flex-wrap items-center gap-3"
+            className="mt-7 flex flex-wrap items-center gap-3"
           >
             <Button asChild size="lg" className="group min-h-[52px]">
               <a href="/sign-up">
@@ -262,10 +177,6 @@ export function Hero({ variant = "default", headlineOverride }: HeroProps) {
                 />
               </a>
             </Button>
-            {/* Secondary — visually lighter, same tap-target height for
-                accessibility. EyeOff icon mirrors the "forgotten" pill
-                used inside the sample report so the CTA telegraphs the
-                payoff. */}
             <Button
               asChild
               variant="outline"
@@ -284,31 +195,89 @@ export function Hero({ variant = "default", headlineOverride }: HeroProps) {
             </Button>
           </motion.div>
 
-          {/* Micro-copy directly under the CTAs. Restates read-only
-              and "no signup to preview" so the choice between the two
-              CTAs is clearly disambiguated.
-              Color bumped to text-ink-body for AA contrast. */}
+          {/* Lock badge directly under the CTAs — trust at the moment
+              of the ask (R4 last bullet). text-ink-body for WCAG AA. */}
           <motion.p
             {...m({
               initial: { opacity: 0 },
               animate: { opacity: 1 },
-              transition: { duration: 0.5, delay: 0.38 },
+              transition: { duration: 0.5, delay: 0.24 },
             })}
-            className="mt-4 inline-flex items-center gap-2 text-[13px] text-ink-body"
+            className="mt-3 inline-flex items-center gap-1.5 text-[12.5px] text-ink-body"
           >
-            <Lock size={11} strokeWidth={2} className="text-brand" aria-hidden="true" />
+            <Lock
+              size={12}
+              strokeWidth={2.2}
+              className="text-brand"
+              aria-hidden="true"
+            />
             Read-only · {LANDING.timeToValue.display} · no signup to preview
           </motion.p>
 
-          {/* Disconnect reassurance — last line, addresses the "am I
-              locked in?" fear that's specific to bank-connect products. */}
+          {/* 5. Consolidated Plaid trust strip (R4). ONE Plaid lockup,
+              ONE statement, then a small bank-logo row. Replaces the
+              four checkmarks + duplicate "Powered by Plaid · 11,000+
+              banks" row from the previous version. */}
+          <motion.div
+            {...m({
+              initial: { opacity: 0, y: 12 },
+              animate: { opacity: 1, y: 0 },
+              transition: {
+                duration: 0.6,
+                delay: 0.3,
+                ease: [0.16, 1, 0.3, 1],
+              },
+            })}
+            className="mt-8 rounded-2xl border border-hairline/80 bg-white/60 backdrop-blur-sm p-4 md:p-5 max-w-[540px]"
+          >
+            <div className="flex items-center gap-2.5 text-[13px] text-ink-body">
+              <PlaidLockup />
+              <span className="text-ink-body/60" aria-hidden="true">
+                ·
+              </span>
+              <span className="text-ink font-medium">
+                Bank-grade security, read-only
+              </span>
+            </div>
+
+            <p className="mt-2 text-[12px] text-ink-body/85 leading-relaxed">
+              We never see or store your bank credentials. Same
+              infrastructure used by {LANDING.plaidPartners.join(" & ")}.
+            </p>
+
+            {/* 6. Bank-logo placeholder row (R4 second bullet). Abstract
+                pill badges with brand colors — see constants
+                bankPlaceholders. Real wordmarks can be swapped in
+                once usage permission is confirmed. */}
+            <div className="mt-3.5 flex items-center gap-2 flex-wrap">
+              {LANDING.bankPlaceholders.map((b) => (
+                <span
+                  key={b.id}
+                  aria-hidden="true"
+                  className="inline-flex items-center justify-center w-9 h-7 rounded-md text-[10px] font-bold text-white tracking-tight"
+                  style={{ background: b.color }}
+                  title={b.label}
+                >
+                  {b.label}
+                </span>
+              ))}
+              <span className="text-[11.5px] text-ink-body/85 ml-1">
+                +{(LANDING.banks.count - 6).toLocaleString("en-US")} banks
+              </span>
+            </div>
+          </motion.div>
+
+          {/* Disconnect reassurance — single quiet line. The "you're
+              not locked in" promise is the specific fear of bank-
+              connect products and has its own line so it doesn't get
+              lost inside the Plaid strip. */}
           <motion.p
             {...m({
               initial: { opacity: 0 },
               animate: { opacity: 1 },
-              transition: { duration: 0.5, delay: 0.42 },
+              transition: { duration: 0.5, delay: 0.36 },
             })}
-            className="mt-2 inline-flex items-center gap-2 text-[12.5px] text-ink-body/85"
+            className="mt-4 inline-flex items-center gap-2 text-[12.5px] text-ink-body/85"
           >
             <span
               aria-hidden="true"
@@ -318,15 +287,62 @@ export function Hero({ variant = "default", headlineOverride }: HeroProps) {
           </motion.p>
         </div>
 
-        {/* RIGHT — animated discovery scan. Visible on mobile too;
-            the visual proof reinforces the headline by showing the
-            kind of merchant names users typically don't recognize.
-            min-height matches the dynamic loading placeholder so
-            layout never shifts when the card hydrates. */}
-        <div className="relative" style={{ minHeight: 560 }}>
-          <HeroDemoCard />
+        {/* RIGHT — static results preview. On mobile this stacks UNDER
+            the trust strip; on desktop it sits beside the copy. The
+            preview lives in its own component for clean SSR + a clear
+            "no API" boundary. minHeight on the wrapper matches the
+            component's reserved height so layout never shifts. */}
+        <div
+          className="relative w-full"
+          style={{ minHeight: 540 }}
+        >
+          <motion.div
+            {...m({
+              initial: { opacity: 0, y: 16 },
+              animate: { opacity: 1, y: 0 },
+              transition: {
+                duration: 0.7,
+                delay: 0.22,
+                ease: [0.16, 1, 0.3, 1],
+              },
+            })}
+          >
+            <HeroResultsPreview />
+          </motion.div>
         </div>
       </div>
     </section>
+  );
+}
+
+// Plaid wordmark — inline SVG sized to read as a partner lockup, not
+// a header logo. Uses currentColor so it inherits the parent ink color
+// for WCAG AA contrast on the cream backdrop. Single source of the
+// Plaid name in the hero (R1 acceptance).
+function PlaidLockup() {
+  return (
+    <span className="inline-flex items-center gap-1.5">
+      <span className="text-ink-body text-[12px]">Powered by</span>
+      <svg
+        role="img"
+        aria-label="Plaid"
+        viewBox="0 0 100 36"
+        width="48"
+        height="17"
+        fill="currentColor"
+        className="text-ink"
+      >
+        <text
+          x="0"
+          y="27"
+          fontFamily="Inter, -apple-system, BlinkMacSystemFont, sans-serif"
+          fontWeight="700"
+          fontSize="28"
+          letterSpacing="-1"
+        >
+          Plaid
+        </text>
+      </svg>
+    </span>
   );
 }

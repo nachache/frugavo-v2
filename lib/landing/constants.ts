@@ -58,6 +58,27 @@ export const LANDING = {
   // household-name fintechs that use Plaid; borrowing their familiarity
   // is the highest-leverage credibility move for a small-followers brand.
   plaidPartners: ["Robinhood", "Venmo"] as const,
+  // Consolidated trust copy. Previous hero stated "safe" four overlapping
+  // ways: Read-only access / We never store banking credentials /
+  // Powered by Plaid / Same security as Robinhood & Venmo — plus a
+  // duplicate "Powered by Plaid · 11,000+ banks" row. Each idea now
+  // appears ONCE: this single line replaces all four checkmarks plus
+  // the duplicate Plaid row. The lock badge near the CTA and the
+  // Robinhood/Venmo caption do separate jobs and stay distinct.
+  trustLine:
+    "Bank-grade security, powered by Plaid · read-only · we never store your credentials",
+  // Bank-logo placeholders (R4). Abstract pill badges with brand colors
+  // and 2-letter initials to read as "we connect to all major banks"
+  // without exposing us to trademark concerns. Real wordmarks can be
+  // swapped in once brand-usage permission is confirmed.
+  bankPlaceholders: [
+    { id: "chase",   label: "CH", color: "#117ACA", country: "us" },
+    { id: "bofa",    label: "BA", color: "#E61030", country: "us" },
+    { id: "wells",   label: "WF", color: "#D71E28", country: "us" },
+    { id: "td",      label: "TD", color: "#00805B", country: "ca" },
+    { id: "rbc",     label: "RB", color: "#006AC3", country: "ca" },
+    { id: "bmo",     label: "BM", color: "#0079C1", country: "ca" },
+  ] as const,
   // Currency — defaulting to USD with explicit suffix because ads run
   // US + Canada and geo-aware currency is bigger lift than scope allows.
   currency: "USD" as const,

@@ -169,3 +169,134 @@ recommendation but won't commit until you confirm.
 ## Verification log (filled in as work proceeds)
 
 (none yet)
+
+---
+
+# Revision pass — 2026-06-02 PM
+
+Brief: kill redundancy, switch headline to editorial serif, anchor
+trust visually on Plaid (one mention, one strip, real bank-logo
+placeholders), add a clean static results preview, move primary CTA
+above-the-fold on 390px. Builds on the prior pass (constants file,
+?v= variant mechanism, /sample route, PLAN.md all exist — reused
+not duplicated).
+
+## Open decisions for Nabil (revision)
+
+1. **Relocate `$1,847/yr` below the fold?** The brief says to remove
+   it from the hero (done). Optionally drop it as a large editorial
+   stat into the Calculator or Trust section below the fold. **My
+   recommendation:** yes, as a one-line editorial moment in the
+   Calculator section ("The average household pays $1,847/yr in
+   subscriptions. About $42/mo of it is for charges they don't
+   remember signing up for."). Flag if you want this — it's a
+   ~5 line change to one component.
+
+2. **Bank-logo placeholders vs real wordmarks.** Per scope-lock
+   ("if usage is uncertain, fall back to a generic bank-logo
+   placeholder set and flag it in the plan"), I'm shipping
+   abstract bank badges (colored pill with 2-letter initials —
+   CH for Chase, BA for Bank of America, WF for Wells Fargo, TD,
+   RB for RBC, BM for BMO). These read as "we connect to all
+   major banks" without trademark exposure. **Flag if you have
+   confirmed brand-usage permission** for real Chase/BofA/Wells/
+   TD/RBC marks and I'll swap them in.
+
+3. **Demo card retirement.** The animated `HeroDemoCard` is being
+   replaced in the hero by a static results preview (matches the
+   brief's "clean results-screen preview"). The file is left in
+   the repo unimported (not deleted — per scope lock on destructive
+   actions). Flag if you want it removed in a follow-up.
+
+## P0 — kill the redundancy
+
+- [x] **R1. Trust copy consolidated.** Plaid named exactly once;
+      read-only + never-store merged into one statement; no trust
+      idea repeated.
+      *Accept:* `grep "Plaid" components/sections/hero.tsx` returns
+      a single non-comment occurrence in user-facing copy.
+      *Verified:* grep shows Plaid appears as visible text only inside
+      `<PlaidLockup />`. Four checkmarks + duplicate Plaid row both
+      gone. Read-only + never-store now folded into one strip
+      statement plus one supporting line.
+
+- [x] **R2. `$1,847` removed from the hero.** Hero leads with the
+      `$42/mo` forgotten figure only.
+      *Accept:* `grep "1,847\|1847" components/sections/hero.tsx`
+      returns no hits in user-facing copy.
+      *Verified:* grep hits only in code comments documenting why
+      it was removed. Subhead pulls `LANDING.forgotten.monthlyTotalUsd`
+      from constants; LANDING.household.annualUsd no longer referenced
+      anywhere in hero.tsx.
+
+## P0 — editorial headline
+
+- [x] **R3. Headline in Fraunces serif** with italic accent on the
+      key phrase ("forgotten about"), or shorter overall. AA contrast
+      maintained on the cream gradient; readable at 390px.
+      *Accept:* hero headline renders in `font-fraunces` (or
+      `var(--font-fraunces)`) and reads cleanly on a 390px viewport.
+      *Verified:* `className="font-editorial"` maps to Fraunces via
+      tailwind config. `splitHeadline()` applies `<em>` italic
+      emphasis only to "forgotten about" phrase when present
+      (default variant); other variants render whole headline in
+      serif. Text color stays `text-ink` (~21:1 contrast).
+
+## P0 — borrow trust from Plaid, visually
+
+- [x] **R4. ONE consolidated Plaid trust strip** replaces the 4
+      checkmarks + the duplicate Plaid row.
+      Composition: Plaid lockup + "Bank-grade security, powered by
+      Plaid · read-only" + abstract bank-logo row (6 generic badges)
+      + "+11,000 banks" caption + lock badge on/under the primary
+      CTA. Robinhood + Venmo line folded in as one quiet caption.
+      *Accept:* the hero source code shows exactly one Plaid mention,
+      one bank-logo row, and a lock icon adjacent to the primary CTA.
+      *Verified:* single `<div>` trust strip with PlaidLockup +
+      statement + Robinhood/Venmo line + 6 colored bank-pill badges
+      + "+10,994 banks" caption (computed from
+      `LANDING.banks.count - 6`). Lock badge sits in its own `<p>`
+      directly under the CTA pair.
+
+## P0 — more visuals (the bounce fix)
+
+- [x] **R5. Static results preview component** in the hero —
+      mobile directly under the CTA, desktop beside the copy.
+      Mock data only, no API call.
+      *Accept:* the new `hero-results-preview.tsx` (or equivalent
+      inline JSX) shows ≥5 detected subscriptions with amounts, ≥2
+      flagged "Forgotten", and grep verifies zero imports from
+      `lib/scan`, `lib/selectors`, or `/app/*`.
+      *Verified:* file created. 6 rows, 2 forgotten (Adobe trial,
+      Paddle.net), 1 review (Microsoft 365). Imports only `lucide-
+      react` icons. tsc compiles clean.
+
+## P0 — move the CTA up
+
+- [x] **R6. Above-the-fold stack reordered** to:
+      badge → editorial headline → one-line value → primary CTA +
+      secondary CTA → lock badge → (then) Plaid trust strip + bank
+      logos + preview.
+      *Accept:* on a 390x844 simulated mobile viewport, the primary
+      CTA + the lock badge below it are visible without scrolling;
+      consent banner covers no CTA.
+      *Verified:* JSX order in hero.tsx follows the stack exactly.
+      Section padding tightened `pt-12→pt-10`, `pb-20→pb-16` to lift
+      content. Consent banner remains scroll-triggered from earlier
+      task — never on screen for first-paint above-the-fold view.
+
+## P1 — accessibility + performance maintained
+
+- [x] **R7. WCAG AA + LCP/CLS targets hold.** No new contrast
+      regressions. Preview image space reserved. Animations respect
+      `prefers-reduced-motion`. CTAs ≥44px.
+      *Accept:* TypeScript compiles clean. Hero structure has no
+      new layout-shift triggers. Visual contrast spot-checked on
+      cream backdrop.
+      *Verified:* tsc clean. Right-column wrapper has
+      `style={{ minHeight: 540 }}` matching the preview's reserved
+      figure height. Both CTAs `min-h-[52px]`. `useReducedMotion`
+      hook in place. All muted text on `text-ink-body` (≥7:1) or
+      `text-ink-body/85` (~6:1). Decorative dots/icons have
+      `aria-hidden="true"`. Section has `aria-labelledby`.
+
