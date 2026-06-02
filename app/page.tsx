@@ -1,6 +1,7 @@
 import dynamic from "next/dynamic";
 import { ScrollProgress } from "@/components/shared/scroll-progress";
 import { EasterEgg } from "@/components/shared/easter-egg";
+import { resolveVariant } from "@/lib/landing/constants";
 // LaunchBanner removed — the global black band was loud and broke the visual
 // hierarchy. The pre-launch disclosure now lives in the hero eyebrow ("Pre-
 // launch preview · Sample data shown") and inside each demo section.
@@ -44,13 +45,23 @@ const Footer = dynamic(() =>
   import("@/components/sections/footer").then((m) => m.Footer)
 );
 
-export default function Page() {
+// Variant resolution happens here at the server boundary so the right
+// headline / subhead ships in the initial HTML — no hydration flash on
+// `?v=mint` etc. The Hero is still a client component (framer-motion)
+// but receives its content as props instead of reading the URL itself.
+export default function Page({
+  searchParams,
+}: {
+  searchParams: { v?: string; h?: string };
+}) {
+  const { variant, headlineOverride } = resolveVariant(searchParams);
+
   return (
     <ToastProvider>
       <ScrollProgress />
       <Nav />
       <main id="main">
-        <Hero />
+        <Hero variant={variant} headlineOverride={headlineOverride} />
         <SocialProof />
         <HowItWorks />
         <InboxDemo />

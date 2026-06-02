@@ -1,10 +1,16 @@
 "use client";
 
-import { motion } from "framer-motion";
-import { ArrowRight, Check } from "lucide-react";
+import { motion, useReducedMotion } from "framer-motion";
+import { ArrowRight, Check, EyeOff, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import dynamic from "next/dynamic";
+import {
+  HERO_VARIANTS,
+  LANDING,
+  type VariantKey,
+} from "@/lib/landing/constants";
+import { hero as legacyHero } from "@/lib/content";
 
 // Client-only: the HeroDemoCard relies on refs, animation loops, and
 // CSS-in-JS that only kick in after hydration. SSR'd it bleeds raw
@@ -25,28 +31,66 @@ const HeroDemoCard = dynamic(
     ),
   }
 );
-import { hero } from "@/lib/content";
 
-// Hero is wired for ad-to-page continuity. A visitor arriving from the
-// "You're paying for 14 subscriptions and can name 9" X post should
-// land here and immediately feel: "Frugavo is about to show me the
-// ones I forgot." Every element supports that single narrative:
+// Hero is wired for ad-to-page continuity and per-channel variant
+// targeting. A visitor arriving from the X "$1,847 hidden bill" ad
+// should land here and immediately feel: "Frugavo is about to show
+// me the ones I forgot." A visitor arriving from a Mint-refugee
+// Google search should land here and feel: "this is the Mint
+// replacement."
 //
-//   • Headline names the outcome the ad implied (forgotten charges
-//     still billing today), instead of resetting the conversation.
-//   • Demo card on the right shows shell-company-style merchant
-//     names (Paddle.net, Apple Services) — the ones cold readers
-//     don't recognize on their own statements.
-//   • Trust signals sit ABOVE the CTA because bank-credential
-//     anxiety is the largest barrier here, and it has to be
-//     addressed before we ask.
-//   • Single CTA. The previous "See how it works" secondary action
-//     was conversion drag — How-it-works lives one scroll down and
-//     curious readers still get there.
+// Architecture:
+//   • `variant` prop (set server-side by app/page.tsx via ?v=)
+//     selects the headline + subheadline copy from HERO_VARIANTS.
+//   • `headlineOverride` prop (set by ?h=control|a|b) overrides
+//     just the headline for orthogonal headline A/B testing.
+//   • All numbers (dollar figures, time-to-value, source) come from
+//     lib/landing/constants so ad creatives and the page can't drift.
+//   • Trust block stays right above the primary CTA — bank-credential
+//     anxiety is the largest barrier on cold finance traffic.
+//   • Secondary CTA "See a sample report" links to /sample, a static
+//     zero-bank-required preview page. Cold visitors get to see the
+//     output before being asked to connect a bank.
 
-export function Hero() {
+type HeroProps = {
+  variant?: VariantKey;
+  headlineOverride?: string | undefined;
+};
+
+// Trust checks are kept in the component (not in constants) because
+// they're never varied per channel — they're the floor of safety
+// signals every visitor needs to see before the bank ask.
+const TRUST_CHECKS = [
+  "Read-only access",
+  "Powered by Plaid",
+  "We never store banking credentials",
+  "Disconnect anytime",
+];
+
+export function Hero({ variant = "default", headlineOverride }: HeroProps) {
+  // Resolve the active copy. Fall back to the legacy hero object only
+  // if HERO_VARIANTS[variant] is missing (should never happen — the
+  // type guards prevent it — but defensive against future renames).
+  const v = HERO_VARIANTS[variant] ?? HERO_VARIANTS.default;
+  const headline = headlineOverride ?? v.headline;
+  const subheadline = v.subheadline;
+  const eyebrow = v.eyebrow ?? legacyHero.eyebrow;
+
+  // Respect prefers-reduced-motion. With reduced motion enabled, every
+  // framer-motion `initial` state collapses to the final state so the
+  // hero paints in one frame with no movement. Important for vestibular
+  // accessibility (motion sickness, vertigo).
+  const reduce = useReducedMotion();
+  const m = (
+    base: Record<string, unknown>
+  ): Record<string, unknown> =>
+    reduce ? { initial: false, animate: base.animate } : base;
+
   return (
-    <section className="relative pt-12 md:pt-20 pb-20 md:pb-28 overflow-hidden">
+    <section
+      className="relative pt-12 md:pt-20 pb-20 md:pb-28 overflow-hidden"
+      aria-labelledby="hero-headline"
+    >
       {/* Drifting blob backdrop — emerald onto cream, very low opacity. */}
       <div
         aria-hidden
@@ -60,53 +104,65 @@ export function Hero() {
         {/* LEFT */}
         <div className="max-w-[640px]">
           <motion.div
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+            {...m({
+              initial: { opacity: 0, y: 16 },
+              animate: { opacity: 1, y: 0 },
+              transition: { duration: 0.6, ease: [0.16, 1, 0.3, 1] },
+            })}
           >
             <Badge tone="brand">
               <span className="h-1.5 w-1.5 rounded-full bg-brand" />
-              {hero.eyebrow}
+              {eyebrow}
             </Badge>
           </motion.div>
 
           <motion.h1
-            initial={{ opacity: 0, y: 24 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{
-              duration: 0.7,
-              delay: 0.08,
-              ease: [0.16, 1, 0.3, 1],
-            }}
+            id="hero-headline"
+            {...m({
+              initial: { opacity: 0, y: 24 },
+              animate: { opacity: 1, y: 0 },
+              transition: {
+                duration: 0.7,
+                delay: 0.08,
+                ease: [0.16, 1, 0.3, 1],
+              },
+            })}
             className="mt-6 font-display font-bold text-ink text-[34px] md:text-[52px] leading-[1.04] tracking-[-0.03em]"
           >
-            {hero.headline}
+            {headline}
           </motion.h1>
 
           <motion.p
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{
-              duration: 0.6,
-              delay: 0.14,
-              ease: [0.16, 1, 0.3, 1],
-            }}
+            {...m({
+              initial: { opacity: 0, y: 16 },
+              animate: { opacity: 1, y: 0 },
+              transition: {
+                duration: 0.6,
+                delay: 0.14,
+                ease: [0.16, 1, 0.3, 1],
+              },
+            })}
             className="mt-5 max-w-[560px] text-[16.5px] md:text-[19px] leading-relaxed text-ink-body"
           >
-            {hero.subheadline}
+            {subheadline}
           </motion.p>
 
-          {/* Source citation — tiny, sits under the subhead so the
-              specific number ($42/mo) is anchored by a real third-
-              party citation. Previously a separate stat-paragraph;
-              merged into a single muted line for vertical density. */}
+          {/* Source citation — small, muted, but high-enough contrast to
+              clear WCAG AA against the cream gradient. Was previously
+              `text-ink-muted` which dropped to ~3.8:1 on the cream
+              backdrop. Bumped to `text-ink-body` (~7.1:1) and kept the
+              size small so it reads as supporting metadata. */}
           <motion.p
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.5, delay: 0.18 }}
-            className="mt-2 text-[12px] text-ink-muted"
+            {...m({
+              initial: { opacity: 0 },
+              animate: { opacity: 1 },
+              transition: { duration: 0.5, delay: 0.18 },
+            })}
+            className="mt-2 text-[12.5px] text-ink-body/80"
           >
-            {hero.statLine.source}
+            Source: {LANDING.source}. Average household pays $
+            {LANDING.household.annualUsd.toLocaleString("en-US")}/yr in
+            subscriptions (USD).
           </motion.p>
 
           {/* Trust signals — sits ABOVE the CTA. Cold ad traffic needs
@@ -114,16 +170,18 @@ export function Hero() {
               ask, not after. Compact two-column grid on desktop so the
               row doesn't visually compete with the headline. */}
           <motion.ul
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{
-              duration: 0.6,
-              delay: 0.22,
-              ease: [0.16, 1, 0.3, 1],
-            }}
+            {...m({
+              initial: { opacity: 0, y: 16 },
+              animate: { opacity: 1, y: 0 },
+              transition: {
+                duration: 0.6,
+                delay: 0.22,
+                ease: [0.16, 1, 0.3, 1],
+              },
+            })}
             className="mt-7 grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2.5 max-w-[460px]"
           >
-            {hero.trustChecks.map((t) => (
+            {TRUST_CHECKS.map((t) => (
               <li
                 key={t}
                 className="inline-flex items-center gap-2 text-[13.5px] text-ink-body"
@@ -136,26 +194,21 @@ export function Hero() {
             ))}
           </motion.ul>
 
-          {/* Borrowed-trust strip — Plaid is the security infrastructure
-              brand users recognize (it powers Robinhood, Coinbase,
-              Venmo, Chime, every major fintech). Lending Plaid's
-              familiarity is the single highest-leverage credibility
-              move for a 6-follower X account that nobody knows.
-              Visual is restrained — a small Plaid wordmark + a "and
-              11,000+ banks" claim, no decoration. Sits between
-              trust checks and CTA so the brand recognition lands
-              right before the click. */}
+          {/* Borrowed-trust strip — Plaid + recognizable fintech names.
+              The strongest single credibility move for a small-followers
+              brand: lend the familiarity of brands every visitor knows.
+              Text color bumped from text-ink-muted to text-ink-body for
+              WCAG AA contrast on the cream backdrop. */}
           <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.26 }}
-            className="mt-5 flex items-center gap-3 flex-wrap text-[12px] text-ink-muted"
+            {...m({
+              initial: { opacity: 0, y: 12 },
+              animate: { opacity: 1, y: 0 },
+              transition: { duration: 0.6, delay: 0.26 },
+            })}
+            className="mt-5 flex items-center gap-3 flex-wrap text-[12.5px] text-ink-body"
           >
             <span>Powered by</span>
             <span className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-ink">
-              {/* Plaid wordmark — inline SVG matches Plaid's brand asset.
-                  Sized to ~16px to read as supporting metadata, not
-                  a logo wall. */}
               <svg
                 role="img"
                 aria-label="Plaid"
@@ -176,56 +229,101 @@ export function Hero() {
                 </text>
               </svg>
             </span>
-            <span className="text-ink-muted/60">·</span>
-            <span>11,000+ banks</span>
-            <span className="text-ink-muted/60">·</span>
-            <span>Same security used by Robinhood &amp; Venmo</span>
+            <span aria-hidden="true" className="text-ink-body/40">·</span>
+            <span>{LANDING.banks.display} banks</span>
+            <span aria-hidden="true" className="text-ink-body/40">·</span>
+            <span>Same security used by {LANDING.plaidPartners.join(" & ")}</span>
           </motion.div>
 
-          {/* Single CTA. The page has ONE obvious action above the
-              fold; the rest of the page handles the rest of the
-              conversation. */}
+          {/* CTA pair. Primary triggers the Plaid flow (via /sign-up).
+              Secondary opens /sample — a zero-bank-required preview of
+              what the report looks like. This is THE conversion-rate
+              fix for cold traffic that's not ready to link a bank: it
+              lets them see the value FIRST, then decide. */}
           <motion.div
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{
-              duration: 0.7,
-              delay: 0.32,
-              ease: [0.16, 1, 0.3, 1],
-            }}
-            className="mt-6"
+            {...m({
+              initial: { opacity: 0, y: 16 },
+              animate: { opacity: 1, y: 0 },
+              transition: {
+                duration: 0.7,
+                delay: 0.32,
+                ease: [0.16, 1, 0.3, 1],
+              },
+            })}
+            className="mt-6 flex flex-wrap items-center gap-3"
           >
-            <Button asChild size="lg" className="group">
-              <a href={hero.primaryCta.href}>
-                {hero.primaryCta.label}
+            <Button asChild size="lg" className="group min-h-[52px]">
+              <a href="/sign-up">
+                Find my subscriptions
                 <ArrowRight
                   size={16}
                   className="transition group-hover:translate-x-0.5"
+                  aria-hidden="true"
                 />
+              </a>
+            </Button>
+            {/* Secondary — visually lighter, same tap-target height for
+                accessibility. EyeOff icon mirrors the "forgotten" pill
+                used inside the sample report so the CTA telegraphs the
+                payoff. */}
+            <Button
+              asChild
+              variant="outline"
+              size="lg"
+              className="group min-h-[52px]"
+            >
+              <a href="/sample">
+                <EyeOff
+                  size={15}
+                  strokeWidth={2}
+                  className="-ml-0.5"
+                  aria-hidden="true"
+                />
+                See a sample report
               </a>
             </Button>
           </motion.div>
 
-          {/* Reassurance line directly under the CTA. Bank-credential
-              anxiety is the largest conversion barrier on cold finance
-              traffic. Promising the off-ramp before the user commits
-              reduces the "am I locked in?" fear. Small text, brand
-              emerald dot for warmth instead of a stark icon. */}
+          {/* Micro-copy directly under the CTAs. Restates read-only
+              and "no signup to preview" so the choice between the two
+              CTAs is clearly disambiguated.
+              Color bumped to text-ink-body for AA contrast. */}
           <motion.p
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.5, delay: 0.36 }}
-            className="mt-4 inline-flex items-center gap-2 text-[13px] text-ink-muted"
+            {...m({
+              initial: { opacity: 0 },
+              animate: { opacity: 1 },
+              transition: { duration: 0.5, delay: 0.38 },
+            })}
+            className="mt-4 inline-flex items-center gap-2 text-[13px] text-ink-body"
           >
-            <span className="inline-block h-1.5 w-1.5 rounded-full bg-brand" />
-            {hero.reassurance}
+            <Lock size={11} strokeWidth={2} className="text-brand" aria-hidden="true" />
+            Read-only · {LANDING.timeToValue.display} · no signup to preview
+          </motion.p>
+
+          {/* Disconnect reassurance — last line, addresses the "am I
+              locked in?" fear that's specific to bank-connect products. */}
+          <motion.p
+            {...m({
+              initial: { opacity: 0 },
+              animate: { opacity: 1 },
+              transition: { duration: 0.5, delay: 0.42 },
+            })}
+            className="mt-2 inline-flex items-center gap-2 text-[12.5px] text-ink-body/85"
+          >
+            <span
+              aria-hidden="true"
+              className="inline-block h-1.5 w-1.5 rounded-full bg-brand"
+            />
+            Disconnect anytime — Frugavo loses access instantly.
           </motion.p>
         </div>
 
         {/* RIGHT — animated discovery scan. Visible on mobile too;
             the visual proof reinforces the headline by showing the
-            kind of merchant names users typically don't recognize. */}
-        <div className="relative">
+            kind of merchant names users typically don't recognize.
+            min-height matches the dynamic loading placeholder so
+            layout never shifts when the card hydrates. */}
+        <div className="relative" style={{ minHeight: 560 }}>
           <HeroDemoCard />
         </div>
       </div>

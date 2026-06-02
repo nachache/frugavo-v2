@@ -35,7 +35,7 @@ export const hero = {
   // the subhead — visually crowded on mobile + duplicated the same
   // idea twice. Merged for density.
   subheadline:
-    "Most people miss 3–5 recurring charges averaging $42/mo. See every one in 30 seconds.",
+    "Most people miss 3–5 recurring charges — about $42/mo in total. See every one in 60 seconds.",
   // Single-action hero post-funnel-debug: dropped the secondary CTA
   // ("See how it works") so the page has one obvious next step. The
   // hero scrolls into the existing How-it-works section anyway, so
@@ -98,7 +98,7 @@ export const howItWorks = {
       n: "01",
       icon: "Landmark",
       title: "Connect your bank",
-      body: "Link a bank or credit card in 30 seconds via Plaid — the same connection your bank app uses. Read-only. We never see or store your credentials.",
+      body: "Link a bank or credit card in 60 seconds via Plaid — the same connection your bank app uses. Read-only. We never see or store your credentials.",
     },
     {
       n: "02",
@@ -317,7 +317,7 @@ export const access = {
   // so users still understand they're inside a premium system.
   featuresHeading: "Everything in your account, unlocked",
   features: [
-    "Connect your bank in 30 seconds via Plaid",
+    "Connect your bank in 60 seconds via Plaid",
     "Full subscription analysis across every connected account",
     "Continuous monitoring — new charges, price changes, forgotten subs",
     "Renewal forecasting and trial-conversion observation",
@@ -397,7 +397,7 @@ export const faqs = [
 export const finalCta = {
   heading: "See what your recurring spending really looks like.",
   subhead:
-    "Connect a bank in 30 seconds. Frugavo analyzes the last 12 months and shows you the recurring charges you'd otherwise never see in one place. Calm protection from there on.",
+    "Connect a bank in 60 seconds. Frugavo analyzes the last 12 months and shows you the recurring charges you'd otherwise never see in one place. Calm protection from there on.",
 };
 
 export const footer = {

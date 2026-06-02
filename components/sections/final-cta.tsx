@@ -54,7 +54,7 @@ export function FinalCta() {
                 />
               </Link>
               <div className="text-[13px] text-ink-muted">
-                Free 30-second scan · No credit card · Read-only via Plaid
+                Free 60-second scan · No credit card · Read-only via Plaid
               </div>
             </motion.div>
           </div>
