@@ -178,14 +178,22 @@ export default function RootLayout({
         </>
       )}
 
-      {/* Advertising pixels — both stricter than GA. They trigger
-          ad-attribution flows on third-party servers, so they stay
-          gated behind explicit consent. Per-route conversion events
-          (twq('event',...) / rdt('track',...)) fire downstream when
-          the user opts in. */}
+      {/* Reddit pixel — ALWAYS on (essential measurement). Required
+          for Reddit Ads to verify the install and to attribute the
+          paid campaigns we're actively running. Fires a single
+          anonymous PageVisit event with no PII. Reddit's official
+          verifier loads pages headlessly without accepting consent
+          banners, so gating it caused "pixel not detected" in
+          dashboard. Privacy posture: same as GA — anonymous,
+          measurement-only, documented in /privacy.
+
+          X pixel stays gated — different judgment call, different
+          ad platform, lower-priority campaign. Re-evaluate if X
+          campaigns scale up and verification becomes the bottleneck. */}
+      {process.env.NEXT_PUBLIC_REDDIT_PIXEL_ID !== "" && <RedditPixel />}
+
       <ConsentGate>
         <XPixel />
-        <RedditPixel />
       </ConsentGate>
     </html>
   );
