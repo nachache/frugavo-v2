@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Figtree, Lato, Fraunces, Newsreader } from "next/font/google";
+import { Figtree, Lato, Fraunces } from "next/font/google";
 import { GoogleAnalytics } from "@next/third-parties/google";
 import { ClerkProvider } from "@clerk/nextjs";
 import { GaDebug } from "@/components/shared/ga-debug";
@@ -30,19 +30,19 @@ const figtree = Figtree({
   variable: "--font-display",
 });
 
-// Article typography. Fraunces for editorial headings (variable, generous in
-// display sizes), Newsreader for body text (designed for on-screen reading).
+// Editorial accent typography. Fraunces (variable axes, italic capable) is
+// the brand serif used for the $1,847 / $164 ad creative, the italic accent
+// word in the hero, and any "magazine-feel" moment. Newsreader was loaded
+// previously as a body serif for /learn long-form articles — removed for
+// performance (it was a second serif family and added ~30KB woff2 + an
+// extra render block on the landing page where 35-54 female cold traffic
+// bounces hard above 3-second LCP). If we resume long-form articles, use
+// Fraunces with reduced weight + smaller opsz axis instead of re-adding.
 const fraunces = Fraunces({
   subsets: ["latin"],
   display: "swap",
   variable: "--font-fraunces",
   axes: ["opsz", "SOFT"],
-});
-
-const newsreader = Newsreader({
-  subsets: ["latin"],
-  display: "swap",
-  variable: "--font-newsreader",
 });
 
 export const metadata: Metadata = {
@@ -121,7 +121,7 @@ export default function RootLayout({
     >
     <html
       lang="en"
-      className={`${lato.variable} ${figtree.variable} ${fraunces.variable} ${newsreader.variable}`}
+      className={`${lato.variable} ${figtree.variable} ${fraunces.variable}`}
     >
       <body>
         <a

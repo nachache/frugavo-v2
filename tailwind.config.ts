@@ -33,11 +33,13 @@ const config: Config = {
         // Headlines, hero — Figtree. Geometric sans with confident
         // proportions; reads premium without being austere.
         display: ["var(--font-display)", "var(--font-sans)", "system-ui", "sans-serif"],
-        // Editorial pair used in /learn articles. Fraunces is a variable
-        // serif with strong display character; Newsreader is optimized for
-        // long-form on-screen reading.
+        // Editorial accent. Fraunces is the brand serif (italic accents in
+        // the hero headline, ad creatives, email subjects). For long-form
+        // body, fall back to Fraunces at a smaller opsz axis instead of
+        // loading a second serif family — Newsreader was removed for
+        // landing-page performance.
         editorial: ["var(--font-fraunces)", "Georgia", "serif"],
-        editorialBody: ["var(--font-newsreader)", "Georgia", "serif"],
+        editorialBody: ["var(--font-fraunces)", "Georgia", "serif"],
       },
       fontSize: {
         hero: ["clamp(48px, 7vw, 96px)", { lineHeight: "0.95", letterSpacing: "-0.04em" }],
