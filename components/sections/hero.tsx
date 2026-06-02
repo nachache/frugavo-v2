@@ -96,6 +96,31 @@ export function Hero() {
             {hero.subheadline}
           </motion.p>
 
+          {/* Quantified social proof — the closest thing we have to a
+              testimonial pre-launch. Uses third-party research (C+R
+              2026) so the number reads as observation, not marketing
+              claim. Sits between the subheadline and the trust checks
+              so cold visitors meet a concrete figure before they
+              meet the safety story. */}
+          <motion.p
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{
+              duration: 0.6,
+              delay: 0.18,
+              ease: [0.16, 1, 0.3, 1],
+            }}
+            className="mt-5 max-w-[520px] text-[14px] md:text-[15px] leading-relaxed text-ink-body/85"
+          >
+            <span className="font-display font-bold italic text-ink">
+              {hero.statLine.figure}
+            </span>{" "}
+            {hero.statLine.body}.{" "}
+            <span className="text-ink-muted text-[12.5px]">
+              {hero.statLine.source}
+            </span>
+          </motion.p>
+
           {/* Trust signals — sits ABOVE the CTA. Cold ad traffic needs
               to see the credential-safety story before the bank-connect
               ask, not after. Compact two-column grid on desktop so the
@@ -146,6 +171,21 @@ export function Hero() {
               </a>
             </Button>
           </motion.div>
+
+          {/* Reassurance line directly under the CTA. Bank-credential
+              anxiety is the largest conversion barrier on cold finance
+              traffic. Promising the off-ramp before the user commits
+              reduces the "am I locked in?" fear. Small text, brand
+              emerald dot for warmth instead of a stark icon. */}
+          <motion.p
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.5, delay: 0.36 }}
+            className="mt-4 inline-flex items-center gap-2 text-[13px] text-ink-muted"
+          >
+            <span className="inline-block h-1.5 w-1.5 rounded-full bg-brand" />
+            {hero.reassurance}
+          </motion.p>
         </div>
 
         {/* RIGHT — animated discovery scan. Visible on mobile too;

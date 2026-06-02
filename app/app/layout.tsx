@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { UserButton } from "@clerk/nextjs";
+import { ClerkProvider, UserButton } from "@clerk/nextjs";
 import { currentUser } from "@clerk/nextjs/server";
 import { Wordmark } from "@/components/shared/wordmark";
 import { MobileBottomNav } from "@/components/app/mobile-nav";
@@ -18,6 +18,10 @@ export const metadata: Metadata = {
 // Layout for every authenticated /app/* route. Clerk middleware has
 // already verified the session by the time this renders. Anyone hitting
 // /app/anything without a session has been redirected to /sign-in.
+//
+// ClerkProvider lives HERE (not in the root layout) — see the comment
+// in app/layout.tsx for why. Short version: keeps the 252 KB Clerk
+// bundle off the marketing pages where it isn't used.
 
 export default async function AppLayout({
   children,
@@ -48,6 +52,17 @@ export default async function AppLayout({
   }
 
   return (
+    <ClerkProvider
+      appearance={{
+        variables: {
+          colorPrimary: "#047857",
+          colorText: "#0A0A0A",
+          colorBackground: "#FAF8F4",
+          borderRadius: "0.75rem",
+          fontFamily: "var(--font-sans), system-ui, sans-serif",
+        },
+      }}
+    >
     <div className="min-h-screen bg-canvas flex flex-col relative">
       {/* Ambient organic shapes — drifting cream + brand-green +
           amber blobs behind everything. Calm, low-opacity, slow
@@ -89,5 +104,6 @@ export default async function AppLayout({
           otherwise, so browser users keep their native gesture. */}
       <PullToRefresh />
     </div>
+    </ClerkProvider>
   );
 }

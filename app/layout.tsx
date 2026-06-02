@@ -1,7 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Figtree, Lato, Fraunces } from "next/font/google";
 import { GoogleAnalytics } from "@next/third-parties/google";
-import { ClerkProvider } from "@clerk/nextjs";
 import { GaDebug } from "@/components/shared/ga-debug";
 import { ConsentBanner, ConsentGate } from "@/components/shared/consent";
 import { SwRegister } from "@/components/shared/sw-register";
@@ -102,23 +101,25 @@ export const viewport: Viewport = {
   themeColor: "#0F172A",
 };
 
+// ClerkProvider has been moved OUT of the root layout (June 2026
+// performance pass). PageSpeed mobile showed 252 KB of unused JS
+// on the landing page — almost entirely Clerk's client bundle
+// loading on a public marketing surface that doesn't need it.
+//
+// ClerkProvider now wraps only the routes that actually use Clerk:
+//   • app/app/layout.tsx — authenticated dashboard
+//   • app/sign-in/layout.tsx — Clerk SignIn component
+//   • app/sign-up/layout.tsx — Clerk SignUp component
+//
+// The landing page and other marketing surfaces (/, /about, /learn,
+// /privacy, /terms, /roadmap) render without Clerk's bundle.
+// Expected impact: LCP 7.0s -> sub-3s on mobile cold traffic.
 export default function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
   return (
-    <ClerkProvider
-      appearance={{
-        variables: {
-          colorPrimary: "#047857",
-          colorText: "#0A0A0A",
-          colorBackground: "#FAF8F4",
-          borderRadius: "0.75rem",
-          fontFamily: "var(--font-sans), system-ui, sans-serif",
-        },
-      }}
-    >
     <html
       lang="en"
       className={`${lato.variable} ${figtree.variable} ${fraunces.variable}`}
@@ -184,6 +185,5 @@ export default function RootLayout({
         <XPixel />
       </ConsentGate>
     </html>
-    </ClerkProvider>
   );
 }

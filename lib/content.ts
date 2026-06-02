@@ -38,6 +38,20 @@ export const hero = {
   // curious readers still get the explanation without us having to
   // compete with the primary action above the fold.
   primaryCta: { label: "Find my subscriptions", href: "/sign-up" },
+  // Quantified social proof — the closest thing to a testimonial we
+  // have without real cohort data. Cites the C+R Research 2026 study
+  // that found the average household underestimates subscription
+  // spend by 2.5×. Sits below the subheadline so cold visitors see
+  // a concrete number, not just product copy.
+  statLine: {
+    figure: "3–5 forgotten subscriptions",
+    body: "averaging $42 per month",
+    source: "Source: C+R Research, 2026",
+  },
+  // Reassurance line directly under the CTA. Bank-credential anxiety
+  // is the largest conversion barrier on cold finance traffic; this
+  // promises an explicit off-ramp before the user commits.
+  reassurance: "Disconnect anytime — Frugavo loses access instantly.",
   // Trust signals moved INTO the CTA area (above the button) instead
   // of a single muted line below. Same content, presented as four
   // checkmarks so the visitor sees the credential-safety story
