@@ -11,6 +11,7 @@ import {
 } from "@/lib/landing/constants";
 import { hero as legacyHero } from "@/lib/content";
 import { HeroResultsPreview } from "@/components/sections/hero-results-preview";
+import { PdfInterestCta } from "@/components/marketing/pdf-interest-cta";
 
 // Hero — revision pass (R1–R6).
 //
@@ -214,6 +215,22 @@ export function Hero({ variant = "default", headlineOverride }: HeroProps) {
             Read-only · {LANDING.timeToValue.display} · no signup to preview
           </motion.p>
 
+          {/* PDF-upload demand validation CTA (no bank required).
+              Visually subordinate — small inline link, not a third
+              button — so it doesn't compete with the primary pair
+              for the headline conversion. Captures email of users
+              who prefer a no-Plaid path; lets us measure interest
+              before building the feature. */}
+          <motion.div
+            {...m({
+              initial: { opacity: 0 },
+              animate: { opacity: 1 },
+              transition: { duration: 0.5, delay: 0.28 },
+            })}
+          >
+            <PdfInterestCta />
+          </motion.div>
+
           {/* 5. Consolidated Plaid trust strip (R4). ONE Plaid lockup,
               ONE statement, then a small bank-logo row. Replaces the
               four checkmarks + duplicate "Powered by Plaid · 11,000+
@@ -243,6 +260,21 @@ export function Hero({ variant = "default", headlineOverride }: HeroProps) {
             <p className="mt-2 text-[12px] text-ink-body/85 leading-relaxed">
               We never see or store your bank credentials. Same
               infrastructure used by {LANDING.plaidPartners.join(" & ")}.
+            </p>
+
+            {/* Three reassurance lines pulled from competitor-positioning
+                analysis (Reddit "tried every subscription tracker" post):
+                  1. We're not Rocket Money — we don't take a cut of
+                     cancellations.
+                  2. We're not Subcut — we don't read your email.
+                  3. We do what Subcut does well — surface direct cancel
+                     pages for each finding.
+                Each addresses a specific objection cold visitors are
+                actively voicing in personal-finance subreddits. Compact
+                dot-separated line keeps the strip from growing tall. */}
+            <p className="mt-2 text-[11.5px] text-ink-body/80 leading-relaxed">
+              No cut of cancellations · We never read your email · Direct
+              cancel page for each forgotten sub
             </p>
 
             {/* Bank wordmark row — US banks, brand-colored pills,
