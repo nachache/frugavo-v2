@@ -126,7 +126,11 @@ export type HeroVariant = {
 
 export const HERO_VARIANTS: Record<VariantKey, HeroVariant> = {
   default: {
-    headline: "You're probably paying for subscriptions you've forgotten about.",
+    // Shortened from the prior three-line "You're probably paying for
+    // subscriptions you've forgotten about." Question form is sharper,
+    // more direct, and fits two lines on a 390px mobile viewport
+    // without wrapping the editorial serif awkwardly.
+    headline: "Still paying for subscriptions you forgot?",
     subheadline:
       `Most people miss ${LANDING.forgotten.countMin}–${LANDING.forgotten.countMax} recurring charges — about $${LANDING.forgotten.monthlyTotalUsd}/mo in total. See every one in ${LANDING.timeToValue.display}.`,
   },

@@ -41,14 +41,17 @@ type HeroProps = {
 };
 
 // Headline splitter — applies Fraunces italic emphasis only to the
-// phrase "forgotten about" when it appears in the headline. Falls
-// back to the full headline in the default serif if the phrase isn't
-// present (e.g. on `?v=cancel` or `?v=tracker` variants).
+// word "forgot" when it appears in the headline. Matches both
+// "forgot" (default headline: "Still paying for subscriptions you
+// forgot?") AND "forgotten" (because the substring match starts at
+// index 0 of either). Falls back to the full headline rendered in
+// plain serif when neither appears (mint / cancel / find / competitor
+// variants).
 //
 // Returns either:
 //   { before: "…", emph: "…", after: "…" }  (split happened)
 //   { before: full, emph: "", after: "" }    (no split)
-const EMPH_PHRASE = "forgotten about";
+const EMPH_PHRASE = "forgot";
 function splitHeadline(text: string): { before: string; emph: string; after: string } {
   const idx = text.toLowerCase().indexOf(EMPH_PHRASE);
   if (idx === -1) return { before: text, emph: "", after: "" };
@@ -215,22 +218,6 @@ export function Hero({ variant = "default", headlineOverride }: HeroProps) {
             Read-only · {LANDING.timeToValue.display} · no signup to preview
           </motion.p>
 
-          {/* PDF-upload demand validation CTA (no bank required).
-              Visually subordinate — small inline link, not a third
-              button — so it doesn't compete with the primary pair
-              for the headline conversion. Captures email of users
-              who prefer a no-Plaid path; lets us measure interest
-              before building the feature. */}
-          <motion.div
-            {...m({
-              initial: { opacity: 0 },
-              animate: { opacity: 1 },
-              transition: { duration: 0.5, delay: 0.28 },
-            })}
-          >
-            <PdfInterestCta />
-          </motion.div>
-
           {/* 5. Consolidated Plaid trust strip (R4). ONE Plaid lockup,
               ONE statement, then a small bank-logo row. Replaces the
               four checkmarks + duplicate "Powered by Plaid · 11,000+
@@ -299,6 +286,16 @@ export function Hero({ variant = "default", headlineOverride }: HeroProps) {
               <span className="text-[11.5px] text-ink-body/85 ml-1">
                 +{(LANDING.banks.count - 6).toLocaleString("en-US")} more
               </span>
+            </div>
+
+            {/* PDF-upload demand validation CTA — moved here (was
+                directly under the lock badge, which gave it too much
+                prime real estate next to the primary CTAs). Now lives
+                inside the trust strip beneath the bank-logo row, so
+                it reads as a "for users who prefer no-bank-link"
+                opt-out rather than competing with the main path. */}
+            <div className="mt-3 pt-3 border-t border-hairline/60">
+              <PdfInterestCta />
             </div>
           </motion.div>
 
