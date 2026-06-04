@@ -6,7 +6,7 @@ import { motion } from "framer-motion";
 import { FadeIn } from "@/components/motion/fade-in";
 import { finalCta } from "@/lib/content";
 
-// Final CTA section — single Start Scan button. The mailing list /
+// Final CTA section — single primary button. The mailing list /
 // waitlist capture this used to host has been removed: we have a
 // working signup flow, so collecting an email separately leaked
 // users out of the funnel. One CTA, one destination.
@@ -45,7 +45,7 @@ export function FinalCta() {
                 href="/sign-up"
                 className="group inline-flex h-14 items-center gap-2 rounded-full bg-brand px-8 text-[16px] font-semibold text-white shadow-soft hover:bg-brand-hover transition"
               >
-                Start Scan
+                Find my subscriptions
                 <ArrowRight
                   size={18}
                   strokeWidth={2.5}
@@ -54,7 +54,7 @@ export function FinalCta() {
                 />
               </Link>
               <div className="text-[13px] text-ink-muted">
-                Free 60-second scan · No credit card · Read-only via Plaid
+                Free 60-second scan · No credit card · Powered by Plaid
               </div>
             </motion.div>
           </div>

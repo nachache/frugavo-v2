@@ -200,7 +200,9 @@ export function Hero({ variant = "default", headlineOverride }: HeroProps) {
           </motion.div>
 
           {/* Lock badge directly under the CTAs — trust at the moment
-              of the ask (R4 last bullet). text-ink-body for WCAG AA. */}
+              of the ask. "No signup to preview" is now a discoverable
+              link to /sample so hesitant mobile users who never see
+              the secondary CTA button still find the no-bank path. */}
           <motion.p
             {...m({
               initial: { opacity: 0 },
@@ -215,7 +217,13 @@ export function Hero({ variant = "default", headlineOverride }: HeroProps) {
               className="text-brand"
               aria-hidden="true"
             />
-            Read-only · {LANDING.timeToValue.display} · no signup to preview
+            Read-only · {LANDING.timeToValue.display} ·{" "}
+            <a
+              href="/sample"
+              className="underline underline-offset-4 decoration-ink-body/40 hover:text-ink hover:decoration-ink/70 transition"
+            >
+              no signup to preview
+            </a>
           </motion.p>
 
           {/* 5. Consolidated Plaid trust strip (R4). ONE Plaid lockup,
@@ -288,12 +296,32 @@ export function Hero({ variant = "default", headlineOverride }: HeroProps) {
               </span>
             </div>
 
-            {/* PDF-upload demand validation CTA — moved here (was
-                directly under the lock badge, which gave it too much
-                prime real estate next to the primary CTAs). Now lives
-                inside the trust strip beneath the bank-logo row, so
-                it reads as a "for users who prefer no-bank-link"
-                opt-out rather than competing with the main path. */}
+            {/* "Frugavo noticed" examples — pulled up from the buried
+                Ticker section (was below the calculator, most mobile
+                users never scrolled that far). Three concrete
+                observations that show what continuous monitoring
+                actually does. Differentiates from one-shot scan tools
+                like Subcut by demonstrating ongoing protection. */}
+            <div className="mt-3 pt-3 border-t border-hairline/60">
+              <div className="text-[10.5px] font-semibold uppercase tracking-[0.12em] text-ink-body/85">
+                What Frugavo notices
+              </div>
+              <ul className="mt-2 space-y-1 text-[12px] text-ink-body leading-relaxed">
+                <li>
+                  <span className="text-brand">→</span> Adobe converts to $59.99/mo on Friday
+                </li>
+                <li>
+                  <span className="text-brand">→</span> An unfamiliar recurring charge of $19/mo
+                </li>
+                <li>
+                  <span className="text-brand">→</span> Spotify and Apple Music are both active
+                </li>
+              </ul>
+            </div>
+
+            {/* PDF-upload demand validation CTA — lives at the bottom
+                of the trust strip as a "for users who prefer no-bank-
+                link" opt-out rather than competing with the main path. */}
             <div className="mt-3 pt-3 border-t border-hairline/60">
               <PdfInterestCta />
             </div>

@@ -287,7 +287,7 @@ export function HeroDemoCard() {
 
         <div className="trust" ref={trustRef}>
           <span className="shield" />
-          Read-only via Plaid · No credentials stored
+          Powered by Plaid · No credentials stored
         </div>
       </div>
 

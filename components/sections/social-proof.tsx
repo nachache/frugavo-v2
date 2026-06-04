@@ -13,7 +13,7 @@ const STACK = [
   { label: "OAuth 2.0 inbox scopes", icon: Mail },
   { label: "Stripe for payments", icon: CreditCard },
   { label: "TLS 1.3 in transit", icon: Lock },
-  { label: "Read-only access", icon: ShieldCheck },
+  { label: "See-only — cannot move money", icon: ShieldCheck },
 ];
 
 export function SocialProof() {

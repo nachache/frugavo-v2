@@ -20,7 +20,11 @@ export const nav = {
 // but the framing flips from teaching about Frugavo to making the
 // reader curious about themselves.
 export const hero = {
-  eyebrow: "Founder Access · Open during early access",
+  // Eyebrow updated 2026-06 with honest scarcity framing — replaces
+  // "Open during early access" (vague, no urgency) with "Limited to
+  // 1,000 early members" (creates finite-spot signal without
+  // fabricating user counts we don't have).
+  eyebrow: "Founder Access · Limited to 1,000 early members",
   // Rewritten to continue the tension from the X ad ("You're paying
   // for 14 subscriptions and can name 9"). The previous landing
   // headline ("You don't know all your subscriptions") reset the
@@ -339,8 +343,8 @@ export const trust = {
   pillars: [
     {
       icon: "Eye",
-      title: "Read-only access",
-      body: "We use read-only scopes to identify recurring charges. Frugavo can't send email or move money on your behalf.",
+      title: "See-only access",
+      body: "Frugavo identifies recurring charges. It cannot send email or move money on your behalf, no matter what.",
     },
     {
       icon: "Lock",

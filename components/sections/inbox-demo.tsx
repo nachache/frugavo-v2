@@ -111,7 +111,7 @@ export function InboxDemo() {
             Every recurring charge in one list, with a one-tap path to the
             provider’s real cancel page. The data and brands shown are samples.{" "}
             <a href="/sign-up" className="text-ink underline underline-offset-4 hover:text-brand transition">
-              Start Scan
+              Find my subscriptions
             </a>{" "}
             to see yours.
           </p>

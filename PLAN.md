@@ -285,6 +285,52 @@ not duplicated).
       content. Consent banner remains scroll-triggered from earlier
       task — never on screen for first-paint above-the-fold view.
 
+## Audit follow-ups — 2026-06-03 PM
+
+External CRO audit (fresh-Claude browser session) identified gaps.
+Acting on five of the prioritized fixes; deferring two.
+
+- [x] **AU1. Cut "read-only" repetitions from 5+ to 2.** Kept in
+      hero CTA footnote + Plaid lockup. Replaced in social-proof
+      pillar ("See-only — cannot move money"), hero-demo-card
+      ("Powered by Plaid"), final-cta ("Powered by Plaid"), and
+      trust-section heading ("See-only access"). Audit said the
+      repetition was triggering anxiety; now confidence is conveyed
+      once and varied with positive framings ("see-only" instead of
+      defensive "read-only").
+
+- [x] **AU2. Standardize CTA copy.** Replaced every "Start Scan"
+      with "Find my subscriptions" in final-cta.tsx, inbox-demo.tsx,
+      calculator.tsx. Single label across the page; warmer + more
+      specific than the mechanical "Scan."
+
+- [x] **AU3. Make "no signup to preview" clickable.** Footnote
+      under hero CTAs now links to /sample. Cheapest possible
+      version of the "secondary CTA hidden on mobile" fix — doesn't
+      reorder buttons (risky), just turns existing text into a
+      discoverable path.
+
+- [x] **AU4. Pull "Frugavo noticed" examples up.** Added 3
+      concrete observations into the hero trust strip (Adobe
+      conversion, unknown $19/mo, Spotify+Apple Music both active).
+      These were previously buried behind the calculator section.
+      Demonstrates ongoing-monitoring differentiator vs one-shot
+      tools like Subcut.
+
+- [x] **AU5. Scarcity-framed eyebrow.** "Founder Access · Open
+      during early access" → "Founder Access · Limited to 1,000
+      early members." Adds finite-spot signal without fabricating
+      user counts we don't have.
+
+- [ ] **AU6. Email Annie for testimonial permission.** Pending —
+      audit's strongest single fix is adding a real user quote
+      above the fold. Need explicit permission to use her quote.
+      Draft email ready to send.
+
+- [ ] **AU7. Pre-Plaid interstitial.** Deferred — adds friction on
+      top of the existing /app/connect auto-open. Re-evaluate when
+      analytics show meaningful Plaid-screen drop-offs.
+
 ## P1 — accessibility + performance maintained
 
 - [x] **R7. WCAG AA + LCP/CLS targets hold.** No new contrast
