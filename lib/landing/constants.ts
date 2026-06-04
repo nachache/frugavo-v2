@@ -126,13 +126,17 @@ export type HeroVariant = {
 
 export const HERO_VARIANTS: Record<VariantKey, HeroVariant> = {
   default: {
-    // Shortened from the prior three-line "You're probably paying for
-    // subscriptions you've forgotten about." Question form is sharper,
-    // more direct, and fits two lines on a 390px mobile viewport
-    // without wrapping the editorial serif awkwardly.
-    headline: "Still paying for subscriptions you forgot?",
+    // Rewritten 2026-06-05 (Phase G follow-up): the doubt-based
+    // "Still paying for subscriptions you forgot?" was rewarding the
+    // visitor's anxiety; the new headline shifts to a confident
+    // outcome promise, matching Rocket Money's "Get control over your
+    // subscriptions" section header. Sans-serif rendering replaces
+    // the prior editorial serif — fintech competitors universally
+    // ship bold sans on the hero, and the editorial serif was
+    // reading "blog" not "product."
+    headline: "Take control of every subscription.",
     subheadline:
-      `Most people miss ${LANDING.forgotten.countMin}–${LANDING.forgotten.countMax} recurring charges — about $${LANDING.forgotten.monthlyTotalUsd}/mo in total. See every one in ${LANDING.timeToValue.display}.`,
+      `See every recurring charge across your accounts in ${LANDING.timeToValue.display}. Cancel the ones you don't want. Track the ones you do.`,
   },
   mint: {
     eyebrow: "Built for Mint refugees",

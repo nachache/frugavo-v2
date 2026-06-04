@@ -39,34 +39,17 @@ type HeroProps = {
   headlineOverride?: string | undefined;
 };
 
-// Headline splitter — applies Fraunces italic emphasis only to the
-// word "forgot" when it appears in the headline. Matches both
-// "forgot" (default headline: "Still paying for subscriptions you
-// forgot?") AND "forgotten" (because the substring match starts at
-// index 0 of either). Falls back to the full headline rendered in
-// plain serif when neither appears (mint / cancel / find / competitor
-// variants).
-//
-// Returns either:
-//   { before: "…", emph: "…", after: "…" }  (split happened)
-//   { before: full, emph: "", after: "" }    (no split)
-const EMPH_PHRASE = "forgot";
-function splitHeadline(text: string): { before: string; emph: string; after: string } {
-  const idx = text.toLowerCase().indexOf(EMPH_PHRASE);
-  if (idx === -1) return { before: text, emph: "", after: "" };
-  return {
-    before: text.slice(0, idx),
-    emph: text.slice(idx, idx + EMPH_PHRASE.length),
-    after: text.slice(idx + EMPH_PHRASE.length),
-  };
-}
+// Headline splitter removed in 2026-06-05 pass. The prior version
+// italicized the word "forgot" inside a Fraunces serif headline; the
+// new sans-serif "Take control of every subscription" headline
+// doesn't have a phrase to italicize, and the editorial italic was
+// a major contributor to the "blog" feel the old hero gave off.
 
 export function Hero({ variant = "default", headlineOverride }: HeroProps) {
   const v = HERO_VARIANTS[variant] ?? HERO_VARIANTS.default;
   const headline = headlineOverride ?? v.headline;
   const subheadline = v.subheadline;
   const eyebrow = v.eyebrow ?? legacyHero.eyebrow;
-  const { before, emph, after } = splitHeadline(headline);
 
   // Respect prefers-reduced-motion — every framer-motion animation
   // collapses to its end state in one frame.
@@ -105,11 +88,12 @@ export function Hero({ variant = "default", headlineOverride }: HeroProps) {
             </Badge>
           </motion.div>
 
-          {/* 2. Editorial headline — Fraunces serif. Italic accent
-              applied only to the "forgotten about" phrase when present
-              (default variant). Other variants render the full
-              headline in Fraunces regular. Tracking pulled in tight
-              for editorial serif character. */}
+          {/* 2. Headline — bold sans (Figtree via font-display).
+              Switched from Fraunces editorial serif on 2026-06-05;
+              fintech competitors (Rocket Money, Monarch, Cash App)
+              all ship bold sans-serif on the hero — the serif was
+              reading "blog/indie", the sans reads "product". Tracking
+              pulled in tight for display sans character. */}
           <motion.h1
             id="hero-headline"
             {...m({
@@ -121,17 +105,9 @@ export function Hero({ variant = "default", headlineOverride }: HeroProps) {
                 ease: [0.16, 1, 0.3, 1],
               },
             })}
-            className="mt-6 font-editorial text-ink text-[36px] md:text-[54px] leading-[1.04] tracking-[-0.02em] font-medium"
+            className="mt-6 font-display text-ink text-[40px] md:text-[60px] leading-[1.02] tracking-[-0.035em] font-bold"
           >
-            {emph ? (
-              <>
-                {before}
-                <em className="font-editorial italic font-medium">{emph}</em>
-                {after}
-              </>
-            ) : (
-              headline
-            )}
+            {headline}
           </motion.h1>
 
           {/* 3. One-line value — the $42/mo forgotten figure ONLY.
