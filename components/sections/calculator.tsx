@@ -98,7 +98,7 @@ export function Calculator() {
                     href="/sign-up"
                     className="inline-flex items-center gap-1.5 rounded-full bg-ink px-5 h-11 text-[14px] font-medium text-white hover:bg-ink/85 transition"
                   >
-                    Find my subscriptions →
+                    Get started free →
                   </a>
                 </div>
               </div>

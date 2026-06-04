@@ -45,7 +45,7 @@ export function FinalCta() {
                 href="/sign-up"
                 className="group inline-flex h-14 items-center gap-2 rounded-full bg-brand px-8 text-[16px] font-semibold text-white shadow-soft hover:bg-brand-hover transition"
               >
-                Find my subscriptions
+                Get started free
                 <ArrowRight
                   size={18}
                   strokeWidth={2.5}

@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
   HERO_VARIANTS,
-  LANDING,
   type VariantKey,
 } from "@/lib/landing/constants";
 import { hero as legacyHero } from "@/lib/content";
@@ -173,7 +172,7 @@ export function Hero({ variant = "default", headlineOverride }: HeroProps) {
           >
             <Button asChild size="lg" className="group min-h-[52px]">
               <a href="/sign-up">
-                Find my subscriptions
+                Get started free
                 <ArrowRight
                   size={16}
                   className="transition group-hover:translate-x-0.5"
@@ -217,12 +216,12 @@ export function Hero({ variant = "default", headlineOverride }: HeroProps) {
               className="text-brand"
               aria-hidden="true"
             />
-            Read-only · {LANDING.timeToValue.display} ·{" "}
+            Read-only ·{" "}
             <a
               href="/sample"
               className="underline underline-offset-4 decoration-ink-body/40 hover:text-ink hover:decoration-ink/70 transition"
             >
-              no signup to preview
+              No signup to preview a sample
             </a>
           </motion.p>
 
@@ -249,17 +248,17 @@ export function Hero({ variant = "default", headlineOverride }: HeroProps) {
           >
             <ul className="space-y-2 text-[13px] text-ink-body leading-relaxed">
               <DifferentiatorLine>
-                <span className="text-ink font-semibold">No cut of cancellations.</span>{" "}
-                Flat $4.99/mo. We never take a percentage of your savings.
-              </DifferentiatorLine>
-              <DifferentiatorLine>
                 <span className="text-ink font-semibold">We never read your email.</span>{" "}
                 Bank transactions only, read-only, through Plaid.
               </DifferentiatorLine>
               <DifferentiatorLine>
-                <span className="text-ink font-semibold">Disconnect anytime.</span>{" "}
-                Frugavo loses access instantly. Delete every byte from
-                Settings in one click.
+                <span className="text-ink font-semibold">No upsells, no data resale.</span>{" "}
+                Flat $4.99/mo for Protection. We don&apos;t sell your data
+                or pitch you anything in-app.
+              </DifferentiatorLine>
+              <DifferentiatorLine>
+                <span className="text-ink font-semibold">Delete every byte in one click.</span>{" "}
+                Disconnect anytime — Frugavo loses access instantly.
               </DifferentiatorLine>
             </ul>
 

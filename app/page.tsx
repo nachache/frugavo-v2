@@ -27,8 +27,8 @@ import { BuiltOnStrip } from "@/components/sections/built-on-strip";
 const FeatureSpotlight = dynamic(() =>
   import("@/components/sections/feature-spotlight").then((m) => m.FeatureSpotlight)
 );
-const HeroResultsPreview = dynamic(() =>
-  import("@/components/sections/hero-results-preview").then((m) => m.HeroResultsPreview)
+const CategoriesBreakdownMockup = dynamic(() =>
+  import("@/components/marketing/categories-breakdown-mockup").then((m) => m.CategoriesBreakdownMockup)
 );
 const CalendarMockup = dynamic(() =>
   import("@/components/marketing/calendar-mockup").then((m) => m.CalendarMockup)
@@ -45,9 +45,12 @@ const Calculator = dynamic(() =>
 const Pricing = dynamic(() =>
   import("@/components/sections/pricing").then((m) => m.Pricing)
 );
-const Trust = dynamic(() =>
-  import("@/components/sections/trust").then((m) => m.Trust)
-);
+// Trust section was previously imported here. Removed 2026-06-05
+// (redundancy pass) — the 3 trust pillars (See-only access / Bank
+// credentials never stored / We don't sell your data) overlapped
+// heavily with the hero differentiator strip and the BuiltOnStrip
+// section. Hero strip + BuiltOnStrip + FAQ now own the trust
+// narrative.
 const Faq = dynamic(() =>
   import("@/components/sections/faq").then((m) => m.Faq)
 );
@@ -86,12 +89,12 @@ export default function Page({
         <FeatureSpotlight
           id="discover"
           eyebrow="Discover"
-          headline="See every recurring charge in one calm view."
-          body="Link any account in seconds. Frugavo analyzes the last 12 months of transactions and surfaces every subscription you're paying for — including the ones you forgot about. Direct cancel links for each."
+          headline="One view. Every category. Every charge."
+          body="Link any account and Frugavo groups your recurring charges into the categories that actually matter — streaming, productivity, news, cloud storage. Spot the bucket eating most of your budget, then drill into the subscriptions inside."
           cta={{ label: "See a sample report", href: "/sample" }}
           align="left"
         >
-          <HeroResultsPreview />
+          <CategoriesBreakdownMockup />
         </FeatureSpotlight>
 
         <FeatureSpotlight
@@ -130,13 +133,12 @@ export default function Page({
         {/* 8. Calculator — interactive "what am I losing?" */}
         <Calculator />
 
-        {/* 9. Trust pillars — explicit security commitments */}
-        <Trust />
-
-        {/* 10. FAQ */}
+        {/* 9. FAQ — Trust section removed in redundancy pass; trust
+            signals are covered by hero differentiator strip + BuiltOnStrip
+            above + the FAQ entries below */}
         <Faq />
 
-        {/* 11. Final CTA — last conversion opportunity */}
+        {/* 10. Final CTA — last conversion opportunity */}
         <FinalCta />
       </main>
       <Footer />
