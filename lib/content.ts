@@ -20,11 +20,14 @@ export const nav = {
 // but the framing flips from teaching about Frugavo to making the
 // reader curious about themselves.
 export const hero = {
-  // Eyebrow updated 2026-06 with honest scarcity framing — replaces
-  // "Open during early access" (vague, no urgency) with "Limited to
-  // 1,000 early members" (creates finite-spot signal without
-  // fabricating user counts we don't have).
-  eyebrow: "Founder Access · Limited to 1,000 early members",
+  // Eyebrow REVERTED 2026-06-04 after external visitor-reaction test:
+  // "Limited to 1,000 early members" was backfiring. Sneakers can use
+  // scarcity; a fintech asking for bank credentials cannot. The
+  // visitor read it as "not proven safe yet" / "beta product, don't
+  // trust with my bank" instead of "exclusive opportunity." Reverted
+  // to the plain "Free during early access" until we have real user
+  // counts to anchor honest social proof.
+  eyebrow: "Free during early access",
   // Rewritten to continue the tension from the X ad ("You're paying
   // for 14 subscriptions and can name 9"). The previous landing
   // headline ("You don't know all your subscriptions") reset the
