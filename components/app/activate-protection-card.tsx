@@ -45,7 +45,7 @@ const COPY: Record<Variant, Copy> = {
     headline: "Your monitoring is paused.",
     body: "We couldn't process the last payment. Restart with an updated card and monitoring resumes immediately.",
     cta: "Update payment",
-    subline: "Takes 30 seconds.",
+    subline: "Takes 60 seconds.",
   },
 };
 

@@ -4,7 +4,7 @@ import { SignUp } from "@clerk/nextjs";
 export const metadata: Metadata = {
   title: "Sign up · Frugavo",
   description:
-    "Create your Frugavo account and connect your bank in under a minute.",
+    "Create your Frugavo account and link your first account in under a minute.",
 };
 
 export default function SignUpPage() {

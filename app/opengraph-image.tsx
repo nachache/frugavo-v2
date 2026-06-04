@@ -94,7 +94,7 @@ export default function OgImage() {
               letterSpacing: -0.3,
             }}
           >
-            frugavo.com · Founder Access during early access
+            frugavo.com · Free to start · $4.99/mo Protection
           </span>
         </div>
       </div>

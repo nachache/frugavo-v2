@@ -14,6 +14,29 @@
 import { supabaseAdmin } from "@/lib/supabase";
 import { cacheGet, cacheSet, cacheDel } from "@/lib/cache";
 import { applyBetaUnlock } from "@/lib/billing/beta";
+import { clerkClient } from "@clerk/nextjs/server";
+
+// Cached fetch of a Clerk user's createdAt. The entitlement row is
+// already cached for 30s; this call (issued only on cache miss) adds
+// at most one Clerk request per user per 30s. Returns null on any
+// failure so the caller can fall through to the post-graduation
+// default ("treat as new user, no beta unlock").
+async function fetchUserCreatedAt(
+  clerkUserId: string
+): Promise<Date | null> {
+  try {
+    const user = await clerkClient().users.getUser(clerkUserId);
+    if (!user?.createdAt) return null;
+    return new Date(user.createdAt);
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.warn(
+      "[billing] fetchUserCreatedAt failed; treating as new user",
+      e
+    );
+    return null;
+  }
+}
 
 export type EntitlementState =
   | "none"
@@ -101,18 +124,25 @@ export async function getEntitlement(
   const cached = await cacheGet<Entitlement>(key);
   if (cached) return cached;
 
-  // Cache miss: read Postgres.
+  // Cache miss: read Postgres + fetch the Clerk user's createdAt in
+  // parallel. The createdAt drives the grandfather check inside
+  // applyBetaUnlock (post-2026-06-05 graduation). Issuing the calls
+  // concurrently keeps the total latency at max(supabase, clerk).
   if (!supabaseAdmin) {
     throw new Error("[billing] supabaseAdmin not configured");
   }
-  const { data, error } = await supabaseAdmin
-    .from("billing_entitlements")
-    .select(
-      "clerk_user_id, feature, entitlement_state, stripe_subscription_id, trial_ends_at, expires_at, source_event_id"
-    )
-    .eq("clerk_user_id", clerkUserId)
-    .eq("feature", feature)
-    .maybeSingle();
+  const [entRes, userCreatedAt] = await Promise.all([
+    supabaseAdmin
+      .from("billing_entitlements")
+      .select(
+        "clerk_user_id, feature, entitlement_state, stripe_subscription_id, trial_ends_at, expires_at, source_event_id"
+      )
+      .eq("clerk_user_id", clerkUserId)
+      .eq("feature", feature)
+      .maybeSingle(),
+    fetchUserCreatedAt(clerkUserId),
+  ]);
+  const { data, error } = entRes;
 
   if (error) {
     throw new Error(`[billing] getEntitlement query failed: ${error.message}`);
@@ -132,9 +162,11 @@ export async function getEntitlement(
   // Beta unlock — applied here so EVERY caller sees the synthetic
   // beta_access state without each having to compose the policy.
   // Real paid subscriptions pass through unchanged; only states in
-  // the overridable set (none / expired / past_due) get rewritten.
-  // When BETA_MODE_ENABLED flips false, this becomes a no-op.
-  const row = applyBetaUnlock(rawRow);
+  // the overridable set (none / expired / past_due) get rewritten —
+  // and only for users who signed up before the grandfather cutoff
+  // (see lib/billing/beta.ts). New post-graduation signups land in
+  // their real state ("none") and see the two-tier upgrade flow.
+  const row = applyBetaUnlock(rawRow, userCreatedAt);
 
   // Don't cache "expired" / "past_due" states for the full 30s —
   // those are recoverable (the user might restart their plan in

@@ -74,8 +74,8 @@ function Hero() {
           Most people don&apos;t.
         </p>
         <p className="mt-6 text-[15.5px] lg:text-[16.5px] leading-relaxed text-ink-body max-w-[480px]">
-          We&apos;ll show every recurring charge, upcoming renewal, and
-          forgotten subscription we can find in about 30 seconds.
+          Link an account and we&apos;ll show every recurring charge, upcoming
+          renewal, and forgotten subscription we can find — in about 60 seconds.
         </p>
 
         {/* CTA — autoOpen=true makes Plaid Link pop on its own 1.5s
@@ -97,7 +97,7 @@ function Hero() {
               className="inline-block w-1.5 h-1.5 rounded-full"
               style={{ background: "#10B981" }}
             />
-            Free during early access
+            Free to start
           </span>
           <span className="text-ink-muted/30">·</span>
           <span className="inline-flex items-center gap-1.5">
@@ -177,7 +177,7 @@ function DiscoveryReport() {
 
       {/* Whisper caption */}
       <p className="mt-3 text-[11.5px] text-ink-muted/70 text-center tracking-tight">
-        Sample report · your real findings appear in ~30 seconds
+        Sample report · your real findings appear in ~60 seconds
       </p>
     </div>
   );
@@ -405,12 +405,12 @@ function FinalCTA() {
         Curious what we&apos;d find in yours?
       </h2>
       <p className="mt-3 text-[14px] md:text-[15px] text-ink-body leading-relaxed max-w-[420px] mx-auto">
-        About 30 seconds to connect. Read-only via Plaid.
+        About 60 seconds to link an account. Read-only via Plaid.
       </p>
       <div className="mt-6 inline-flex flex-col items-center gap-2">
         <ConnectFlow />
         <span className="text-[11.5px] text-ink-muted inline-flex items-center gap-1">
-          Free during early access <ArrowRight size={11} strokeWidth={2} />
+          Free to start <ArrowRight size={11} strokeWidth={2} />
         </span>
       </div>
     </div>

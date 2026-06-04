@@ -453,8 +453,8 @@ export default async function AppHome() {
           <InstallFrugavoRow />
           <div className="pt-4 border-t border-hairline/60 flex items-center justify-between gap-3 flex-wrap">
             <p className="text-[11.5px] text-ink-muted leading-relaxed max-w-[480px]">
-              Frugavo is in early access. If something confuses or surprises
-              you, tell us — every note shapes what we build next.
+              If something confuses or surprises you, tell us — every note
+              shapes what we ship next.
             </p>
             <FounderFeedbackChip />
           </div>

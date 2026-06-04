@@ -23,10 +23,9 @@ export default function AboutPage() {
             A calm intelligence layer for your recurring spending.
           </h1>
           <p className="mt-6 font-editorialBody text-[19px] leading-relaxed text-ink-body">
-            Frugavo is a consumer product, currently in early access, that
-            helps people in the United States and Canada see every
-            recurring charge across their accounts — and quietly notices
-            what changes from there on.
+            Frugavo is a consumer product that helps people in the United
+            States and Canada see every recurring charge across their
+            accounts — and quietly notices what changes from there on.
           </p>
 
           <Section title="Why we exist">
@@ -68,14 +67,15 @@ export default function AboutPage() {
             </p>
           </Section>
 
-          <Section title="Where we are">
+          <Section title="How it&rsquo;s priced">
             <p>
-              The product is in early access. Every protection feature —
-              continuous monitoring, change detection, cancellation-assist,
-              multi-account coverage — is open for the people using it
-              today, under what we call Founder Access. There&rsquo;s no
-              card on file. Frugavo will eventually be a paid product, and
-              when that day comes we&rsquo;ll give plenty of notice.
+              Free forever for discovery: link an account, see every
+              recurring charge, get a direct cancel link for each. The
+              paid Protection tier is $4.99/mo and adds the continuous
+              layer — price-change alerts, free-trial conversion warnings,
+              renewal forecasting, cancel-assist with confirmation
+              tracking, and multi-account coverage. A 7-day free trial
+              comes with it, no commitment.
             </p>
             <p>
               If you&rsquo;d like to use it, start from the{" "}
@@ -107,7 +107,7 @@ export default function AboutPage() {
               href="/sign-up"
               className="inline-flex h-11 items-center gap-1.5 rounded-full bg-accent px-5 text-[14px] font-medium text-white hover:bg-accent-hover transition"
             >
-              Start your analysis
+              Get started free
               <ArrowRight size={14} />
             </Link>
             <Link

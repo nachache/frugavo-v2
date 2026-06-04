@@ -94,7 +94,7 @@ export default function SamplePage() {
         >
           <span className="font-semibold">Sample data.</span> This is a realistic
           example of a Frugavo report. Your real report will show your actual
-          subscriptions, flagged in the same way, after you connect your bank.
+          subscriptions, flagged in the same way, after you link your accounts.
         </div>
 
         {/* Headline + totals card */}
@@ -188,9 +188,9 @@ export default function SamplePage() {
             Curious what we&apos;d find in yours?
           </h2>
           <p className="mt-2 text-[14px] text-ink-body max-w-[440px] mx-auto leading-relaxed">
-            Connect your bank in {LANDING.timeToValue.display}. Read-only via Plaid.
-            Same security used by {LANDING.plaidPartners.join(" & ")}. Free during
-            early access.
+            Link an account in {LANDING.timeToValue.display}. Read-only via Plaid.
+            Same security used by {LANDING.plaidPartners.join(" & ")}. Free
+            forever to start.
           </p>
           <div className="mt-6 inline-flex flex-col items-center gap-2">
             <Link

@@ -285,6 +285,139 @@ not duplicated).
       content. Consent banner remains scroll-triggered from earlier
       task — never on screen for first-paint above-the-fold view.
 
+## Phase G — Beta graduation + landing rebuild — 2026-06-05
+
+Strategic shift: Frugavo graduates from beta. Marketing leads with two real
+tiers (Free $0 / Protection $4.99). Beta language disappears everywhere
+because it discredits a fintech that's asking for bank credentials. The
+landing rebuilds to fintech-pro quality benchmarked against Rocket Money
+and Monarch — section-by-section feature reveals, infrastructure-trust
+strip, two-tier pricing card, richer footer.
+
+### Decisions confirmed by Nabil
+- **Scope:** full graduation. Landing AND in-app entitlement change.
+  Existing beta users grandfathered via createdAt cutoff so they keep
+  unlocked access; new signups land in `free` tier.
+- **Social proof:** infrastructure-trust route (Plaid + Stripe +
+  Supabase logos, "12,000+ banks" hard number, solo-founder narrative).
+  No fake testimonials.
+- **Visuals:** I build 3-4 more SVG mockup components matching the
+  existing HeroResultsPreview quality bar.
+
+### P0 — In-app entitlement graduation
+- [x] **G1. Add grandfather cutoff to lib/billing/beta.ts.** New const
+      `BETA_GRANDFATHER_CREATED_BEFORE` (ISO date). `isBetaUserOverride`
+      checks the user's clerk createdAt against this; users created on or
+      after the cutoff DO NOT get the beta unlock. Existing users stay on
+      `beta_access` indefinitely.
+      *Accept:* a fresh signup today gets `entitlement_state: "none"`
+      and the Activate Protection card. A user with createdAt before
+      cutoff still gets `beta_access` and the founder card.
+- [x] **G2. Re-enable billing lifecycle emails for non-beta users.**
+      emails.ts currently early-returns for `beta_access`. Keep that
+      branch (existing users); also keep nothing blocking emails for
+      new free/paid users.
+      *Accept:* a new free-tier user signing up triggers no welcome
+      gating; a Protection-paying user gets the receipt email.
+
+### P0 — Landing copy graduation
+- [x] **G3. Rewrite lib/content.ts.** Replace `hero.eyebrow` ("Free
+      during early access") with production framing. Replace `access`
+      object with `pricing` object containing two tiers. Rewrite FAQ
+      Q1 + Q3 + any "founder access" / "early access" mentions. Drop
+      "We're paranoid" anti-pattern from trust heading.
+      *Accept:* `grep -i "early access\|founder access\|beta" lib/content.ts`
+      returns zero hits in user-facing copy.
+- [x] **G4. Rebuild components/sections/pricing.tsx as two-tier card.**
+      Free tier ($0): bank connect, one-time discovery, see results,
+      direct cancel links. Protection tier ($4.99/mo): continuous
+      monitoring, change alerts, renewal forecasting, cancel-assist
+      tracking, priority support. Mirrors Rocket Money's Free vs
+      Premium architecture without copying their loud aesthetic.
+      *Accept:* renders two distinct cards. Protection card has
+      `$4.99/mo` clearly visible. Both CTAs work (Free → /sign-up,
+      Protection → /sign-up?intent=protection).
+
+### P0 — Visual upgrade (fintech-pro)
+- [x] **G5. Build infrastructure-trust strip section.** New component
+      `components/sections/built-on-strip.tsx`. Shows "Built on" with
+      Plaid + Stripe + Supabase wordmarks, hard numbers (12,000+ banks,
+      2,000+ providers detected), solo-founder authenticity panel.
+      Replaces or augments the current SocialProof.
+      *Accept:* renders in the IA between Hero and HowItWorks. All
+      claims are verifiably true today.
+- [x] **G6. Build 4 SVG feature-mockup components.** Same polish as
+      HeroResultsPreview. Components:
+      - `components/marketing/calendar-mockup.tsx` (subscription
+        calendar/renewals view)
+      - `components/marketing/noticed-feed-mockup.tsx` (Frugavo Noticed
+        timeline)
+      - `components/marketing/alert-detail-mockup.tsx` (single alert
+        expanded)
+      - `components/marketing/cancel-assist-mockup.tsx` (cancel-assist
+        slide-over)
+      *Accept:* each renders standalone, zero `/app/*` or `lib/scan`
+      imports, no API calls, mobile responsive.
+- [x] **G7. Build reusable FeatureSpotlight section component.**
+      `components/sections/feature-spotlight.tsx` — eyebrow caps,
+      display headline, body paragraph, single CTA link, screenshot
+      slot. Image left or right alternating. Mirrors Monarch's
+      section rhythm.
+      *Accept:* used by 4 feature sections on the landing.
+- [x] **G8. Rebuild app/page.tsx section order to match the rebuild.**
+      Hero → BuiltOn → FeatureSpotlight×4 → Pricing → Calculator →
+      Trust → FAQ → FinalCTA → Footer. Drop Ticker (folded into
+      noticed-feed mockup) and InboxDemo (folded into discovery
+      feature spotlight).
+      *Accept:* new section order ships; old Ticker/InboxDemo files
+      remain in repo unimported (per scope-lock on deletion).
+
+### P0 — In-app surface updates
+- [x] **G9. Update FounderAccessCard copy.** Keep the component (still
+      renders for grandfathered users) but tone-shift away from
+      "early-access privilege" toward "you've been with us since the
+      start — your access stays open." Existing beta users see this.
+- [x] **G10. Update ProtectionStatusPill copy.** "Founder Access" pill
+      remains for grandfathered users (now read as "you got in early")
+      but free-tier new users see "Free plan" pill that links to
+      pricing.
+      *Accept:* both states render correctly in /app/settings.
+
+### P1 — Footer richness
+- [x] **G11. Footer comparison links.** Rocket Money + Monarch both
+      have "Compare → Mint / YNAB / Copilot" rows. Add a "Compare"
+      column to our footer: "vs Rocket Money", "vs Monarch", "vs
+      Mint" linking to stub /compare/[name] pages OR external blog
+      posts. Phase 1 just adds the column with anchor stubs — actual
+      compare pages can come later.
+
+### Verification log
+- tsc clean after all changes (`npx tsc --noEmit` returns no errors).
+- `grep -i "early access\|founder access\|paranoid"` across landing
+  files returns only code-comment hits (change-history docs); zero
+  user-facing strings.
+- New section order shipped in app/page.tsx: Hero → BuiltOnStrip →
+  HowItWorks → FeatureSpotlight×4 (Discover / Renewals / Alerts /
+  Cancel) → Pricing → Calculator → Trust → FAQ → FinalCTA → Footer.
+- Pricing renders two real cards (Free $0 / Protection $4.99) reading
+  from `pricing` in lib/content.ts.
+- Grandfather cutoff in lib/billing/beta.ts:
+  `BETA_GRANDFATHER_CREATED_BEFORE = 2026-06-05T00:00:00.000Z`.
+  Existing users keep beta_access; new signups land in state="none".
+
+### Scope guardrails for this phase
+- Existing beta users MUST NOT lose access. Grandfather logic is the
+  load-bearing safety net.
+- Stripe price ID change happens entirely in env vars; no code change
+  to lib/billing/stripe.ts is required.
+- Calculator stays. Trust stays. FAQ stays (with rewritten copy).
+- Hero is touched lightly — eyebrow + 1-2 copy lines + maybe a button
+  label. Full hero rebuild is out of scope for this round.
+- No new dependencies. No refactor of /app/* product routes.
+- If destructive (file delete, schema change, env edit), stop and ask.
+
+---
+
 ## Audit follow-ups — 2026-06-03 PM
 
 External CRO audit (fresh-Claude browser session) identified gaps.

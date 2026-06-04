@@ -3,13 +3,13 @@
 
 export const nav = {
   links: [
-    { label: "How it works", href: "/#how-it-works" },
-    { label: "Access", href: "/#access" },
-    { label: "Library", href: "/learn" },
+    { label: "Features", href: "/#discover" },
+    { label: "Pricing", href: "/#pricing" },
+    { label: "Compare", href: "/compare/rocket-money" },
     { label: "FAQ", href: "/#faq" },
   ],
   signIn: { label: "Sign in", href: "/sign-in" },
-  cta: { label: "Find my subscriptions", href: "/sign-up" },
+  cta: { label: "Get started free", href: "/sign-up" },
 };
 
 // Discovery-first hero, ported from /app/connect after the X ad
@@ -20,14 +20,12 @@ export const nav = {
 // but the framing flips from teaching about Frugavo to making the
 // reader curious about themselves.
 export const hero = {
-  // Eyebrow REVERTED 2026-06-04 after external visitor-reaction test:
-  // "Limited to 1,000 early members" was backfiring. Sneakers can use
-  // scarcity; a fintech asking for bank credentials cannot. The
-  // visitor read it as "not proven safe yet" / "beta product, don't
-  // trust with my bank" instead of "exclusive opportunity." Reverted
-  // to the plain "Free during early access" until we have real user
-  // counts to anchor honest social proof.
-  eyebrow: "Free during early access",
+  // Eyebrow REWRITTEN 2026-06-05 (Phase G — beta graduation).
+  // Removed "Free during early access" because it discredits the
+  // product for a fintech being asked for bank credentials. Replaced
+  // with a calm production trust signal: infrastructure + read-only
+  // posture. Reads as confident production fintech, not beta.
+  eyebrow: "Bank-grade security · Read-only by design",
   // Rewritten to continue the tension from the X ad ("You're paying
   // for 14 subscriptions and can name 9"). The previous landing
   // headline ("You don't know all your subscriptions") reset the
@@ -104,7 +102,7 @@ export const howItWorks = {
     {
       n: "01",
       icon: "Landmark",
-      title: "Connect your bank",
+      title: "Link your accounts",
       body: "Link a bank or credit card in 60 seconds via Plaid — the same connection your bank app uses. Read-only. We never see or store your credentials.",
     },
     {
@@ -311,38 +309,67 @@ export const ticker = [
   "Frugavo noticed a $1 trial charge from a new merchant",
 ];
 
-// Founder Access — the public-facing surface that reflects the
-// in-app entitlement state (lib/billing/beta.ts). Single tier, no
-// pricing pressure, but clearly communicates that this IS a premium
-// product. The "future paid" line preserves long-term monetization
-// credibility without selling anything today.
-export const access = {
-  heading: "Founder Access. Open during early access.",
+// Pricing — the public-facing two-tier model.
+// Phase G (2026-06-05): replaced the "Founder Access" single-tier
+// framing with a real Free vs Protection comparison. Frugavo
+// graduates from beta; the marketing site now lines up with the
+// in-app entitlement state for new signups (lib/billing/beta.ts
+// grandfathers existing users; new signups get state=none and the
+// Activate Protection upgrade flow).
+//
+// Pricing architecture mirrors Rocket Money / Monarch:
+//   - Free tier: discovery + read-only viewing. No upsell pressure.
+//   - Protection tier ($4.99/mo): ongoing monitoring + alerts +
+//     cancel-assist tracking. Real recurring SaaS economics.
+//
+// The Stripe price ID for the $4.99 tier is configured in env
+// (STRIPE_PRICE_PEACE_OF_MIND_MONTHLY_V1) — no code change needed
+// here when the price changes.
+export const pricing = {
+  heading: "Simple pricing. Free to start.",
   subhead:
-    "Frugavo is in early access. Every protection feature — continuous monitoring, change detection, cancellation-assist, multi-account coverage — is unlocked for your account. No payment, no trial countdown, no card on file.",
-  // Tagline above the feature list. Restates the value architecture
-  // so users still understand they're inside a premium system.
-  featuresHeading: "Everything in your account, unlocked",
-  features: [
-    "Connect your bank in 60 seconds via Plaid",
-    "Full subscription analysis across every connected account",
-    "Continuous monitoring — new charges, price changes, forgotten subs",
-    "Renewal forecasting and trial-conversion observation",
-    "Cancellation-assist for known providers",
-    "Subscription health score + personality card",
+    "Find every subscription you have for free. Add continuous protection for less than a single forgotten charge.",
+  tiers: [
+    {
+      id: "free" as const,
+      name: "Free",
+      price: "$0",
+      cadence: "forever",
+      tagline: "Find what you're paying for.",
+      cta: { label: "Get started free", href: "/sign-up" },
+      features: [
+        "Link any bank or card via Plaid",
+        "See every recurring charge from the last 12 months",
+        "Subscription health score",
+        "Direct cancel links for every detected subscription",
+        "Read-only access — we never see or store your bank password",
+      ],
+    },
+    {
+      id: "protection" as const,
+      name: "Protection",
+      price: "$4.99",
+      cadence: "per month",
+      tagline: "Stay ahead of every renewal.",
+      featured: true,
+      cta: { label: "Start 7-day free trial", href: "/app/billing/start" },
+      ctaNote: "7 days free. Cancel anytime.",
+      features: [
+        "Everything in Free, plus:",
+        "Continuous monitoring for new charges",
+        "Price-change alerts before you're billed",
+        "Free-trial conversion alerts (catch trials before they convert)",
+        "Renewal forecasting for every subscription",
+        "Cancel-assist with confirmation tracking",
+        "Multi-account coverage (connect every card)",
+        "Priority email support",
+      ],
+    },
   ],
-  // Honest framing for the future. Reads as confident, not as a
-  // countdown. Mirrors the BillingPanel + FounderAccessCard copy.
-  futureNote:
-    "Frugavo will eventually be a paid product. While we're still learning what makes it most useful, your access stays open. We'll give you plenty of notice before anything changes.",
-  cta: "Start your analysis",
-  ctaHref: "/sign-up",
-  secondaryCta: "See how it works",
-  secondaryCtaHref: "#how-it-works",
 };
 
 export const trust = {
-  heading: "We're paranoid about your data.",
+  heading: "Built with your security in mind.",
   pillars: [
     {
       icon: "Eye",
@@ -364,24 +391,24 @@ export const trust = {
 
 export const faqs = [
   {
-    q: "What does Founder Access include? Is it really free?",
-    a: "Founder Access opens every protection feature for your account during Frugavo's early-access period: continuous monitoring, change detection, cancellation-assist, multi-account coverage, the full subscription analysis. No card on file. No trial countdown. Frugavo will eventually be a paid product, and we'll give you plenty of notice before anything changes for your account.",
+    q: "Is there a free plan?",
+    a: "Yes. The Free plan connects your bank, scans the last 12 months of transactions, and shows every recurring charge with a direct link to cancel each one — at no cost. Protection ($4.99/mo) adds continuous monitoring, change alerts, free-trial conversion warnings, and cancel-assist tracking. You can use Free forever or start a 7-day Protection trial any time.",
   },
   {
     q: "Is this safe? What does Frugavo actually see?",
     a: "Bank connections run through Plaid — the same infrastructure used by Venmo, Chime, and Robinhood. Read-only access. We see merchant names, amounts, and dates. We never see or store your bank password. Frugavo can't move money, transfer funds, or do anything except read the transaction list.",
   },
   {
-    q: "How does cancellation-assist work?",
+    q: "How does cancel-assist work?",
     a: "When you decide to cancel a subscription, Frugavo opens the provider's real cancellation page in a new tab and prepares the right language for you. You complete the cancellation yourself — usually under a minute. Frugavo then watches the next billing cycle and confirms whether the charge actually stopped.",
   },
   {
     q: "Why don't you cancel for me automatically?",
-    a: "Because doing it well requires storing your credentials for every provider, handling 2FA, and surviving every provider's anti-automation defenses — all of which we don't want to do badly. We'd rather walk you straight to the cancel page and confirm the result via your bank than promise full automation we can't guarantee. Deeper agentic cancellation is on the longer-term roadmap.",
+    a: "Because doing it well requires storing your credentials for every provider, handling 2FA, and surviving every provider's anti-automation defenses — all of which we don't want to do badly. We'd rather walk you straight to the cancel page and confirm the result via your bank than promise full automation we can't guarantee. We also don't take a percentage cut of your cancelled subscriptions the way some competitors do.",
   },
   {
     q: "Do you catch free trials before they bill?",
-    a: "Yes — once we've seen the first trial transaction, we track the expected next charge and surface it on your dashboard before it happens. The window is wide enough to act on if you decide you don't want the conversion.",
+    a: "Yes, on the Protection plan — once we've seen the first trial transaction, we track the expected next charge and surface it on your dashboard before it happens. The window is wide enough to act on if you decide you don't want the conversion.",
   },
   {
     q: "Which banks do you support?",
@@ -389,26 +416,26 @@ export const faqs = [
   },
   {
     q: "Is this available in Canada?",
-    a: "Yes — Frugavo is built for North America. We support CAD subscriptions and Canadian banks.",
+    a: "Yes. Frugavo is built for North America. We support CAD subscriptions and Canadian banks.",
   },
   {
-    q: "How is this different from Rocket Money?",
-    a: "Rocket Money is bundled with a budgeting product and pushes you toward their bill-negotiation upsell. Frugavo is calm, focused subscription protection intelligence: it observes your recurring spending, surfaces what changes, and helps you decide what to keep. No budgeting, no negotiation pitches, no upsell pressure.",
+    q: "How is Frugavo different from Rocket Money?",
+    a: "Rocket Money is bundled with a budgeting product and takes a percentage cut of subscriptions you cancel through their concierge. Frugavo is focused on one thing — subscription clarity — and never takes a cut of your savings. Protection is a flat $4.99/mo, and the Free plan covers most people's needs.",
   },
   {
     q: "Can I delete my Frugavo account easily?",
-    a: "Yes — one button in settings deletes every piece of data we hold about you. Immediate and unrecoverable. We'd be hypocrites otherwise.",
+    a: "Yes. One button in settings deletes every piece of data we hold about you. Immediate and unrecoverable. We'd be hypocrites otherwise.",
   },
 ];
 
 export const finalCta = {
-  heading: "See what your recurring spending really looks like.",
+  heading: "See every subscription you're paying for.",
   subhead:
-    "Connect a bank in 60 seconds. Frugavo analyzes the last 12 months and shows you the recurring charges you'd otherwise never see in one place. Calm protection from there on.",
+    "Link an account in 60 seconds. Free forever to find what you have. $4.99/mo to keep watching what changes.",
 };
 
 export const footer = {
-  tagline: "Subscription protection intelligence.",
+  tagline: "Find and protect every subscription.",
   // Business address omitted until Frugavo Inc. has a real registered
   // address to publish. Required by Google Ads and Meta Ads for paid
   // financial-services advertising, but not required for organic traffic
@@ -420,9 +447,17 @@ export const footer = {
       title: "Product",
       links: [
         { label: "How it works", href: "#how-it-works" },
-        { label: "Access", href: "#access" },
+        { label: "Pricing", href: "#pricing" },
         { label: "FAQ", href: "#faq" },
         { label: "Roadmap", href: "/roadmap" },
+      ],
+    },
+    {
+      title: "Compare",
+      links: [
+        { label: "vs Rocket Money", href: "/compare/rocket-money" },
+        { label: "vs Monarch", href: "/compare/monarch" },
+        { label: "vs Mint (sunset)", href: "/compare/mint" },
       ],
     },
     {

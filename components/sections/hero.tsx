@@ -10,7 +10,7 @@ import {
   type VariantKey,
 } from "@/lib/landing/constants";
 import { hero as legacyHero } from "@/lib/content";
-import { HeroResultsPreview } from "@/components/sections/hero-results-preview";
+import { HeroIllustration } from "@/components/sections/hero-illustration";
 import { PdfInterestCta } from "@/components/marketing/pdf-interest-cta";
 
 // Hero — revision pass (R1–R6).
@@ -226,10 +226,15 @@ export function Hero({ variant = "default", headlineOverride }: HeroProps) {
             </a>
           </motion.p>
 
-          {/* 5. Consolidated Plaid trust strip (R4). ONE Plaid lockup,
-              ONE statement, then a small bank-logo row. Replaces the
-              four checkmarks + duplicate "Powered by Plaid · 11,000+
-              banks" row from the previous version. */}
+          {/* 5. Differentiator strip — Phase G pro-polish (2026-06-05).
+              Trimmed dramatically: infrastructure trust now lives in
+              the dedicated BuiltOnStrip section directly below, so the
+              hero strip only needs to communicate what makes Frugavo
+              specifically different from Rocket Money / Subcut /
+              Monarch. Three short lines, each addressing a known
+              competitor objection. Then a quiet PDF-interest opt-out.
+              Disconnect line folded in as the last point so the hero
+              doesn't end on an orphan paragraph. */}
           <motion.div
             {...m({
               initial: { opacity: 0, y: 12 },
@@ -240,111 +245,28 @@ export function Hero({ variant = "default", headlineOverride }: HeroProps) {
                 ease: [0.16, 1, 0.3, 1],
               },
             })}
-            className="mt-8 rounded-2xl border border-hairline/80 bg-white/60 backdrop-blur-sm p-4 md:p-5 max-w-[540px]"
+            className="mt-8 max-w-[540px]"
           >
-            <div className="flex items-center gap-2.5 text-[13px] text-ink-body">
-              <PlaidLockup />
-              <span className="text-ink-body/60" aria-hidden="true">
-                ·
-              </span>
-              <span className="text-ink font-medium">
-                Bank-grade security, read-only
-              </span>
-            </div>
+            <ul className="space-y-2 text-[13px] text-ink-body leading-relaxed">
+              <DifferentiatorLine>
+                <span className="text-ink font-semibold">No cut of cancellations.</span>{" "}
+                Flat $4.99/mo. We never take a percentage of your savings.
+              </DifferentiatorLine>
+              <DifferentiatorLine>
+                <span className="text-ink font-semibold">We never read your email.</span>{" "}
+                Bank transactions only, read-only, through Plaid.
+              </DifferentiatorLine>
+              <DifferentiatorLine>
+                <span className="text-ink font-semibold">Disconnect anytime.</span>{" "}
+                Frugavo loses access instantly. Delete every byte from
+                Settings in one click.
+              </DifferentiatorLine>
+            </ul>
 
-            <p className="mt-2 text-[12px] text-ink-body/85 leading-relaxed">
-              We never see or store your bank credentials. Same
-              infrastructure used by {LANDING.plaidPartners.join(" & ")}.
-            </p>
-
-            {/* Three reassurance lines pulled from competitor-positioning
-                analysis (Reddit "tried every subscription tracker" post):
-                  1. We're not Rocket Money — we don't take a cut of
-                     cancellations.
-                  2. We're not Subcut — we don't read your email.
-                  3. We do what Subcut does well — surface direct cancel
-                     pages for each finding.
-                Each addresses a specific objection cold visitors are
-                actively voicing in personal-finance subreddits. Compact
-                dot-separated line keeps the strip from growing tall. */}
-            <p className="mt-2 text-[11.5px] text-ink-body/80 leading-relaxed">
-              No cut of cancellations · We never read your email · Direct
-              cancel page for each forgotten sub
-            </p>
-
-            {/* Bank wordmark row — US banks, brand-colored pills,
-                readable short wordmark on each. Replaces the prior
-                2-letter abbreviations that were unreadable. Variable
-                width per pill so each name fits without truncation.
-                aria-hidden because the names are decorative — the
-                real trust signal is rendered as text in the strip
-                above. */}
-            <div className="mt-3.5 flex items-center gap-1.5 flex-wrap">
-              {LANDING.bankPlaceholders.map((b) => (
-                <span
-                  key={b.id}
-                  aria-hidden="true"
-                  className="inline-flex items-center justify-center h-7 px-2.5 rounded-md text-[11px] font-bold text-white tracking-tight whitespace-nowrap"
-                  style={{ background: b.color }}
-                  title={b.label}
-                >
-                  {b.label}
-                </span>
-              ))}
-              <span className="text-[11.5px] text-ink-body/85 ml-1">
-                +{(LANDING.banks.count - 6).toLocaleString("en-US")} more
-              </span>
-            </div>
-
-            {/* "Frugavo noticed" examples — pulled up from the buried
-                Ticker section (was below the calculator, most mobile
-                users never scrolled that far). Three concrete
-                observations that show what continuous monitoring
-                actually does. Differentiates from one-shot scan tools
-                like Subcut by demonstrating ongoing protection. */}
-            <div className="mt-3 pt-3 border-t border-hairline/60">
-              <div className="text-[10.5px] font-semibold uppercase tracking-[0.12em] text-ink-body/85">
-                What Frugavo notices
-              </div>
-              <ul className="mt-2 space-y-1 text-[12px] text-ink-body leading-relaxed">
-                <li>
-                  <span className="text-brand">→</span> Adobe converts to $59.99/mo on Friday
-                </li>
-                <li>
-                  <span className="text-brand">→</span> An unfamiliar recurring charge of $19/mo
-                </li>
-                <li>
-                  <span className="text-brand">→</span> Spotify and Apple Music are both active
-                </li>
-              </ul>
-            </div>
-
-            {/* PDF-upload demand validation CTA — lives at the bottom
-                of the trust strip as a "for users who prefer no-bank-
-                link" opt-out rather than competing with the main path. */}
-            <div className="mt-3 pt-3 border-t border-hairline/60">
+            <div className="mt-5">
               <PdfInterestCta />
             </div>
           </motion.div>
-
-          {/* Disconnect reassurance — single quiet line. The "you're
-              not locked in" promise is the specific fear of bank-
-              connect products and has its own line so it doesn't get
-              lost inside the Plaid strip. */}
-          <motion.p
-            {...m({
-              initial: { opacity: 0 },
-              animate: { opacity: 1 },
-              transition: { duration: 0.5, delay: 0.36 },
-            })}
-            className="mt-4 inline-flex items-center gap-2 text-[12.5px] text-ink-body/85"
-          >
-            <span
-              aria-hidden="true"
-              className="inline-block h-1.5 w-1.5 rounded-full bg-brand"
-            />
-            Disconnect anytime — Frugavo loses access instantly.
-          </motion.p>
         </div>
 
         {/* RIGHT — static results preview. On mobile this stacks UNDER
@@ -367,7 +289,7 @@ export function Hero({ variant = "default", headlineOverride }: HeroProps) {
               },
             })}
           >
-            <HeroResultsPreview />
+            <HeroIllustration />
           </motion.div>
         </div>
       </div>
@@ -375,34 +297,24 @@ export function Hero({ variant = "default", headlineOverride }: HeroProps) {
   );
 }
 
-// Plaid wordmark — inline SVG sized to read as a partner lockup, not
-// a header logo. Uses currentColor so it inherits the parent ink color
-// for WCAG AA contrast on the cream backdrop. Single source of the
-// Plaid name in the hero (R1 acceptance).
-function PlaidLockup() {
+// Tiny "✓"-prefixed differentiator line. The check mark borrows the
+// established affirmation pattern from feature lists; we use the
+// brand-green tint to subtly tie it to the rest of the strip.
+function DifferentiatorLine({ children }: { children: React.ReactNode }) {
   return (
-    <span className="inline-flex items-center gap-1.5">
-      <span className="text-ink-body text-[12px]">Powered by</span>
-      <svg
-        role="img"
-        aria-label="Plaid"
-        viewBox="0 0 100 36"
-        width="48"
-        height="17"
-        fill="currentColor"
-        className="text-ink"
-      >
-        <text
-          x="0"
-          y="27"
-          fontFamily="Inter, -apple-system, BlinkMacSystemFont, sans-serif"
-          fontWeight="700"
-          fontSize="28"
-          letterSpacing="-1"
-        >
-          Plaid
-        </text>
-      </svg>
-    </span>
+    <li className="flex items-start gap-2.5">
+      <span
+        aria-hidden="true"
+        className="mt-1.5 inline-block w-1.5 h-1.5 rounded-full bg-brand shrink-0"
+      />
+      <span>{children}</span>
+    </li>
   );
 }
+
+// PlaidLockup removed during Phase G pro-polish (2026-06-05). The
+// in-hero Plaid lockup was redundant with the BuiltOnStrip section
+// directly below the hero, and the SVG rendering of "Plaid" in a
+// generic system font looked like a knockoff of the real Plaid mark.
+// BuiltOnStrip now owns infrastructure trust; the hero focuses on
+// the Frugavo differentiators only.

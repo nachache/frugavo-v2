@@ -56,7 +56,7 @@ export default async function RestartProtectionPage() {
       </div>
 
       <div className="mt-8 text-center text-[12px] md:text-[13px] text-ink-muted">
-        $14.99/month. Cancel anytime. No re-onboarding required.
+        $4.99/month. Cancel anytime. No re-onboarding required.
       </div>
     </section>
   );

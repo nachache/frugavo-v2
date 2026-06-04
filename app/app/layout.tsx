@@ -9,6 +9,7 @@ import { CommandPalette } from "@/components/app/command-palette";
 import { PullToRefresh } from "@/components/app/pull-to-refresh";
 import { supabaseAdmin } from "@/lib/supabase";
 import { isBillingAdmin } from "@/lib/billing/admin-gate";
+import { RedditConvert } from "@/components/marketing/reddit-convert";
 
 export const metadata: Metadata = {
   title: "Frugavo · Your subscriptions",
@@ -33,9 +34,16 @@ export default async function AppLayout({
   // on a Supabase blip. The query is cheap (count-only head).
   let alertsUnread = 0;
   let isAdmin = false;
+  // userId is lifted out of the try block so it stays in scope for
+  // the JSX below where it's passed to <RedditConvert /> as the
+  // unique conversion ID. Reddit dedupes by conversionId, so firing
+  // SignUp on every /app/* visit is safe — Reddit only counts the
+  // first one per user.
+  let userId: string | null = null;
   try {
     const user = await currentUser();
     if (user) {
+      userId = user.id;
       const email = user.emailAddresses[0]?.emailAddress ?? null;
       isAdmin = isBillingAdmin(user.id, email);
       if (supabaseAdmin) {
@@ -90,6 +98,14 @@ export default async function AppLayout({
           </nav>
         </div>
       </header>
+      {/* Reddit Ads conversion event — fires SignUp once per browser
+          session per user. Reddit dedupes by conversionId (Clerk
+          user id) so multi-fire across sessions/devices is safe.
+          Mounted in the layout so it covers /app, /app/connect, and
+          every other authenticated route — captures the user no
+          matter which /app/* page they land on first after signup. */}
+      {userId && <RedditConvert event="SignUp" conversionId={userId} />}
+
       {/* Bottom padding on mobile so content doesn't hide behind the
           fixed bottom nav (~64px tall + safe-area inset). */}
       <main className="flex-1 pb-20 md:pb-0">{children}</main>

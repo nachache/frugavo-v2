@@ -55,12 +55,47 @@
 import type { Entitlement, EntitlementState } from "@/lib/billing/entitlements";
 
 // Boolean — does the deploy treat unauthenticated/free users as
-// beta-access? Defaults to TRUE for the current beta phase. To turn
-// it off in production, set BETA_MODE_ENABLED=false in env. We
-// deliberately default ON so the right state ships even if the env
-// var hasn't been wired into a new environment yet.
+// beta-access? Defaults to TRUE so existing users keep working through
+// the grandfather window below. New signups (after BETA_GRANDFATHER_
+// CREATED_BEFORE) are NOT unlocked even when this is true — see
+// isBetaUserOverride. To kill the unlock entirely (including for
+// grandfathered users), set BETA_MODE_ENABLED=false in env.
 export const BETA_MODE_ENABLED: boolean =
   process.env.BETA_MODE_ENABLED !== "false";
+
+// ──────────────────────────────────────────────────────────────────
+// GRANDFATHER CUTOFF — added 2026-06-05 during beta graduation.
+// ──────────────────────────────────────────────────────────────────
+// Frugavo graduates from beta on this date. Users who signed up
+// BEFORE this cutoff keep their open beta_access ("Founder Access")
+// indefinitely as a thank-you for testing the product. Users who
+// signed up ON OR AFTER this date are NOT eligible for the beta
+// unlock — they land in their real entitlement state (typically
+// "none") and see the Activate Protection upgrade card with the
+// two-tier pricing (Free $0 / Protection $4.99/mo).
+//
+// Why a date instead of a per-user flag:
+//   - We don't need to coordinate a migration or backfill anything;
+//     the timestamp already lives in Clerk's createdAt.
+//   - Reverting (extending the grandfather window) is a one-line
+//     change to the constant.
+//   - Auditable: any user can read this file and know exactly when
+//     the change happened and who it affected.
+//
+// Override knob: if you need a hand-picked cohort of new users to
+// keep beta access (e.g. internal testers signing up after the
+// cutoff), populate BETA_GRANDFATHER_CLERK_USER_IDS in env with a
+// comma-separated list of Clerk user IDs.
+export const BETA_GRANDFATHER_CREATED_BEFORE = new Date(
+  "2026-06-05T00:00:00.000Z"
+);
+
+const explicitGrandfatherSet: ReadonlySet<string> = new Set(
+  (process.env.BETA_GRANDFATHER_CLERK_USER_IDS ?? "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean)
+);
 
 // States the beta unlock can OVERRIDE. We preserve a real paid
 // subscription (trialing, active, grace_period, cancelled_active) —
@@ -73,27 +108,48 @@ const OVERRIDABLE_STATES: ReadonlySet<EntitlementState> = new Set([
   "past_due",
 ]);
 
-// Hook for per-user beta overrides. We don't read from a database
-// here because the canonical entitlement query already hit Postgres
-// once — adding another lookup per request defeats the cache. If
-// you want a tighter cohort during beta, drop logic here that reads
-// from an in-memory allowlist (env-injected) or a Redis set.
+// Decides whether a specific user is eligible for the beta unlock.
+// Two paths grant eligibility:
+//   1. Explicit allow-list (BETA_GRANDFATHER_CLERK_USER_IDS env var)
+//      — wins regardless of signup date. Use for internal testers
+//      who sign up after the cutoff but should keep open access.
+//   2. Account created BEFORE BETA_GRANDFATHER_CREATED_BEFORE.
+//      Existing beta users keep their "Founder Access" thank-you tier.
 //
-// Currently a constant `true`: every user with an overridable state
-// gets the unlock when BETA_MODE_ENABLED is on.
-function isBetaUserOverride(_clerkUserId: string): boolean {
-  void _clerkUserId;
-  return true;
+// userCreatedAt is REQUIRED for path (2). Callers that can't supply
+// it (legacy / unauthenticated contexts) effectively skip the
+// grandfather window — the user lands in their real entitlement
+// state. This is the safe default for revenue logic: an unknown
+// signup date is treated as a new signup.
+function isBetaUserOverride(
+  clerkUserId: string,
+  userCreatedAt: Date | string | null | undefined
+): boolean {
+  if (explicitGrandfatherSet.has(clerkUserId)) return true;
+  if (!userCreatedAt) return false;
+  const created =
+    userCreatedAt instanceof Date ? userCreatedAt : new Date(userCreatedAt);
+  if (Number.isNaN(created.getTime())) return false;
+  return created < BETA_GRANDFATHER_CREATED_BEFORE;
 }
 
 // Public — applied inside getEntitlement immediately before cache
 // writes + returns. Idempotent: passing in a "beta_access" row
 // returns it unchanged. Passing in a non-overridable state returns
 // it unchanged.
-export function applyBetaUnlock(ent: Entitlement): Entitlement {
+//
+// userCreatedAt is the user's Clerk account creation timestamp. When
+// provided, drives the grandfather check (see isBetaUserOverride).
+// When omitted/null, the beta unlock is SKIPPED unless the user is on
+// the explicit allow-list. This keeps new signups (post-graduation)
+// out of the unlock automatically.
+export function applyBetaUnlock(
+  ent: Entitlement,
+  userCreatedAt?: Date | string | null
+): Entitlement {
   if (!BETA_MODE_ENABLED) return ent;
   if (!OVERRIDABLE_STATES.has(ent.entitlement_state)) return ent;
-  if (!isBetaUserOverride(ent.clerk_user_id)) return ent;
+  if (!isBetaUserOverride(ent.clerk_user_id, userCreatedAt)) return ent;
   return {
     ...ent,
     entitlement_state: "beta_access",

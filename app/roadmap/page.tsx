@@ -67,8 +67,8 @@ const PHASES: Phase[] = [
       },
       {
         status: "next",
-        title: "Private beta launch",
-        body: "First waitlist cohort invited. Concierge support for early users.",
+        title: "Founding-user onboarding wave",
+        body: "Direct concierge onboarding for the first wave of paid Protection users.",
       },
     ],
   },
@@ -83,8 +83,8 @@ const PHASES: Phase[] = [
       },
       {
         status: "later",
-        title: "Public launch",
-        body: "Open signup with Flat and Performance pricing tiers.",
+        title: "International expansion",
+        body: "Begin support for additional English-speaking markets (UK, Australia) after Canada parity is hardened.",
       },
       {
         status: "later",

@@ -135,7 +135,7 @@ export const HERO_VARIANTS: Record<VariantKey, HeroVariant> = {
       `Most people miss ${LANDING.forgotten.countMin}–${LANDING.forgotten.countMax} recurring charges — about $${LANDING.forgotten.monthlyTotalUsd}/mo in total. See every one in ${LANDING.timeToValue.display}.`,
   },
   mint: {
-    eyebrow: "For Mint refugees · Open during early access",
+    eyebrow: "Built for Mint refugees",
     headline:
       "Mint is gone. Credit Karma doesn't track subscriptions. Frugavo does.",
     subheadline:
@@ -158,9 +158,9 @@ export const HERO_VARIANTS: Record<VariantKey, HeroVariant> = {
   },
   competitor: {
     headline:
-      "Like Rocket Money, calmer. Like Truebill, free during early access.",
+      "Subscription clarity, without the upsell engine.",
     subheadline:
-      `Find every recurring charge in ${LANDING.timeToValue.display}. No upsells, no auto-cancel surprises.`,
+      `Find every recurring charge in ${LANDING.timeToValue.display}. Free to start, $4.99/mo for continuous protection. No cut of cancellations.`,
   },
 };
 

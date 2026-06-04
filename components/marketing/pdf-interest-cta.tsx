@@ -27,7 +27,7 @@ export function PdfInterestCta() {
         className="mt-3 inline-flex items-center gap-1.5 text-[13px] text-ink-body/90 underline underline-offset-4 decoration-ink-body/30 hover:text-ink hover:decoration-ink/60 transition"
       >
         <FileText size={13} strokeWidth={2} aria-hidden="true" />
-        Don&apos;t want to connect a bank? Upload a statement instead
+        Don&apos;t want to link an account? Upload a statement instead
         <span className="text-ink-body/60">(coming soon)</span>
       </button>
 

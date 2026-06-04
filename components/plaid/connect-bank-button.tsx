@@ -222,12 +222,18 @@ export function ConnectBankButton({
   // Post-signup auto-open (Option A from the funnel debug).
   //
   // When autoOpen=true (passed by the hero CTA on /app/connect right
-  // after sign-up), wait 1.5s after Plaid Link is ready, then fire
+  // after sign-up), wait 2.5s after Plaid Link is ready, then fire
   // open() automatically. The grace window lets the visitor read the
-  // hero copy + trust line for one breath so the modal feels invited
-  // rather than thrown at them. sessionStorage prevents re-firing on
-  // back-navigation or a second hero mount in the same tab. OAuth
-  // resume has its own auto-open path above and is excluded here.
+  // hero copy + trust line so the modal feels invited rather than
+  // thrown at them.
+  //
+  // Delay bumped 1.5s → 2.5s on 2026-06-05 (Phase G follow-up). With
+  // the beta-to-production graduation, more new visitors arrive cold
+  // and need an extra beat to absorb that we're a paid product and
+  // that connecting is read-only. sessionStorage prevents re-firing
+  // on back-navigation or a second hero mount in the same tab.
+  // OAuth resume has its own auto-open path above and is excluded
+  // here.
   useEffect(() => {
     if (!autoOpen) return;
     if (isOAuthResume) return;
@@ -245,7 +251,7 @@ export function ConnectBankButton({
       track("plaid_auto_opened", { surface: "connect_hero" });
       setStatus("connecting");
       open();
-    }, 1500);
+    }, 2500);
 
     return () => window.clearTimeout(timer);
   }, [autoOpen, isOAuthResume, status, ready, linkToken, open]);
@@ -342,9 +348,10 @@ export function ConnectBankButton({
     <div className="flex flex-col items-start">
       {/* Eyebrow copy — sets expectations BEFORE the click. The
           "no card" line is the calmest legitimacy signal we have at
-          this surface; "Founder Access" gives the outcome a name. */}
+          this surface; "Free to start" sets the right expectation
+          post beta-graduation. */}
       <p className="text-[12.5px] md:text-[13px] text-ink-muted mb-3">
-        Founder Access open · No card required
+        Free to start · No card required
       </p>
 
       <button
@@ -392,7 +399,7 @@ export function ConnectBankButton({
           re-emphasis of analysis (not "scan") to keep the voice
           consistent with the button label. */}
       <p className="mt-3 text-[12.5px] md:text-[13px] text-ink-muted">
-        Your first analysis is ready in about 30 seconds.
+        Your first analysis is ready in about 60 seconds.
       </p>
 
       {errorMessage && (
