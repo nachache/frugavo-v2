@@ -4,32 +4,25 @@ import { Footer } from "@/components/sections/footer";
 import { ComparisonTable, type CompetitorSpec } from "@/components/compare/comparison-table";
 
 export const metadata: Metadata = {
-  title: "Frugavo vs Mint | The Mint replacement for subscription tracking",
+  title: "Mint shut down. Frugavo replaces the part you missed.",
   description:
-    "Mint shut down in March 2024. Credit Karma replaced it, but dropped subscription tracking. Here's how Frugavo fills that gap.",
+    "Mint sunset in March 2024. Credit Karma dropped subscription tracking. Frugavo fills that gap — free forever for discovery.",
 };
 
 const SPEC: CompetitorSpec = {
   name: "Mint",
-  tagline:
-    "Mint was sunset by Intuit in March 2024. Active users were funnelled to Credit Karma, which dropped most subscription features.",
+  tagline: "Shut down by Intuit in March 2024. Credit Karma dropped subscription tracking.",
   intro:
-    "If you landed here looking for Mint, you're probably one of the millions of users Intuit left in the cold. Credit Karma technically replaced it, but the subscription-tracking experience that made Mint useful didn't survive the migration. Frugavo isn't a full Mint replacement — there's no budgeting, no net worth, no investment tracking. It's a Mint replacement for one specific job: knowing every subscription you're paying for.",
+    "If you miss what Mint did for subscriptions, that's Frugavo. Focused. Free to start. No ads.",
   rows: [
     {
-      feature: "Status",
-      competitor: { kind: "text", value: "Shut down March 2024" },
-      frugavo: { kind: "text", value: "Active" },
-    },
-    {
-      feature: "Price",
-      competitor: { kind: "text", value: "Was free (ad-supported)" },
-      frugavo: { kind: "text", value: "Free + $4.99/mo Protection" },
+      feature: "Active product",
+      competitor: { kind: "x" },
+      frugavo: { kind: "check" },
     },
     {
       feature: "Subscription discovery",
-      detail: "What you came here for",
-      competitor: { kind: "text", value: "Limited, then sunset" },
+      competitor: { kind: "x" },
       frugavo: { kind: "check" },
     },
     {
@@ -48,32 +41,24 @@ const SPEC: CompetitorSpec = {
       frugavo: { kind: "check" },
     },
     {
-      feature: "Sells data to advertisers",
-      detail: "Mint's original business model",
-      competitor: { kind: "check" },
-      frugavo: { kind: "x" },
+      feature: "No ads, no data resale",
+      competitor: { kind: "x" },
+      frugavo: { kind: "check" },
     },
     {
-      feature: "Budgeting + net worth",
-      detail: "What Mint also covered",
-      competitor: { kind: "text", value: "Yes (until sunset)" },
-      frugavo: { kind: "text", value: "Not Frugavo's focus" },
-    },
-    {
-      feature: "Mint export migration",
-      competitor: { kind: "text", value: "CSV only, no continuity" },
-      frugavo: { kind: "text", value: "Plaid re-link works in 60s" },
+      feature: "Set up in 60 seconds",
+      competitor: { kind: "dash" },
+      frugavo: { kind: "check" },
     },
   ],
   pickCompetitorIf: [
-    "You can't, sorry — Mint is gone. If you want a full budgeting Mint replacement, try Monarch.",
-    "Credit Karma kept some Mint features (credit score, basic budget). Try it for those if subscriptions aren't your priority.",
+    "You can't — Mint is gone. For full budgeting + net worth, try Monarch.",
   ],
   pickFrugavoIf: [
-    "You miss specifically Mint's subscription detection feature.",
-    "You don't need full budgeting — you've solved that elsewhere or never used Mint for it.",
-    "You're done with ad-supported finance apps that sell your data.",
-    "You want a small focused tool, not another Mint-sized everything-app.",
+    "You miss Mint's subscription detection — that's exactly what Frugavo does.",
+    "You don't need full budgeting, just subscription clarity.",
+    "You're done with ad-supported finance apps that sold your data.",
+    "You want a tool you can set up in 60 seconds — not migrate to.",
   ],
 };
 

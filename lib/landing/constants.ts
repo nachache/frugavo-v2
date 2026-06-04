@@ -135,8 +135,7 @@ export const HERO_VARIANTS: Record<VariantKey, HeroVariant> = {
     // ship bold sans on the hero, and the editorial serif was
     // reading "blog" not "product."
     headline: "Take control of every subscription.",
-    subheadline:
-      `See every recurring charge across your accounts in ${LANDING.timeToValue.display}. Cancel the ones you don't want. Track the ones you do.`,
+    subheadline: `See them all in ${LANDING.timeToValue.display}. Cancel anything in one tap.`,
   },
   mint: {
     eyebrow: "Built for Mint refugees",

@@ -222,19 +222,18 @@ export function Hero({ variant = "default", headlineOverride }: HeroProps) {
             })}
             className="mt-8 max-w-[540px]"
           >
-            <ul className="space-y-2 text-[13px] text-ink-body leading-relaxed">
+            <ul className="space-y-2 text-[13.5px] text-ink-body leading-relaxed">
               <DifferentiatorLine>
-                <span className="text-ink font-semibold">We never read your email.</span>{" "}
-                Bank transactions only, read-only, through Plaid.
+                <span className="text-ink font-semibold">No email reading.</span>{" "}
+                Bank transactions only.
               </DifferentiatorLine>
               <DifferentiatorLine>
-                <span className="text-ink font-semibold">No upsells, no data resale.</span>{" "}
-                Flat $4.99/mo for Protection. We don&apos;t sell your data
-                or pitch you anything in-app.
+                <span className="text-ink font-semibold">No data resale.</span>{" "}
+                Flat $4.99/mo. No upsells.
               </DifferentiatorLine>
               <DifferentiatorLine>
-                <span className="text-ink font-semibold">Delete every byte in one click.</span>{" "}
-                Disconnect anytime — Frugavo loses access instantly.
+                <span className="text-ink font-semibold">Disconnect anytime.</span>{" "}
+                Delete every byte in one click.
               </DifferentiatorLine>
             </ul>
 

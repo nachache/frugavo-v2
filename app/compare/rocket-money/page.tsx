@@ -4,91 +4,63 @@ import { Footer } from "@/components/sections/footer";
 import { ComparisonTable, type CompetitorSpec } from "@/components/compare/comparison-table";
 
 export const metadata: Metadata = {
-  title: "Frugavo vs Rocket Money | Honest comparison of subscription trackers",
+  title: "Frugavo vs Rocket Money | Cheaper, no cancellation fees",
   description:
-    "How Frugavo compares to Rocket Money on pricing, cancellation fees, data sharing, and focus. $4.99/mo vs Rocket Premium, no cut of cancellations.",
+    "Why Frugavo beats Rocket Money. Flat $4.99/mo (vs $6-12). No cut of your savings. No data shared with partners.",
 };
 
 const SPEC: CompetitorSpec = {
   name: "Rocket Money",
-  tagline:
-    "A budgeting suite owned by Rocket Companies (NYSE: RKT). Subscription tracking is one feature among many.",
+  tagline: "Owned by Rocket Companies (NYSE: RKT). Takes 30-60% of every cancellation savings.",
   intro:
-    "Rocket Money is the loudest name in the category — 10M+ members, owned by a public mortgage company, marketed via TV and podcast spend. It does subscription tracking, bill negotiation, budgeting, net worth, and credit monitoring. Frugavo does one thing: surface every recurring charge and help you cancel the ones you don't want. No bill-negotiation cut. No data sharing with partners.",
+    "Rocket Money keeps a percentage of every dollar you save. Forever. Frugavo charges $4.99/mo flat and never touches your savings.",
   rows: [
     {
-      feature: "Free tier",
-      detail: "What you get without paying",
-      competitor: { kind: "text", value: "Account linking + basic tracking" },
-      frugavo: { kind: "text", value: "All discovery features" },
+      feature: "Price",
+      competitor: { kind: "text", value: "$6 – $12 / mo" },
+      frugavo: { kind: "text", value: "$4.99 / mo flat" },
     },
     {
-      feature: "Premium price",
-      competitor: { kind: "text", value: "$6 – $12 / mo (you choose)" },
-      frugavo: { kind: "text", value: "$4.99 / mo (fixed)" },
+      feature: "Keeps 100% of your savings",
+      detail: "We don't take a cut when you cancel",
+      competitor: { kind: "x" },
+      frugavo: { kind: "check" },
+    },
+    {
+      feature: "Never sells or shares your data",
+      competitor: { kind: "x" },
+      frugavo: { kind: "check" },
+    },
+    {
+      feature: "Free-trial conversion alerts",
+      competitor: { kind: "x" },
+      frugavo: { kind: "check" },
+    },
+    {
+      feature: "Direct cancel — you own the cancel",
+      competitor: { kind: "x" },
+      frugavo: { kind: "check" },
     },
     {
       feature: "Subscription discovery",
-      detail: "Find every recurring charge",
       competitor: { kind: "check" },
       frugavo: { kind: "check" },
-    },
-    {
-      feature: "Cancel-assist",
-      detail: "Guides you through cancellation",
-      competitor: { kind: "check" },
-      frugavo: { kind: "check" },
-    },
-    {
-      feature: "Takes a cut of cancellations / bill negotiations",
-      detail: "How they monetize savings",
-      competitor: { kind: "text", value: "30 – 60% of savings" },
-      frugavo: { kind: "text", value: "Never. Flat $4.99/mo." },
     },
     {
       feature: "Price-change alerts",
       competitor: { kind: "check" },
       frugavo: { kind: "check" },
     },
-    {
-      feature: "Free-trial conversion alerts",
-      competitor: { kind: "dash" },
-      frugavo: { kind: "check" },
-    },
-    {
-      feature: "Budgeting + net worth + credit score",
-      detail: "Full personal-finance suite",
-      competitor: { kind: "check" },
-      frugavo: { kind: "x" },
-    },
-    {
-      feature: "Sells / shares your data",
-      detail: "Per published Terms of Service",
-      competitor: { kind: "text", value: "Shared with Rocket Companies family" },
-      frugavo: { kind: "text", value: "Never sold or shared" },
-    },
-    {
-      feature: "Mobile app",
-      competitor: { kind: "text", value: "iOS + Android native" },
-      frugavo: { kind: "text", value: "Web + iOS/Android PWA" },
-    },
-    {
-      feature: "Built by",
-      competitor: { kind: "text", value: "Rocket Companies (NYSE: RKT)" },
-      frugavo: { kind: "text", value: "Independent founder" },
-    },
   ],
   pickCompetitorIf: [
-    "You want one app for budgeting, net worth, credit score, and subscriptions.",
-    "You want a concierge to cancel for you and don't mind paying 30–60% of the savings.",
-    "You're a heavy mobile user and want a polished native iOS/Android experience.",
+    "You want a bill-negotiation concierge AND don't mind paying 30-60% of every dollar saved.",
   ],
   pickFrugavoIf: [
-    "You want subscription clarity without bundled budgeting features.",
-    "You hate the idea of paying a percentage cut of money you saved.",
-    "You want a fixed, predictable price ($4.99/mo) instead of tiered upsells.",
-    "You care that your transaction data isn't shared with partner companies.",
-    "You'd rather pay an indie founder $4.99 than a Fortune 500 subsidiary $12.",
+    "You don't want a company that profits when you cancel more.",
+    "You'd rather pay $4.99 flat than $12 plus a cut.",
+    "You want subscription data kept private — not shared with partners.",
+    "You want trial-conversion alerts before you're billed.",
+    "You'd rather cancel things yourself than wait on a concierge.",
   ],
 };
 

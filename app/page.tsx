@@ -89,8 +89,8 @@ export default function Page({
         <FeatureSpotlight
           id="discover"
           eyebrow="Discover"
-          headline="One view. Every category. Every charge."
-          body="Link any account and Frugavo groups your recurring charges into the categories that actually matter — streaming, productivity, news, cloud storage. Spot the bucket eating most of your budget, then drill into the subscriptions inside."
+          headline="Every charge, sorted."
+          body="See your recurring spend grouped by category. Spot the bucket eating your budget — drill into what's inside."
           cta={{ label: "See a sample report", href: "/sample" }}
           align="left"
         >
@@ -100,8 +100,8 @@ export default function Page({
         <FeatureSpotlight
           id="renewals"
           eyebrow="Stay ahead"
-          headline="Know what's renewing before it bills."
-          body="Every active subscription gets a predicted next charge based on its history. The calendar shows what's coming this month, with brand marks on the days you'll be billed. No more surprise charges on payday."
+          headline="No more surprise charges."
+          body="Every subscription gets a predicted next charge. The calendar shows what hits your card and when."
           align="right"
         >
           <CalendarMockup />
@@ -109,9 +109,9 @@ export default function Page({
 
         <FeatureSpotlight
           id="alerts"
-          eyebrow="Continuous monitoring"
-          headline="Get told when something changes."
-          body="Price increases. New recurring charges from unfamiliar merchants. Trial conversions about to bill. Subscriptions you haven't used in months. Frugavo watches the background so you don't have to."
+          eyebrow="Monitoring"
+          headline="We watch. You don't have to."
+          body="Price hikes, new charges, trial conversions, idle subs — we ping you before they cost you."
           align="left"
         >
           <NoticedFeedMockup />
@@ -120,8 +120,8 @@ export default function Page({
         <FeatureSpotlight
           id="cancel"
           eyebrow="Cancel-assist"
-          headline="Cancel directly. We never take a cut."
-          body="One click takes you to the real provider cancel page with the right language ready to paste. Frugavo then watches the next billing cycle and confirms the charge actually stopped. No cancellation concierge fee, ever."
+          headline="Cancel direct. We take no cut."
+          body="One tap to the provider's real cancel page. We confirm the charge actually stopped — no concierge fee."
           align="right"
         >
           <CancelAssistMockup />

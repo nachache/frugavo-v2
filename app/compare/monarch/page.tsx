@@ -4,28 +4,41 @@ import { Footer } from "@/components/sections/footer";
 import { ComparisonTable, type CompetitorSpec } from "@/components/compare/comparison-table";
 
 export const metadata: Metadata = {
-  title: "Frugavo vs Monarch Money | Subscription tracker comparison",
+  title: "Frugavo vs Monarch | 3x cheaper, focused on subscriptions",
   description:
-    "How Frugavo compares to Monarch Money. Subscription-focused at $4.99/mo vs a full budgeting platform at $14.99/mo.",
+    "Why Frugavo beats Monarch for subscription tracking. $4.99/mo vs $14.99/mo. Focused tool, not a bloated budgeting suite.",
 };
 
 const SPEC: CompetitorSpec = {
   name: "Monarch Money",
-  tagline:
-    "A full budgeting and net-worth platform. Subscription tracking is one of many features.",
+  tagline: "A $14.99/mo budgeting suite where subscriptions are one of many features.",
   intro:
-    "Monarch is the favorite of finance Twitter and the leading destination for ex-Mint refugees who want a complete budgeting platform. It does net worth, cash flow, investments, shared accounts, goals, and recurring tracking — all for $14.99/mo. Frugavo is the opposite philosophy: one focused job at $4.99/mo. If you don't need budgeting and just want subscription clarity, you can save $120/year.",
+    "Monarch is 3x the price because you're paying for budgeting, investments, net worth, and goals. If you just want subscription clarity, that's $120/year for features you'll never open.",
   rows: [
     {
-      feature: "Free tier",
-      detail: "What you get without paying",
-      competitor: { kind: "text", value: "7-day trial only" },
-      frugavo: { kind: "text", value: "All discovery features, forever" },
-    },
-    {
-      feature: "Paid price",
+      feature: "Price",
       competitor: { kind: "text", value: "$14.99 / mo" },
       frugavo: { kind: "text", value: "$4.99 / mo" },
+    },
+    {
+      feature: "Free tier",
+      competitor: { kind: "x" },
+      frugavo: { kind: "check" },
+    },
+    {
+      feature: "Cancel-assist",
+      competitor: { kind: "x" },
+      frugavo: { kind: "check" },
+    },
+    {
+      feature: "Free-trial conversion alerts",
+      competitor: { kind: "x" },
+      frugavo: { kind: "check" },
+    },
+    {
+      feature: "Price-change alerts",
+      competitor: { kind: "x" },
+      frugavo: { kind: "check" },
     },
     {
       feature: "Subscription discovery",
@@ -33,59 +46,20 @@ const SPEC: CompetitorSpec = {
       frugavo: { kind: "check" },
     },
     {
-      feature: "Full budgeting suite",
-      detail: "Categories, cash flow, planning",
+      feature: "Bundled budgeting + net worth",
+      detail: "Bloat if you don't need it",
       competitor: { kind: "check" },
-      frugavo: { kind: "x" },
-    },
-    {
-      feature: "Net worth tracking",
-      detail: "Investments + loans + real estate",
-      competitor: { kind: "check" },
-      frugavo: { kind: "x" },
-    },
-    {
-      feature: "Couples / shared accounts",
-      competitor: { kind: "check" },
-      frugavo: { kind: "x" },
-    },
-    {
-      feature: "Cancel-assist",
-      detail: "Direct provider cancel pages",
-      competitor: { kind: "dash" },
-      frugavo: { kind: "check" },
-    },
-    {
-      feature: "Free-trial conversion alerts",
-      competitor: { kind: "dash" },
-      frugavo: { kind: "check" },
-    },
-    {
-      feature: "Price-change alerts",
-      competitor: { kind: "dash" },
-      frugavo: { kind: "check" },
-    },
-    {
-      feature: "Mobile app",
-      competitor: { kind: "text", value: "iOS + Android native" },
-      frugavo: { kind: "text", value: "Web + iOS/Android PWA" },
-    },
-    {
-      feature: "Best fit for",
-      competitor: { kind: "text", value: "Couples managing a full budget" },
-      frugavo: { kind: "text", value: "Individuals wanting sub clarity" },
+      frugavo: { kind: "dash" },
     },
   ],
   pickCompetitorIf: [
-    "You want one place to manage budgeting, investing, net worth, and shared finances.",
-    "You and a partner want to plan and budget together.",
-    "You miss Mint and want a full replacement, not a focused tool.",
+    "You and a partner need a full shared-budget platform with investment + net worth tracking.",
   ],
   pickFrugavoIf: [
-    "You already have budgeting handled and just want subscription clarity.",
-    "You want a focused tool, not another finance dashboard to learn.",
+    "You only want subscription clarity, not a full finance dashboard.",
     "You'd rather pay $4.99/mo than $14.99/mo for features you won't use.",
-    "You specifically want active subscription monitoring + alerts + cancel-assist.",
+    "You want a free tier — Monarch's trial ends after 7 days.",
+    "You want subscription-specific tools: cancel-assist, trial alerts, price-change alerts.",
   ],
 };
 

@@ -42,7 +42,7 @@ export function BuiltOnStrip() {
             id="built-on-heading"
             className="text-center text-[11.5px] font-semibold uppercase tracking-[0.16em] text-ink-body/75"
           >
-            Built on the same infrastructure your bank already trusts
+            Trusted infrastructure
           </p>
 
           {/* Partner chips — refined: each in a quiet pill that looks

@@ -326,9 +326,8 @@ export const ticker = [
 // (STRIPE_PRICE_PEACE_OF_MIND_MONTHLY_V1) — no code change needed
 // here when the price changes.
 export const pricing = {
-  heading: "Simple pricing. Free to start.",
-  subhead:
-    "Find every subscription you have for free. Add continuous protection for less than a single forgotten charge.",
+  heading: "Simple pricing.",
+  subhead: "Free to find them. $4.99/mo to stay ahead.",
   tiers: [
     {
       id: "free" as const,
@@ -338,11 +337,10 @@ export const pricing = {
       tagline: "Find what you're paying for.",
       cta: { label: "Get started free", href: "/sign-up" },
       features: [
-        "Link any bank or card via Plaid",
-        "See every recurring charge from the last 12 months",
-        "Subscription health score",
-        "Direct cancel links for every detected subscription",
-        "Read-only access — we never see or store your bank password",
+        "Link any bank via Plaid",
+        "Every recurring charge, 12 months back",
+        "Direct cancel links",
+        "Read-only access",
       ],
     },
     {
@@ -356,13 +354,11 @@ export const pricing = {
       ctaNote: "7 days free. Cancel anytime.",
       features: [
         "Everything in Free, plus:",
-        "Continuous monitoring for new charges",
-        "Price-change alerts before you're billed",
-        "Free-trial conversion alerts (catch trials before they convert)",
-        "Renewal forecasting for every subscription",
-        "Cancel-assist with confirmation tracking",
-        "Multi-account coverage (connect every card)",
-        "Priority email support",
+        "Price-change alerts",
+        "Free-trial conversion warnings",
+        "Renewal forecasting",
+        "Cancel-assist with confirmation",
+        "Multi-account coverage",
       ],
     },
   ],
