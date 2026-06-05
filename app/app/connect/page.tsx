@@ -1,418 +1,147 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { ConnectFlow } from "@/components/plaid/connect-flow";
-import {
-  Lock,
-  Power,
-  Bell,
-  TrendingUp,
-  EyeOff,
-  Calendar,
-  Building2,
-  ArrowRight,
-  AlertTriangle,
-  CheckCircle2,
-} from "lucide-react";
+import { Lock, ShieldCheck } from "lucide-react";
 
 export const metadata: Metadata = {
-  title: "Find your subscriptions · Frugavo",
+  title: "Add your bank account · Frugavo",
 };
 
-// /app/connect — anticipation-first conversion surface.
+// /app/connect — Plaid best-practices pre-Link screen.
 //
-// PASS 4 rebuild (task 146). Replaces the previous "explain Frugavo"
-// page with a curiosity engine. The user lands here right after
-// sign-up, and the only question that matters is "why should I
-// connect my bank right now?" Every section answers it:
+// This page is the dedicated pre-Link pane required by Plaid's Link
+// Messaging guidelines. The user lands here right after sign-up and
+// MUST explicitly click "Add your bank account" to launch the Plaid
+// Link modal. Auto-open was removed 2026-06-05 per Plaid recommendation.
 //
-//   1. Hero — names the gap. "You don't know all your subscriptions."
-//   2. Discovery report mockup — shows the OUTCOME, not features.
-//      A believable result screen with specific numbers and a
-//      forgotten-sub callout. Reader thinks "is one of mine in there?"
-//   3. Four protection cards — one sentence each, no paragraphs.
-//   4. Plaid trust block — its own dedicated section because trust
-//      is the largest conversion barrier here.
-//   5. Curiosity examples — "Here's what people typically find."
-//      Sarah / Mike / Chris cards seed the wondering rather than
-//      pitch a feature.
+// Required elements present (Plaid Link Messaging best practices):
+//   • Financially-compelling headline
+//   • ≤2 value-prop bullets, both financial benefits
+//   • Plaid disclosure sentence (named, third-party trust framing)
+//   • Data-use explanation (what we read + why)
+//   • Disconnect notice (you can remove access anytime)
+//   • Lock icon + 256-bit encryption claim
+//   • "Frugavo never sees your credentials" statement
+//   • Privacy Policy inline link
+//   • Social proof line (11,000+ banks via Plaid)
+//   • One primary CTA: "Add your bank account"
+//   • No equal-weight manual-entry alternative
 //
-// Visual: warm canvas, calm green accents, no feature matrices.
-// Within 5 seconds a new user should know: Frugavo finds subs,
-// avoids waste, warns about renewals, Plaid is safe, connect is
-// the next obvious step.
+// Path stays /app/connect (no "plaid" in URL — meets Section 8).
 
 export default function ConnectPage() {
   return (
-    <section className="container-page max-w-[1140px] py-6 md:py-10 space-y-12 md:space-y-16">
-      {/* ─────────── 1. HERO ─────────── */}
-      <Hero />
+    <section className="container-page max-w-[640px] py-10 md:py-16">
+      <div className="rounded-3xl border border-hairline bg-white shadow-soft p-7 md:p-10">
+        {/* Lock icon — Plaid-recommended trust signal above the CTA */}
+        <div className="flex items-center justify-center mb-5">
+          <span className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-brand/10 ring-1 ring-brand/20">
+            <Lock size={20} strokeWidth={2.2} className="text-brand" aria-hidden />
+          </span>
+        </div>
 
-      {/* ─────────── 2. PROTECTION CARDS ─────────── */}
-      <ProtectionCards />
+        {/* Financially-compelling headline */}
+        <h1 className="font-display text-[28px] md:text-[34px] font-bold tracking-[-0.025em] leading-[1.1] text-ink text-center">
+          Add your bank to find every subscription you&apos;re paying for.
+        </h1>
 
-      {/* ─────────── 3. PLAID TRUST BLOCK ─────────── */}
-      <PlaidTrust />
+        {/* Two value-prop bullets (both financial benefits) */}
+        <ul className="mt-7 space-y-3 max-w-[480px] mx-auto">
+          <BulletLine>
+            See every recurring charge from the last 12 months — instantly.
+          </BulletLine>
+          <BulletLine>
+            Spot the ones you forgot about. Cancel anything in one tap.
+          </BulletLine>
+        </ul>
 
-      {/* ─────────── 4. CURIOSITY EXAMPLES ─────────── */}
-      <CuriosityExamples />
+        {/* Primary CTA — opens Plaid Link only on explicit click */}
+        <div className="mt-9 flex flex-col items-center">
+          <ConnectFlow />
+          {/* Inline privacy link directly under the CTA per Plaid guidance */}
+          <p className="mt-3 text-[11.5px] text-ink-muted text-center max-w-[420px]">
+            By continuing, you agree to our{" "}
+            <Link
+              href="/privacy"
+              className="underline underline-offset-2 hover:text-ink transition"
+            >
+              Privacy Policy
+            </Link>
+            .
+          </p>
+        </div>
 
-      {/* ─────────── 5. FINAL CTA ─────────── */}
-      <FinalCTA />
+        {/* Trust block — 256-bit encryption + credential safety + Plaid disclosure */}
+        <div className="mt-9 pt-7 border-t border-hairline/60 space-y-4 text-[13px] text-ink-body leading-relaxed">
+          <TrustItem
+            icon={<ShieldCheck size={14} strokeWidth={2.2} className="text-brand" aria-hidden />}
+          >
+            <span className="text-ink font-semibold">
+              Secured with 256-bit encryption.
+            </span>{" "}
+            Frugavo never sees your bank username or password. You
+            authenticate directly with your bank through Plaid&apos;s secure
+            flow.
+          </TrustItem>
+
+          <TrustItem
+            icon={<Lock size={14} strokeWidth={2.2} className="text-brand" aria-hidden />}
+          >
+            <span className="text-ink font-semibold">
+              You&apos;ll continue in Plaid.
+            </span>{" "}
+            Plaid is a secure third-party service trusted by thousands of
+            apps (Venmo, Robinhood, Chime). Frugavo receives read-only
+            access to your transactions — never your login details.
+          </TrustItem>
+
+          <TrustItem
+            icon={<ShieldCheck size={14} strokeWidth={2.2} className="text-brand" aria-hidden />}
+          >
+            <span className="text-ink font-semibold">
+              We only read transactions.
+            </span>{" "}
+            We never read emails, sell your data, or access any other
+            account information. Disconnect your bank and delete every
+            byte of your data from settings anytime — instant and
+            irreversible.
+          </TrustItem>
+        </div>
+
+        {/* Social proof line — Plaid-recommended trust signal */}
+        <p className="mt-7 pt-5 border-t border-hairline/60 text-[12px] text-ink-muted text-center">
+          Trusted infrastructure · 11,000+ banks supported via Plaid
+        </p>
+      </div>
     </section>
   );
 }
 
-// ─────────── HERO ───────────
-
-function Hero() {
+function BulletLine({ children }: { children: React.ReactNode }) {
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-[1.05fr_1fr] gap-10 lg:gap-14 items-center">
-      <div className="max-w-[560px]">
-        <h1 className="font-display text-[34px] sm:text-[42px] lg:text-[52px] font-bold tracking-[-0.03em] leading-[1.02] text-ink">
-          You don&apos;t know all your subscriptions.
-        </h1>
-        <p className="mt-3 text-[18px] md:text-[20px] text-ink-muted leading-snug">
-          Most people don&apos;t.
-        </p>
-        <p className="mt-6 text-[15.5px] lg:text-[16.5px] leading-relaxed text-ink-body max-w-[480px]">
-          Link an account and we&apos;ll show every recurring charge, upcoming
-          renewal, and forgotten subscription we can find — in about 60 seconds.
-        </p>
-
-        {/* CTA — autoOpen=true makes Plaid Link pop on its own 1.5s
-            after mount. Trust copy ("read-only via Plaid", "free
-            during early access") gets one breath of visibility before
-            the modal arrives, so the velocity gain doesn't come at
-            the cost of the warm-up. The FinalCTA below intentionally
-            does NOT autoOpen — only one auto-open per page, and the
-            sessionStorage flag in ConnectBankButton enforces that
-            even on re-mounts. */}
-        <div className="mt-7">
-          <ConnectFlow autoOpen />
-        </div>
-
-        {/* Supporting trust line */}
-        <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[12.5px] text-ink-muted">
-          <span className="inline-flex items-center gap-1.5">
-            <span
-              className="inline-block w-1.5 h-1.5 rounded-full"
-              style={{ background: "#10B981" }}
-            />
-            Free to start
-          </span>
-          <span className="text-ink-muted/30">·</span>
-          <span className="inline-flex items-center gap-1.5">
-            <Lock size={12} strokeWidth={2} />
-            Read-only access via Plaid
-          </span>
-        </div>
-      </div>
-
-      {/* Right column — discovery report mockup */}
-      <div>
-        <DiscoveryReport />
-      </div>
-    </div>
-  );
-}
-
-// ─────────── DISCOVERY REPORT ───────────
-
-function DiscoveryReport() {
-  return (
-    <div className="relative">
-      {/* Soft warm halo */}
-      <div
-        aria-hidden="true"
-        className="absolute -inset-6 -z-10 opacity-60 pointer-events-none"
-        style={{
-          background:
-            "radial-gradient(60% 60% at 50% 40%, rgba(4,120,87,0.10), transparent 70%)",
-        }}
+    <li className="flex items-start gap-3 text-[15px] text-ink-body leading-relaxed">
+      <span
+        aria-hidden
+        className="mt-2 inline-block w-1.5 h-1.5 rounded-full bg-brand shrink-0"
       />
-      <div className="rounded-3xl bg-white border border-hairline shadow-[0_24px_60px_-30px_rgba(10,10,10,0.25)] overflow-hidden">
-        {/* Header — calm, no chrome */}
-        <div className="px-6 pt-5 pb-3 border-b border-hairline/60">
-          <div className="text-[10.5px] font-semibold uppercase tracking-[0.14em] text-ink-muted">
-            We found
-          </div>
-          <div className="mt-1.5 flex items-baseline gap-3 flex-wrap">
-            <span className="font-display text-[32px] md:text-[36px] font-bold tracking-[-0.02em] tabular-nums text-ink leading-none">
-              17 subscriptions
-            </span>
-          </div>
-          <div className="mt-1 text-[14px] text-ink-body tabular-nums">
-            <span className="font-bold text-ink">$1,773</span>
-            <span className="text-ink-muted">/mo recurring spending</span>
-          </div>
-        </div>
-
-        {/* Finding rows */}
-        <div className="px-4 py-4 space-y-2">
-          <FindingRow
-            tone="amber"
-            icon={AlertTriangle}
-            title="3 overlapping AI tools"
-            sub="Potential impact: $256/mo"
-          />
-          <FindingRow
-            tone="amber"
-            icon={EyeOff}
-            title="Forgotten subscription"
-            sub="Potential yearly waste: $179/yr"
-          />
-          <FindingRow
-            tone="amber"
-            icon={Calendar}
-            title="Upcoming renewal"
-            sub="Expected tomorrow: $728"
-          />
-          <FindingRow
-            tone="emerald"
-            icon={CheckCircle2}
-            title="17 active recurring services"
-            sub="Categorized and watched"
-          />
-        </div>
-      </div>
-
-      {/* Whisper caption */}
-      <p className="mt-3 text-[11.5px] text-ink-muted/70 text-center tracking-tight">
-        Sample report · your real findings appear in ~60 seconds
-      </p>
-    </div>
-  );
-}
-
-function FindingRow({
-  tone,
-  icon: Icon,
-  title,
-  sub,
-}: {
-  tone: "amber" | "emerald";
-  icon: typeof AlertTriangle;
-  title: string;
-  sub: string;
-}) {
-  const toneCls =
-    tone === "amber"
-      ? "bg-amber-50 border-amber-200 text-amber-900"
-      : "bg-emerald-50 border-emerald-200 text-emerald-900";
-  const iconCls =
-    tone === "amber" ? "text-amber-700" : "text-emerald-700";
-  return (
-    <div
-      className={`flex items-center gap-3 rounded-xl border px-3.5 py-3 ${toneCls}`}
-    >
-      <Icon size={16} strokeWidth={2} className={`shrink-0 ${iconCls}`} />
-      <div className="min-w-0 flex-1">
-        <div className="text-[13.5px] font-bold text-ink leading-tight">
-          {title}
-        </div>
-        <div className="text-[11.5px] text-ink-body/80 mt-0.5">{sub}</div>
-      </div>
-    </div>
-  );
-}
-
-// ─────────── PROTECTION CARDS ───────────
-
-const PROTECTION: Array<{
-  icon: typeof Bell;
-  title: string;
-  sub: string;
-}> = [
-  {
-    icon: Calendar,
-    title: "Trial converts soon",
-    sub: "Avoid surprise charges before they happen.",
-  },
-  {
-    icon: TrendingUp,
-    title: "Price increase detected",
-    sub: "Know when recurring costs change.",
-  },
-  {
-    icon: EyeOff,
-    title: "Forgotten subscription",
-    sub: "Find services you may no longer use.",
-  },
-  {
-    icon: Bell,
-    title: "Upcoming renewal",
-    sub: "Review expensive renewals before they hit.",
-  },
-];
-
-function ProtectionCards() {
-  return (
-    <div>
-      <h2 className="font-display text-[22px] md:text-[26px] font-bold tracking-[-0.01em] text-ink">
-        What Frugavo protects against
-      </h2>
-      <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-        {PROTECTION.map((p) => (
-          <div
-            key={p.title}
-            className="rounded-2xl border border-hairline bg-white shadow-soft p-5"
-          >
-            <div className="inline-flex items-center justify-center w-9 h-9 rounded-xl bg-emerald-50 text-emerald-900 mb-3">
-              <p.icon size={16} strokeWidth={2} />
-            </div>
-            <div className="text-[14px] font-bold text-ink leading-snug">
-              {p.title}
-            </div>
-            <p className="mt-1 text-[12.5px] text-ink-body leading-relaxed">
-              {p.sub}
-            </p>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-// ─────────── PLAID TRUST BLOCK ───────────
-
-function PlaidTrust() {
-  return (
-    <div
-      className="rounded-3xl border border-hairline bg-white shadow-soft p-6 md:p-10"
-      style={{
-        background:
-          "linear-gradient(135deg, rgba(255,255,255,1) 0%, rgba(248,244,235,1) 100%)",
-      }}
-    >
-      <div className="grid grid-cols-1 md:grid-cols-[1fr_1.4fr] gap-8 md:gap-12 items-center">
-        <div>
-          <div className="inline-flex items-center gap-2 mb-3">
-            <span className="inline-flex items-center justify-center w-9 h-9 rounded-xl bg-emerald-100 text-emerald-900">
-              <Lock size={16} strokeWidth={2} />
-            </span>
-            <span className="text-[11.5px] font-semibold uppercase tracking-[0.1em] text-emerald-900/80">
-              Plaid · trusted by 11,000+ apps
-            </span>
-          </div>
-          <h2 className="font-display text-[24px] md:text-[30px] font-bold tracking-[-0.02em] text-ink leading-tight">
-            Your money stays your money.
-          </h2>
-          <p className="mt-3 text-[13.5px] md:text-[14px] text-ink-body leading-relaxed max-w-[400px]">
-            Bank login happens inside Plaid&apos;s secure window — we never see
-            or store your credentials. Read-only access means Frugavo can
-            see the charges but cannot move a single dollar.
-          </p>
-        </div>
-        <ul className="space-y-3">
-          <TrustRow icon={Lock} title="Read-only access" sub="We can see, never touch." />
-          <TrustRow
-            icon={Building2}
-            title="Credentials stay with Plaid"
-            sub="Bank login never reaches our servers."
-          />
-          <TrustRow
-            icon={AlertTriangle}
-            title="We cannot move money"
-            sub="No payments, no transfers, no withdrawals."
-          />
-          <TrustRow icon={Power} title="Disconnect anytime" sub="One tap, fully revoked." />
-        </ul>
-      </div>
-    </div>
-  );
-}
-
-function TrustRow({
-  icon: Icon,
-  title,
-  sub,
-}: {
-  icon: typeof Lock;
-  title: string;
-  sub: string;
-}) {
-  return (
-    <li className="flex items-start gap-3">
-      <span className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-white border border-hairline text-emerald-900 shrink-0">
-        <Icon size={14} strokeWidth={2} />
-      </span>
-      <div className="min-w-0">
-        <div className="text-[13.5px] font-bold text-ink leading-snug">
-          {title}
-        </div>
-        <div className="text-[12px] text-ink-muted leading-relaxed">{sub}</div>
-      </div>
+      <span>{children}</span>
     </li>
   );
 }
 
-// ─────────── CURIOSITY EXAMPLES ───────────
-
-const EXAMPLES: Array<{ name: string; headline: string; sub: string }> = [
-  {
-    name: "Sarah",
-    headline: "$84/mo in forgotten subscriptions",
-    sub: "Two streaming services she stopped using months ago.",
-  },
-  {
-    name: "Mike",
-    headline: "Two overlapping streaming services",
-    sub: "Family pays for Disney+ and Hulu — already bundled.",
-  },
-  {
-    name: "Chris",
-    headline: "Over $1,200/year in software subs",
-    sub: "Mostly tools he tried once during a project.",
-  },
-];
-
-function CuriosityExamples() {
+function TrustItem({
+  icon,
+  children,
+}: {
+  icon: React.ReactNode;
+  children: React.ReactNode;
+}) {
   return (
-    <div>
-      <h2 className="font-display text-[22px] md:text-[26px] font-bold tracking-[-0.01em] text-ink">
-        Here&apos;s what people typically find
-      </h2>
-      <p className="mt-2 text-[13.5px] text-ink-muted">
-        A small sample. Yours will be different.
-      </p>
-      <div className="mt-5 grid grid-cols-1 sm:grid-cols-3 gap-3">
-        {EXAMPLES.map((e) => (
-          <div
-            key={e.name}
-            className="rounded-2xl border border-hairline bg-white shadow-soft p-5"
-          >
-            <div className="text-[11.5px] font-semibold uppercase tracking-[0.1em] text-emerald-900/80">
-              {e.name}
-            </div>
-            <div className="mt-2 text-[15px] font-bold text-ink leading-snug">
-              {e.headline}
-            </div>
-            <p className="mt-2 text-[12.5px] text-ink-body leading-relaxed">
-              {e.sub}
-            </p>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-// ─────────── FINAL CTA ───────────
-
-function FinalCTA() {
-  return (
-    <div className="rounded-3xl border border-hairline bg-white shadow-soft p-8 md:p-12 text-center">
-      <h2 className="font-display text-[24px] md:text-[32px] font-bold tracking-[-0.02em] text-ink leading-tight max-w-[520px] mx-auto">
-        Curious what we&apos;d find in yours?
-      </h2>
-      <p className="mt-3 text-[14px] md:text-[15px] text-ink-body leading-relaxed max-w-[420px] mx-auto">
-        About 60 seconds to link an account. Read-only via Plaid.
-      </p>
-      <div className="mt-6 inline-flex flex-col items-center gap-2">
-        <ConnectFlow />
-        <span className="text-[11.5px] text-ink-muted inline-flex items-center gap-1">
-          Free to start <ArrowRight size={11} strokeWidth={2} />
-        </span>
-      </div>
+    <div className="flex items-start gap-3">
+      <span className="inline-flex items-center justify-center w-6 h-6 rounded-md bg-brand/8 shrink-0 mt-0.5">
+        {icon}
+      </span>
+      <p className="min-w-0">{children}</p>
     </div>
   );
 }

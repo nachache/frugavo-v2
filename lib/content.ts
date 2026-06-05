@@ -25,7 +25,7 @@ export const hero = {
   // product for a fintech being asked for bank credentials. Replaced
   // with a calm production trust signal: infrastructure + read-only
   // posture. Reads as confident production fintech, not beta.
-  eyebrow: "Bank-grade security · Read-only by design",
+  eyebrow: "256-bit encrypted · Read-only by design",
   // Rewritten to continue the tension from the X ad ("You're paying
   // for 14 subscriptions and can name 9"). The previous landing
   // headline ("You don't know all your subscriptions") reset the
@@ -102,8 +102,8 @@ export const howItWorks = {
     {
       n: "01",
       icon: "Landmark",
-      title: "Link your accounts",
-      body: "Link a bank or credit card in 60 seconds via Plaid — the same connection your bank app uses. Read-only. We never see or store your credentials.",
+      title: "Add your bank account",
+      body: "Add a bank or credit card in 60 seconds via Plaid — the same connection your bank app uses. Read-only. Frugavo never sees your bank username or password.",
     },
     {
       n: "02",
@@ -337,10 +337,10 @@ export const pricing = {
       tagline: "Find what you're paying for.",
       cta: { label: "Get started free", href: "/sign-up" },
       features: [
-        "Link any bank via Plaid",
+        "Add any bank via Plaid",
         "Every recurring charge, 12 months back",
         "Direct cancel links",
-        "Read-only access",
+        "Read-only access · 256-bit encrypted",
       ],
     },
     {
@@ -374,8 +374,8 @@ export const trust = {
     },
     {
       icon: "Lock",
-      title: "Bank credentials never stored",
-      body: "Bank connections run through Plaid — the same infrastructure your bank app uses. We never see or store your bank password.",
+      title: "Frugavo never sees your credentials",
+      body: "256-bit encryption protects every connection. You authenticate with your bank directly through Plaid — we never see or store your bank username or password.",
     },
     {
       icon: "ShieldCheck",
@@ -427,7 +427,7 @@ export const faqs = [
 export const finalCta = {
   heading: "See every subscription you're paying for.",
   subhead:
-    "Link an account in 60 seconds. Free forever to find what you have. $4.99/mo to keep watching what changes.",
+    "Add your first account in 60 seconds. Free forever to find what you have. $4.99/mo to keep watching what changes.",
 };
 
 export const footer = {

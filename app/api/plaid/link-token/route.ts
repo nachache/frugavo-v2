@@ -53,6 +53,17 @@ export async function POST() {
     );
   }
 
+  // Plaid Link customization (Dashboard → Link → Link Customization).
+  // When PLAID_LINK_CUSTOMIZATION_NAME is set, Plaid applies the
+  // matching configuration: co-branded consent pane, brand color,
+  // Account Select policy, Data Transparency Messaging, Connected-
+  // screen text, etc. The name MUST match a customization that was
+  // published in the Dashboard, and the customization's language +
+  // country settings MUST match what we pass here ("en" + US/CA), or
+  // Plaid silently ignores the override. Unset env var → Plaid uses
+  // default Link experience.
+  const customizationName = process.env.PLAID_LINK_CUSTOMIZATION_NAME?.trim();
+
   try {
     const response = await plaidClient.linkTokenCreate({
       user: { client_user_id: user.id },
@@ -62,6 +73,9 @@ export async function POST() {
       language: "en",
       webhook: plaidWebhookUrl(),
       redirect_uri: plaidRedirectUri(),
+      ...(customizationName
+        ? { link_customization_name: customizationName }
+        : {}),
     });
 
     return NextResponse.json({ link_token: response.data.link_token });

@@ -48,7 +48,7 @@ const AUTO_OPEN_FIRED_KEY = "frugavo:plaid:auto_opened";
 
 export function ConnectBankButton({
   variant = "hero",
-  compactLabel = "Connect another account",
+  compactLabel = "Add another account",
   autoOpen = false,
 }: {
   // 'hero'    — first-connect /app/connect CTA. Big shadowed pill with
@@ -130,10 +130,27 @@ export function ConnectBankButton({
     };
   }, [isOAuthResume]);
 
+  // Captured at success-time so the button can render a
+  // proof-of-connection label ("Chase ····4821 connected — preparing
+  // your scan…") while we hand off to /app. Plaid Link Messaging
+  // best practice: show the user the institution + masked account
+  // immediately after onSuccess so they have visible evidence the
+  // link worked, before any routing or skeletons.
+  const [successInstitution, setSuccessInstitution] = useState<string | null>(null);
+  const [successMask, setSuccessMask] = useState<string | null>(null);
+
   // Step 4 — when Link succeeds, exchange the public_token server-side.
   const onSuccess = useCallback(
     async (publicToken: string, metadata: PlaidLinkOnSuccessMetadata) => {
       setStatus("exchanging");
+      // Stash the institution name + first account mask for the
+      // success label. We only show the first account's mask — most
+      // users link one bank at a time and showing every mask gets
+      // noisy. The dashboard later shows the full per-account list.
+      const instName = metadata.institution?.name ?? null;
+      const firstMask = metadata.accounts?.[0]?.mask ?? null;
+      setSuccessInstitution(instName);
+      setSuccessMask(firstMask);
       try {
         const res = await fetch("/api/plaid/exchange", {
           method: "POST",
@@ -277,12 +294,28 @@ export function ConnectBankButton({
   // In-flight labels still describe what's happening, but use
   // user-facing language ("preparing," "connecting") not engine
   // language ("scanning," "exchanging").
-  const idleLabel = variant === "compact" ? compactLabel : "Analyze my recurring spending";
+  // Plaid Link Messaging guideline: prefer "add" over "connect"/"link".
+  // Word "instantly" used for the primary variant per Plaid research
+  // (proven to lift uptake when button width allows).
+  const idleLabel =
+    variant === "compact" ? compactLabel : "Add your bank account instantly";
+  // Once exchange starts, prefer a proof-of-connection label that
+  // names the institution + the last 4 of the account number. Gives
+  // the user immediate evidence the link worked, before they get
+  // routed to /app. Falls back to a generic "Setting up your
+  // analysis…" if Plaid didn't return institution/account metadata
+  // (some sandbox flows omit it).
+  const successProofLabel =
+    successInstitution && successMask
+      ? `${successInstitution} ····${successMask} connected — preparing your scan…`
+      : successInstitution
+        ? `${successInstitution} connected — preparing your scan…`
+        : "Setting up your analysis…";
   const label =
     status === "connecting"
       ? "Opening secure bank login…"
       : status === "exchanging"
-        ? "Setting up your analysis…"
+        ? successProofLabel
         : status === "queued"
           ? "Preparing your analysis…"
           : idleLabel;

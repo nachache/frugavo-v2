@@ -224,8 +224,10 @@ export function Hero({ variant = "default", headlineOverride }: HeroProps) {
           >
             <ul className="space-y-2 text-[13.5px] text-ink-body leading-relaxed">
               <DifferentiatorLine>
-                <span className="text-ink font-semibold">No email reading.</span>{" "}
-                Bank transactions only.
+                <span className="text-ink font-semibold">
+                  Frugavo never sees your credentials.
+                </span>{" "}
+                256-bit encrypted. Authenticate with your bank directly via Plaid.
               </DifferentiatorLine>
               <DifferentiatorLine>
                 <span className="text-ink font-semibold">No data resale.</span>{" "}
