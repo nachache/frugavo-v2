@@ -39,9 +39,10 @@ const NoticedFeedMockup = dynamic(() =>
 const CancelAssistMockup = dynamic(() =>
   import("@/components/marketing/cancel-assist-mockup").then((m) => m.CancelAssistMockup)
 );
-const Calculator = dynamic(() =>
-  import("@/components/sections/calculator").then((m) => m.Calculator)
-);
+// Calculator was previously imported here. Hidden 2026-06-05 per
+// direction — the "How much are you losing?" interactive section was
+// pulling focus from the product walkthrough. File stays in repo
+// unimported in case we want to bring it back later.
 const Pricing = dynamic(() =>
   import("@/components/sections/pricing").then((m) => m.Pricing)
 );
@@ -130,12 +131,8 @@ export default function Page({
         {/* 7. Pricing — Free vs Protection $4.99 */}
         <Pricing />
 
-        {/* 8. Calculator — interactive "what am I losing?" */}
-        <Calculator />
-
-        {/* 9. FAQ — Trust section removed in redundancy pass; trust
-            signals are covered by hero differentiator strip + BuiltOnStrip
-            above + the FAQ entries below */}
+        {/* 8. FAQ — Calculator hidden in this pass; Trust section
+            removed earlier (redundant with hero strip + BuiltOnStrip) */}
         <Faq />
 
         {/* 10. Final CTA — last conversion opportunity */}

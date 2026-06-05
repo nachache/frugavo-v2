@@ -178,17 +178,17 @@ function DetectedChip() {
 
 function PhoneFrame() {
   return (
-    <div className="relative mx-auto hero-anim-float" style={{ width: 300 }}>
-      {/* Phone outer frame — soft inner gradient + tighter shadow
-          stack so it reads as a physical object, not a flat sticker.
-          Aspect ratio shortened from 9/19 → 9/14 (2026-06-05). The
-          full 9/19 iPhone height was making the hero column read too
-          tall; 9/14 shows the meaningful UI (header + subscription
-          rows + tab bar) without the dead bottom space. */}
+    <div className="relative mx-auto hero-anim-float" style={{ width: 240 }}>
+      {/* Phone outer frame — soft inner gradient + tighter shadow.
+          Geometry tuned 2026-06-05 (round 2):
+          • width 300 → 240, aspect 9/14 → 9/16. The 9/14 version
+            looked too fat; modern phones are closer to 9/16. The
+            narrower frame also makes the surrounding floating chips
+            sit closer to the device. */}
       <div
-        className="relative rounded-[36px] shadow-[0_40px_90px_-24px_rgba(10,10,10,0.45),0_8px_22px_-6px_rgba(10,10,10,0.18)] p-2.5"
+        className="relative rounded-[34px] shadow-[0_40px_90px_-24px_rgba(10,10,10,0.45),0_8px_22px_-6px_rgba(10,10,10,0.18)] p-2"
         style={{
-          aspectRatio: "9 / 14",
+          aspectRatio: "9 / 16",
           background: "linear-gradient(160deg, #1a1a1a 0%, #0a0a0a 100%)",
         }}
       >
@@ -315,52 +315,37 @@ function SubRow({
   );
 }
 
-// Brand logo helper — real SVG marks from simple-icons (CC0
-// licensed, https://simpleicons.org). Each rendered in the brand's
-// official color on a neutral background tile so the marks read as
-// recognizable badges. "Unknown" is a question-mark glyph for the
-// fictional unknown-merchant row, signaling exactly what Frugavo
-// flagged: a charge we can't attribute to a known brand.
-const BRAND_SVG: Record<BrandKey, { color: string; bg: string; path: string }> = {
-  netflix: {
-    color: "#E50914",
-    bg: "#FFFFFF",
-    path: "M5.398 0v.006c3.028 8.556 5.37 15.175 8.348 23.596 2.344.058 4.85.398 4.854.398-2.8-7.924-5.923-16.747-8.487-24zm8.489 0v9.63L18.6 22.951c-.043-7.86-.004-15.913.002-22.95H13.89zm-8.487 0H.001v23.74c1.815-.275 2.96-.469 4.81-.638l-.42-1.187z",
-  },
-  spotify: {
-    color: "#1DB954",
-    bg: "#FFFFFF",
-    path: "M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.42 1.56-.299.421-1.02.599-1.561.3z",
-  },
-  adobe: {
-    color: "#FA0F00",
-    bg: "#FFFFFF",
-    path: "M13.966 22.624l-1.69-4.281H8.122l3.892-9.144 5.662 13.425zM8.884 1.376H0v21.248zm15.116 0h-8.884L24 22.624Z",
-  },
-  amazon: {
-    color: "#FF9900",
-    bg: "#0F1111",
-    path: "M.045 18.02c.072-.116.187-.124.348-.022 3.636 2.11 7.594 3.166 11.87 3.166 2.852 0 5.668-.533 8.447-1.595l.315-.14c.138-.06.234-.1.293-.13.226-.088.39-.046.525.13.12.174.09.336-.12.48-.256.19-.6.41-1.006.654-1.244.743-2.64 1.316-4.185 1.726a17.617 17.617 0 01-4.83.615c-2.83 0-5.524-.49-8.082-1.46-2.555-.972-4.825-2.345-6.81-4.12-.063-.039-.103-.111-.103-.184a.196.196 0 01.045-.12zm6.265-6.45c0-1.024.255-1.901.764-2.628.51-.727 1.205-1.273 2.092-1.638.81-.336 1.821-.575 3.038-.72.413-.046 1.087-.103 2.022-.174V6.06c0-.745-.083-1.247-.244-1.508-.246-.357-.633-.534-1.165-.534h-.144c-.39.029-.722.144-1.014.349-.286.21-.471.5-.55.873-.05.236-.169.371-.36.404l-2.082-.255c-.207-.046-.31-.156-.31-.331 0-.034.005-.07.014-.105.207-1.082.715-1.886 1.534-2.413.81-.527 1.766-.812 2.851-.853h.45c1.386 0 2.467.357 3.247 1.075.117.119.224.246.32.38.097.135.176.255.236.36.06.106.106.255.143.45.038.193.063.32.085.382.022.061.038.214.05.46.013.244.02.39.02.434v4.108c0 .291.04.557.13.798.084.243.166.412.247.51l.41.55c.075.105.111.198.111.282 0 .093-.045.171-.139.235-1.034.9-1.6 1.387-1.694 1.464-.16.116-.351.124-.575.026-.193-.165-.36-.32-.503-.466l-.405-.46c-.034-.041-.078-.103-.13-.184a.59.59 0 01-.034-.184c-.011-.041-.025-.083-.04-.124-.345.481-.66.78-.965 1.005-.622.401-1.327.602-2.115.602-.967 0-1.766-.297-2.396-.892-.63-.594-.945-1.443-.945-2.546zm3.42-.397c0 .495.124.892.37 1.19.247.297.586.446 1.016.446.04 0 .096-.005.17-.014a.732.732 0 01.155-.014c.541-.144.957-.5 1.246-1.069.142-.255.245-.534.318-.834.07-.301.105-.55.115-.749.01-.198.013-.519.013-.964v-.524c-.882 0-1.555.064-2.014.193-1.318.376-1.974 1.106-1.974 2.34zm12.4 8.198a4.36 4.36 0 00.165-.42c.058-.193.025-.252-.1-.281a3.59 3.59 0 00-1.55-.158c-.193.023-.398.07-.611.144-.215.07-.412.16-.59.27-.18.108-.32.211-.42.31-.1.097-.166.176-.21.224a.124.124 0 00-.05.137c.014.057.044.097.087.124.182.083.395.105.61.067.215-.039.453-.105.713-.205l.27-.114c.092-.04.193-.084.295-.13a3.86 3.86 0 00.39-.224c.044-.034.067-.082.067-.143z",
-  },
-  unknown: {
-    // Placeholder for the fictional Paddle.net unknown-merchant row.
-    // Not a real brand mark — intentionally a generic glyph that
-    // communicates "we detected a charge from somewhere we can't
-    // attribute." Tied to the "Forgotten" flag visual treatment.
-    color: "#737373",
-    bg: "#F5F5F5",
-    path: "",
-  },
+// Brand logo helper — pulls canonical brand marks from the
+// SimpleIcons CDN (https://simpleicons.org). Each request returns
+// the official brand SVG in the brand's official color, served as
+// a tiny <1KB file that the browser aggressively caches.
+//
+// Switched from inline-SVG-paths on 2026-06-05 because hand-embedded
+// path data looked AI-generated / "approximate" rather than canonical.
+// The CDN serves the real, recognized mark in every brand's
+// exact official color — what users actually associate with the brand.
+//
+// Format: https://cdn.simpleicons.org/{slug}/{hex-color-no-#}
+//
+// Trade-off: one external network request per logo on first paint.
+// For 4 logos × ~800B each = ~3.2 KB total. Cached for life of the
+// site once loaded. Acceptable cost for canonical brand recognition.
+const BRAND_CDN: Record<BrandKey, { slug: string; color: string; bg: string }> = {
+  netflix: { slug: "netflix", color: "E50914", bg: "#FFFFFF" },
+  spotify: { slug: "spotify", color: "1DB954", bg: "#FFFFFF" },
+  adobe:   { slug: "adobe",   color: "FF0000", bg: "#FFFFFF" },
+  amazon:  { slug: "amazon",  color: "FF9900", bg: "#0F1111" },
+  unknown: { slug: "",        color: "737373", bg: "#F5F5F5" },
 };
 
 function BrandLogo({ brand }: { brand: BrandKey }) {
-  const cfg = BRAND_SVG[brand];
+  const cfg = BRAND_CDN[brand];
   if (brand === "unknown") {
     return (
       <span
         aria-hidden="true"
         className="w-6 h-6 rounded-md flex items-center justify-center shrink-0 ring-1 ring-hairline"
-        style={{ background: cfg.bg, color: cfg.color }}
+        style={{ background: cfg.bg, color: `#${cfg.color}` }}
       >
         <span className="text-[12px] font-bold leading-none">?</span>
       </span>
@@ -369,18 +354,23 @@ function BrandLogo({ brand }: { brand: BrandKey }) {
   return (
     <span
       aria-hidden="true"
-      className="w-6 h-6 rounded-md flex items-center justify-center shrink-0 ring-1 ring-ink/[0.04]"
+      className="w-6 h-6 rounded-md flex items-center justify-center shrink-0 ring-1 ring-ink/[0.04] overflow-hidden"
       style={{ background: cfg.bg }}
     >
-      <svg
-        viewBox="0 0 24 24"
-        width="14"
-        height="14"
-        fill={cfg.color}
-        xmlns="http://www.w3.org/2000/svg"
-      >
-        <path d={cfg.path} />
-      </svg>
+      {/* Plain <img> here (not next/image) because:
+          (a) the source is an external CDN we can't statically
+              optimize, and
+          (b) the rendered size is fixed at 14px so the loader
+              overhead would be greater than the file itself. */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={`https://cdn.simpleicons.org/${cfg.slug}/${cfg.color}`}
+        alt=""
+        width={14}
+        height={14}
+        loading="eager"
+        decoding="async"
+      />
     </span>
   );
 }
