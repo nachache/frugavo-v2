@@ -1,12 +1,12 @@
-// Static alert-detail mockup — feature-spotlight visual for the
-// "Discover every recurring charge" section. Phase G (2026-06-05).
-//
-// Shows a single subscription detail card with what Frugavo found:
-// the original detection, last 6 charges, predicted next charge,
-// and the cancel-assist entry point. Reads as the deepest detection
-// surface — "look how much it knows."
+"use client";
 
+// Alert-detail mockup — feature-spotlight visual for the
+// "Discover every recurring charge" section. History rows stagger
+// in on scroll-into-view.
+
+import { motion } from "framer-motion";
 import { Calendar, CheckCircle2, ExternalLink, TrendingUp } from "lucide-react";
+import { BrandLogo } from "@/components/marketing/brand-logo";
 
 type HistoryItem = {
   date: string;
@@ -30,20 +30,18 @@ export function AlertDetailMockup() {
   const totalPaid = HISTORY.reduce((s, h) => s + h.amount, 0);
 
   return (
-    <figure
+    <motion.figure
+      initial={{ opacity: 0, y: 12 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: "-80px" }}
+      transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
       className="rounded-3xl border border-hairline bg-white shadow-[0_24px_60px_-30px_rgba(10,10,10,0.18)] overflow-hidden max-w-[440px] mx-auto"
       aria-label="Sample subscription detail — Netflix monthly with price change history."
     >
       {/* Brand header */}
       <div className="px-5 pt-5 pb-4 border-b border-hairline/60">
         <div className="flex items-center gap-3">
-          <span
-            aria-hidden="true"
-            className="w-12 h-12 rounded-xl flex items-center justify-center text-white text-[18px] font-bold"
-            style={{ background: "#E50914" }}
-          >
-            N
-          </span>
+          <BrandLogo brand="netflix" size={48} rounded="xl" />
           <div className="min-w-0 flex-1">
             <div className="font-display text-[18px] font-bold tracking-[-0.015em] text-ink leading-tight">
               Netflix
@@ -82,9 +80,17 @@ export function AlertDetailMockup() {
           Last 6 charges
         </div>
         <ul className="mt-2 space-y-1.5">
-          {HISTORY.map((h) => (
-            <li
+          {HISTORY.map((h, i) => (
+            <motion.li
               key={h.date}
+              initial={{ opacity: 0, x: -8 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true, margin: "-80px" }}
+              transition={{
+                delay: 0.4 + i * 0.07,
+                duration: 0.4,
+                ease: [0.16, 1, 0.3, 1],
+              }}
               className="flex items-center justify-between text-[12px]"
             >
               <span className="inline-flex items-center gap-1.5 text-ink-body">
@@ -92,7 +98,7 @@ export function AlertDetailMockup() {
                 {h.date}
               </span>
               <span className="font-semibold text-ink tnum">{fmtUsd(h.amount)}</span>
-            </li>
+            </motion.li>
           ))}
         </ul>
       </div>
@@ -128,7 +134,7 @@ export function AlertDetailMockup() {
       <figcaption className="px-5 py-2.5 bg-ink/[0.02] text-[10.5px] text-ink-body/80 text-center border-t border-hairline/60">
         Sample subscription detail · mock data
       </figcaption>
-    </figure>
+    </motion.figure>
   );
 }
 

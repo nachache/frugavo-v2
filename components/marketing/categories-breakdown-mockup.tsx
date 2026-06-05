@@ -1,4 +1,7 @@
-// Static "By category" breakdown mockup — Discover feature spotlight.
+"use client";
+
+// "By category" breakdown mockup — Discover feature spotlight.
+// Bars animate from 0 → final width on scroll-into-view.
 //
 // Built to replace the duplicate HeroResultsPreview usage in the
 // Discover spotlight: the hero illustration already shows the
@@ -9,6 +12,7 @@
 //
 // Mock data only. No imports from /app/* or lib/scan.
 
+import { motion } from "framer-motion";
 import { TrendingUp } from "lucide-react";
 
 type Category = {
@@ -43,7 +47,10 @@ const fmtUsd = (n: number) =>
 
 export function CategoriesBreakdownMockup() {
   return (
-    <figure
+    <motion.figure
+      initial="hidden"
+      whileInView="show"
+      viewport={{ once: true, margin: "-80px" }}
       className="rounded-3xl border border-hairline bg-white shadow-[0_24px_60px_-30px_rgba(10,10,10,0.18)] overflow-hidden max-w-[440px] mx-auto"
       aria-label="Sample category breakdown — 10 subscriptions grouped into 6 spending categories."
     >
@@ -71,12 +78,22 @@ export function CategoriesBreakdownMockup() {
         </div>
       </div>
 
-      {/* Category rows — horizontal spend bars */}
+      {/* Category rows — horizontal spend bars (animated width) */}
       <ul className="px-5 py-4 space-y-3.5">
-        {CATEGORIES.map((c) => {
+        {CATEGORIES.map((c, i) => {
           const widthPct = (c.amountUsd / TOP_CATEGORY.amountUsd) * 100;
           return (
-            <li key={c.label}>
+            <motion.li
+              key={c.label}
+              initial={{ opacity: 0, y: 8 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-80px" }}
+              transition={{
+                delay: 0.15 + i * 0.06,
+                duration: 0.45,
+                ease: [0.16, 1, 0.3, 1],
+              }}
+            >
               <div className="flex items-baseline justify-between gap-3">
                 <div className="min-w-0 flex items-center gap-2">
                   <span
@@ -97,17 +114,24 @@ export function CategoriesBreakdownMockup() {
                 </span>
               </div>
               <div className="mt-1.5 h-1.5 rounded-full bg-ink/[0.04] overflow-hidden">
-                <div
-                  className="h-full rounded-full transition-all"
+                <motion.div
+                  className="h-full rounded-full"
+                  initial={{ width: 0 }}
+                  whileInView={{ width: `${widthPct}%` }}
+                  viewport={{ once: true, margin: "-80px" }}
+                  transition={{
+                    delay: 0.35 + i * 0.08,
+                    duration: 0.9,
+                    ease: [0.16, 1, 0.3, 1],
+                  }}
                   style={{
-                    width: `${widthPct}%`,
                     background: c.color,
                     opacity: 0.85,
                   }}
                   aria-hidden="true"
                 />
               </div>
-            </li>
+            </motion.li>
           );
         })}
       </ul>
@@ -115,6 +139,6 @@ export function CategoriesBreakdownMockup() {
       <figcaption className="px-5 py-2.5 bg-ink/[0.02] text-[10.5px] text-ink-body/80 text-center border-t border-hairline/60">
         Sample category breakdown · mock data
       </figcaption>
-    </figure>
+    </motion.figure>
   );
 }

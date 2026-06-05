@@ -6,14 +6,32 @@
 // but with curated mock entries that highlight the kind of value
 // only continuous monitoring delivers.
 
+"use client";
+
+import { motion } from "framer-motion";
 import { Bell, DollarSign, Eye, Plus, TrendingUp } from "lucide-react";
+import { BrandLogo, type BrandKey } from "@/components/marketing/brand-logo";
+
+// Stagger entrance for feed items — slide-up + fade. Trips on
+// scroll-into-view via the parent figure's variants.
+const ITEM_VARIANTS = {
+  hidden: { opacity: 0, y: 12 },
+  show: (i: number) => ({
+    opacity: 1,
+    y: 0,
+    transition: {
+      delay: 0.2 + i * 0.1,
+      duration: 0.55,
+      ease: [0.16, 1, 0.3, 1] as const,
+    },
+  }),
+};
 
 type FeedItem = {
   id: string;
   kind: "price_up" | "trial_convert" | "new_charge" | "unused";
   brand: string;
-  glyphColor: string;
-  initial: string;
+  brandKey: BrandKey;
   detail: string;
   meta: string;
   pillTone: "amber" | "red" | "blue" | "slate";
@@ -25,8 +43,7 @@ const FEED: FeedItem[] = [
     id: "1",
     kind: "trial_convert",
     brand: "Adobe Creative Cloud",
-    glyphColor: "#FA0F00",
-    initial: "A",
+    brandKey: "adobe",
     detail: "Free trial converts to $59.99/mo this Friday",
     meta: "2 days from now",
     pillTone: "amber",
@@ -36,8 +53,7 @@ const FEED: FeedItem[] = [
     id: "2",
     kind: "price_up",
     brand: "Netflix",
-    glyphColor: "#E50914",
-    initial: "N",
+    brandKey: "netflix",
     detail: "Monthly price increased from $15.49 → $17.99",
     meta: "3 days ago",
     pillTone: "red",
@@ -47,8 +63,7 @@ const FEED: FeedItem[] = [
     id: "3",
     kind: "new_charge",
     brand: "Unknown merchant",
-    glyphColor: "#5C5CFF",
-    initial: "?",
+    brandKey: "unknown",
     detail: "New recurring charge of $19.00/mo from Paddle.net",
     meta: "5 days ago",
     pillTone: "blue",
@@ -58,8 +73,7 @@ const FEED: FeedItem[] = [
     id: "4",
     kind: "unused",
     brand: "Audible",
-    glyphColor: "#F6991C",
-    initial: "a",
+    brandKey: "audible",
     detail: "Unused for 4 months — still billing $14.95/mo",
     meta: "1 week ago",
     pillTone: "slate",
@@ -76,7 +90,10 @@ const PILL_TONE_CLASS: Record<FeedItem["pillTone"], string> = {
 
 export function NoticedFeedMockup() {
   return (
-    <figure
+    <motion.figure
+      initial="hidden"
+      whileInView="show"
+      viewport={{ once: true, margin: "-80px" }}
       className="rounded-3xl border border-hairline bg-white shadow-[0_24px_60px_-30px_rgba(10,10,10,0.18)] overflow-hidden max-w-[440px] mx-auto"
       aria-label="Sample Frugavo Noticed feed — four background observations."
     >
@@ -98,19 +115,15 @@ export function NoticedFeedMockup() {
 
       {/* Feed list */}
       <ul className="p-3 space-y-2">
-        {FEED.map((item) => (
-          <li
+        {FEED.map((item, i) => (
+          <motion.li
             key={item.id}
+            variants={ITEM_VARIANTS}
+            custom={i}
             className="rounded-xl border border-hairline/70 bg-white p-3 hover:border-hairline transition"
           >
             <div className="flex items-start gap-2.5">
-              <span
-                aria-hidden="true"
-                className="flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center text-white text-[12px] font-bold mt-0.5"
-                style={{ background: item.glyphColor }}
-              >
-                {item.initial}
-              </span>
+              <BrandLogo brand={item.brandKey} size={32} rounded="lg" className="mt-0.5" />
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-1.5 flex-wrap">
                   <span className="text-[12.5px] font-semibold text-ink truncate">
@@ -137,14 +150,14 @@ export function NoticedFeedMockup() {
                 </p>
               </div>
             </div>
-          </li>
+          </motion.li>
         ))}
       </ul>
 
       <figcaption className="px-5 py-2.5 bg-ink/[0.02] text-[10.5px] text-ink-body/80 text-center border-t border-hairline/60">
         Sample observations · mock data
       </figcaption>
-    </figure>
+    </motion.figure>
   );
 }
 

@@ -1,34 +1,33 @@
-// Static calendar mockup — feature-spotlight visual for the
-// "Stay ahead of every renewal" section. Phase G (2026-06-05).
-//
-// Shows a month grid with renewal pills on the days a subscription
-// is expected to charge. Mirrors the in-app /app/calendar surface
-// but with mock data. Zero imports from /app/*, lib/scan, or any
-// live data — pure SSR-friendly static markup.
+"use client";
 
+// Calendar mockup — feature-spotlight visual for "Stay ahead of
+// every renewal". Animation added 2026-06-05: brand badges pop into
+// day cells with a soft scale+fade stagger on scroll-into-view.
+
+import { motion } from "framer-motion";
 import { Calendar } from "lucide-react";
+import { BrandLogo, type BrandKey } from "@/components/marketing/brand-logo";
 
 type Renewal = {
   day: number;
   brand: string;
+  brandKey: BrandKey;
   amountUsd: number;
-  color: string;
-  initial: string;
 };
 
 const MONTH_LABEL = "June 2026";
 
 // 30-day month layout, starting on Sunday (June 1, 2026 = Monday in
 // reality; we pin the visual to a clean grid so it tells the story
-// without needing date-correctness logic).
+// without needing date-correctness logic). Brand keys map to real
+// logos via the shared BrandLogo component (logo.dev).
 const RENEWALS: Renewal[] = [
-  { day: 3,  brand: "Netflix",    amountUsd: 22.99, color: "#E50914", initial: "N" },
-  { day: 7,  brand: "Spotify",    amountUsd: 11.99, color: "#1DB954", initial: "S" },
-  { day: 12, brand: "Adobe CC",   amountUsd: 59.99, color: "#FA0F00", initial: "A" },
-  { day: 14, brand: "Microsoft",  amountUsd: 10.99, color: "#5E5E5E", initial: "M" },
-  { day: 19, brand: "iCloud",     amountUsd:  2.99, color: "#0A0A0A", initial: "i" },
-  { day: 22, brand: "NYT",        amountUsd: 25.00, color: "#000000", initial: "T" },
-  { day: 27, brand: "Amazon",     amountUsd: 14.99, color: "#FF9900", initial: "A" },
+  { day: 3,  brand: "Netflix",    brandKey: "netflix",   amountUsd: 22.99 },
+  { day: 7,  brand: "Spotify",    brandKey: "spotify",   amountUsd: 11.99 },
+  { day: 12, brand: "Adobe CC",   brandKey: "adobe",     amountUsd: 59.99 },
+  { day: 14, brand: "Microsoft",  brandKey: "microsoft", amountUsd: 10.99 },
+  { day: 19, brand: "iCloud",     brandKey: "apple",     amountUsd:  2.99 },
+  { day: 27, brand: "Amazon",     brandKey: "amazon",    amountUsd: 14.99 },
 ];
 
 const DAYS_OF_WEEK = ["S", "M", "T", "W", "T", "F", "S"];
@@ -41,11 +40,44 @@ function renewalFor(day: number): Renewal | null {
   return RENEWALS.find((r) => r.day === day) ?? null;
 }
 
+// Fluid scale+fade entrance for renewal badges. Spring with a tiny
+// bounce so each badge pops into place; staggered via index-based
+// delay so the calendar reads as filling in.
+const BADGE_VARIANTS = {
+  hidden: { opacity: 0, scale: 0.5 },
+  show: (i: number) => ({
+    opacity: 1,
+    scale: 1,
+    transition: {
+      delay: 0.25 + i * 0.08,
+      type: "spring" as const,
+      stiffness: 380,
+      damping: 22,
+    },
+  }),
+};
+
+// Soft fade-up for the "Next 3 charges" list items
+const ROW_VARIANTS = {
+  hidden: { opacity: 0, x: -10 },
+  show: (i: number) => ({
+    opacity: 1,
+    x: 0,
+    transition: { delay: 0.8 + i * 0.12, duration: 0.5, ease: [0.16, 1, 0.3, 1] as const },
+  }),
+};
+
 export function CalendarMockup() {
+  // Index renewals so the diagonal stagger order is stable
+  const renewalIndex = new Map(RENEWALS.map((r, i) => [r.day, i]));
+
   return (
-    <figure
+    <motion.figure
+      initial="hidden"
+      whileInView="show"
+      viewport={{ once: true, margin: "-80px" }}
       className="rounded-3xl border border-hairline bg-white shadow-[0_24px_60px_-30px_rgba(10,10,10,0.18)] overflow-hidden max-w-[440px] mx-auto"
-      aria-label="Sample subscription renewal calendar — June 2026 with seven upcoming charges."
+      aria-label="Sample subscription renewal calendar — June 2026 with six upcoming charges."
     >
       {/* Header */}
       <div className="px-5 pt-5 pb-4 border-b border-hairline/60 flex items-center justify-between">
@@ -93,14 +125,17 @@ export function CalendarMockup() {
             >
               <span className="text-ink-body/85">{day}</span>
               {r && (
-                <span
-                  aria-hidden="true"
-                  className="mt-0.5 w-5 h-5 rounded-md flex items-center justify-center text-white text-[9px] font-bold"
-                  style={{ background: r.color }}
-                  title={`${r.brand} · $${r.amountUsd}`}
+                <motion.div
+                  variants={BADGE_VARIANTS}
+                  custom={renewalIndex.get(r.day) ?? 0}
+                  className="mt-0.5"
                 >
-                  {r.initial}
-                </span>
+                  <BrandLogo
+                    brand={r.brandKey}
+                    size={20}
+                    rounded="md"
+                  />
+                </motion.div>
               )}
             </div>
           );
@@ -113,20 +148,19 @@ export function CalendarMockup() {
           Next 3 charges
         </div>
         <ul className="mt-2 space-y-1.5">
-          {RENEWALS.slice(0, 3).map((r) => (
-            <li key={r.brand} className="flex items-center gap-2.5 text-[12px]">
-              <span
-                aria-hidden="true"
-                className="w-5 h-5 rounded-md flex items-center justify-center text-white text-[9px] font-bold"
-                style={{ background: r.color }}
-              >
-                {r.initial}
-              </span>
+          {RENEWALS.slice(0, 3).map((r, i) => (
+            <motion.li
+              key={r.brand}
+              variants={ROW_VARIANTS}
+              custom={i}
+              className="flex items-center gap-2.5 text-[12px]"
+            >
+              <BrandLogo brand={r.brandKey} size={20} rounded="md" />
               <span className="text-ink font-medium">{r.brand}</span>
               <span className="ml-auto text-ink-body tnum">
                 Jun {r.day} · ${r.amountUsd.toFixed(2)}
               </span>
-            </li>
+            </motion.li>
           ))}
         </ul>
       </div>
@@ -134,6 +168,6 @@ export function CalendarMockup() {
       <figcaption className="px-5 py-2.5 bg-ink/[0.02] text-[10.5px] text-ink-body/80 text-center border-t border-hairline/60">
         Sample renewal calendar · mock data
       </figcaption>
-    </figure>
+    </motion.figure>
   );
 }

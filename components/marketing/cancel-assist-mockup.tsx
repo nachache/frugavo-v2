@@ -1,16 +1,17 @@
-// Static cancel-assist panel mockup — feature-spotlight visual for
-// the "Cancel anything in one tap" section. Phase G (2026-06-05).
-//
-// Shows the cancel-assist slide-over: which provider, the prepared
-// language, and the "we'll watch the next billing cycle" promise.
-// Critical visual proof that Frugavo doesn't take a cut of the
-// cancellation — the user does it themselves.
+"use client";
 
+// Cancel-assist panel mockup. 3 steps stagger in on scroll.
+
+import { motion } from "framer-motion";
 import { ArrowRight, CheckCircle2, Copy, ExternalLink } from "lucide-react";
 
 export function CancelAssistMockup() {
   return (
-    <figure
+    <motion.figure
+      initial={{ opacity: 0, y: 12 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: "-80px" }}
+      transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
       className="rounded-3xl border border-hairline bg-white shadow-[0_24px_60px_-30px_rgba(10,10,10,0.18)] overflow-hidden max-w-[440px] mx-auto"
       aria-label="Sample cancel-assist panel — direct link to provider cancel page with prepared language."
     >
@@ -27,14 +28,16 @@ export function CancelAssistMockup() {
         </p>
       </div>
 
-      {/* Steps */}
+      {/* Steps — stagger in on scroll */}
       <div className="px-5 py-4 space-y-3">
-        <Step
+        <AnimatedStep
+          index={0}
           num={1}
           title="Open HelloFresh's cancel page"
           body="Direct link — we don't redirect you through any partner."
         />
-        <Step
+        <AnimatedStep
+          index={1}
           num={2}
           title="Paste this if they ask why"
           body=""
@@ -53,8 +56,9 @@ export function CancelAssistMockup() {
               Copy to clipboard
             </button>
           </div>
-        </Step>
-        <Step
+        </AnimatedStep>
+        <AnimatedStep
+          index={2}
           num={3}
           title="We confirm via your bank"
           body="Frugavo watches the next billing cycle. If the charge stops, you'll see a green ✓. If it sneaks back, we tell you."
@@ -89,23 +93,35 @@ export function CancelAssistMockup() {
       <figcaption className="px-5 py-2.5 bg-ink/[0.02] text-[10.5px] text-ink-body/80 text-center border-t border-hairline/60">
         Sample cancel-assist · mock data
       </figcaption>
-    </figure>
+    </motion.figure>
   );
 }
 
-function Step({
+function AnimatedStep({
+  index,
   num,
   title,
   body,
   children,
 }: {
+  index: number;
   num: number;
   title: string;
   body: string;
   children?: React.ReactNode;
 }) {
   return (
-    <div className="flex items-start gap-3">
+    <motion.div
+      initial={{ opacity: 0, x: -8 }}
+      whileInView={{ opacity: 1, x: 0 }}
+      viewport={{ once: true, margin: "-80px" }}
+      transition={{
+        delay: 0.25 + index * 0.15,
+        duration: 0.55,
+        ease: [0.16, 1, 0.3, 1],
+      }}
+      className="flex items-start gap-3"
+    >
       <span
         aria-hidden="true"
         className="shrink-0 w-6 h-6 rounded-full bg-brand/12 text-brand text-[11px] font-bold flex items-center justify-center"
@@ -119,6 +135,6 @@ function Step({
         )}
         {children}
       </div>
-    </div>
+    </motion.div>
   );
 }

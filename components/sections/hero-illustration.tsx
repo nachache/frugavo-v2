@@ -1,6 +1,7 @@
 "use client";
 
 import { ArrowDownRight, Bell, ShieldCheck } from "lucide-react";
+import { BrandLogo, type BrandKey } from "@/components/marketing/brand-logo";
 
 // Hero illustration — Phase G follow-up (2026-06-05), pro-polish v2.
 //
@@ -277,8 +278,6 @@ function PhoneFrame() {
   );
 }
 
-type BrandKey = "netflix" | "spotify" | "adobe" | "amazon" | "unknown";
-
 function SubRow({
   brand,
   name,
@@ -301,7 +300,7 @@ function SubRow({
           : "border-hairline/50 bg-white")
       }
     >
-      <BrandLogo brand={brand} />
+      <BrandLogo brand={brand} size={22} rounded="md" />
       <div className="min-w-0 flex-1">
         <div className="text-[10.5px] font-semibold text-ink truncate">
           {name}
@@ -312,66 +311,6 @@ function SubRow({
         {amount}
       </div>
     </div>
-  );
-}
-
-// Brand logo helper — pulls canonical brand marks from the
-// SimpleIcons CDN (https://simpleicons.org). Each request returns
-// the official brand SVG in the brand's official color, served as
-// a tiny <1KB file that the browser aggressively caches.
-//
-// Switched from inline-SVG-paths on 2026-06-05 because hand-embedded
-// path data looked AI-generated / "approximate" rather than canonical.
-// The CDN serves the real, recognized mark in every brand's
-// exact official color — what users actually associate with the brand.
-//
-// Format: https://cdn.simpleicons.org/{slug}/{hex-color-no-#}
-//
-// Trade-off: one external network request per logo on first paint.
-// For 4 logos × ~800B each = ~3.2 KB total. Cached for life of the
-// site once loaded. Acceptable cost for canonical brand recognition.
-const BRAND_CDN: Record<BrandKey, { slug: string; color: string; bg: string }> = {
-  netflix: { slug: "netflix", color: "E50914", bg: "#FFFFFF" },
-  spotify: { slug: "spotify", color: "1DB954", bg: "#FFFFFF" },
-  adobe:   { slug: "adobe",   color: "FF0000", bg: "#FFFFFF" },
-  amazon:  { slug: "amazon",  color: "FF9900", bg: "#0F1111" },
-  unknown: { slug: "",        color: "737373", bg: "#F5F5F5" },
-};
-
-function BrandLogo({ brand }: { brand: BrandKey }) {
-  const cfg = BRAND_CDN[brand];
-  if (brand === "unknown") {
-    return (
-      <span
-        aria-hidden="true"
-        className="w-6 h-6 rounded-md flex items-center justify-center shrink-0 ring-1 ring-hairline"
-        style={{ background: cfg.bg, color: `#${cfg.color}` }}
-      >
-        <span className="text-[12px] font-bold leading-none">?</span>
-      </span>
-    );
-  }
-  return (
-    <span
-      aria-hidden="true"
-      className="w-6 h-6 rounded-md flex items-center justify-center shrink-0 ring-1 ring-ink/[0.04] overflow-hidden"
-      style={{ background: cfg.bg }}
-    >
-      {/* Plain <img> here (not next/image) because:
-          (a) the source is an external CDN we can't statically
-              optimize, and
-          (b) the rendered size is fixed at 14px so the loader
-              overhead would be greater than the file itself. */}
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src={`https://cdn.simpleicons.org/${cfg.slug}/${cfg.color}`}
-        alt=""
-        width={14}
-        height={14}
-        loading="eager"
-        decoding="async"
-      />
-    </span>
   );
 }
 
