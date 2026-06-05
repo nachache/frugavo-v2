@@ -21,10 +21,17 @@
 // interest categories. That fixes the wasted-impression problem
 // (CostcoCanada / CleaningTips bleed) we identified in the audit.
 //
-// Endpoint reference:
-//   POST https://ads-api.reddit.com/api/v2.0/conversions/events/{pixel_id}
+// Endpoint reference (Reddit's actual v3 spec — confirmed against
+// ads.reddit.com Events Manager setup screen 2026-06-05):
+//   POST https://ads-api.reddit.com/api/v3/pixels/{pixel_id}/conversion_events
 //   Auth: Bearer {REDDIT_CAPI_ACCESS_TOKEN}
-//   Docs: https://ads-api.reddit.com/docs/v2#tag/Conversion-Events
+//   Body: { "data": { "events": [ { event_at, action_source, type, ... } ] } }
+//
+// Note vs v2 spec:
+//   • URL is /api/v3/pixels/{pid}/conversion_events (NOT /v2.0/conversions/events/{pid})
+//   • Payload wraps events under `data.events`
+//   • event_at is Unix epoch in MILLISECONDS, not ISO string
+//   • Each event requires `action_source` ("WEBSITE", "APP", "OFFLINE", etc.)
 
 import crypto from "node:crypto";
 
@@ -73,7 +80,7 @@ export type RedditCapiResult =
   | { ok: true; status: number }
   | { ok: false; reason: string; status?: number };
 
-const REDDIT_CAPI_BASE = "https://ads-api.reddit.com/api/v2.0/conversions/events";
+const REDDIT_CAPI_BASE = "https://ads-api.reddit.com/api/v3/pixels";
 
 // SHA256-hex lower-case is the format Reddit expects for hashed identity
 // fields. Email is normalized first (trim + lower-case) per Reddit's spec.
@@ -139,20 +146,43 @@ export async function sendRedditCapiEvent(
   if (ipHash) userPayload.ip_address = ipHash;
   if (args.user.userAgent) userPayload.user_agent = args.user.userAgent;
 
+  // CUSTOM events need a custom_event_name; standard events use
+  // the published tracking_type strings directly (SignUp, Purchase,
+  // Lead, PageVisit, ViewContent, Search, AddToCart, AddToWishlist).
+  const typeBlock: Record<string, unknown> = {
+    tracking_type: args.eventType,
+  };
+
   const event: Record<string, unknown> = {
-    event_at: new Date().toISOString(),
-    event_type: { tracking_type: args.eventType },
-    event_metadata: metadata,
+    // Reddit requires Unix epoch in MILLISECONDS (not ISO, not seconds).
+    event_at: Date.now(),
+    // action_source tells Reddit where the conversion happened.
+    // WEBSITE is correct for events we fire after a user action on
+    // our site (signup completion, Stripe checkout webhook, etc.).
+    action_source: "WEBSITE",
+    type: typeBlock,
+    // Reddit's documented field name is `metadata` (NOT
+    // `event_metadata`). Previous version returned 400
+    // "JSON error 'unknown field' on field 'event_metadata'".
+    metadata,
     user: userPayload,
   };
   if (args.clickId) event.click_id = args.clickId;
 
+  // Note: Reddit's v3 schema does NOT accept a `test_mode` field at
+  // the request root (returns 400 "unknown field 'test_mode'"). Test
+  // verification happens via the Events Manager → Test Events tab,
+  // which captures all events from your token regardless of an
+  // explicit flag. The REDDIT_CAPI_TEST_MODE env var is kept for
+  // future use (e.g. to skip the network call entirely while
+  // developing locally) but is intentionally NOT in the payload.
   const body = {
-    test_mode: process.env.REDDIT_CAPI_TEST_MODE === "true",
-    events: [event],
+    data: {
+      events: [event],
+    },
   };
 
-  const url = `${REDDIT_CAPI_BASE}/${encodeURIComponent(pixelId)}`;
+  const url = `${REDDIT_CAPI_BASE}/${encodeURIComponent(pixelId)}/conversion_events`;
 
   try {
     const res = await fetch(url, {
