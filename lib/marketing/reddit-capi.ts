@@ -169,13 +169,17 @@ export async function sendRedditCapiEvent(
   };
   if (args.clickId) event.click_id = args.clickId;
 
-  // Note: Reddit's v3 schema does NOT accept a `test_mode` field at
-  // the request root (returns 400 "unknown field 'test_mode'"). Test
-  // verification happens via the Events Manager → Test Events tab,
-  // which captures all events from your token regardless of an
-  // explicit flag. The REDDIT_CAPI_TEST_MODE env var is kept for
-  // future use (e.g. to skip the network call entirely while
-  // developing locally) but is intentionally NOT in the payload.
+  // Reddit's test mode works via a per-event `test_id` field (NOT a
+  // top-level `test_mode` flag). Get the test_id from Events Manager
+  // → Test Events panel; events tagged with it appear in that panel
+  // INSTEAD of counting toward real attribution. Remove the env var
+  // (or unset it) before going to production so real conversions
+  // attribute correctly.
+  const testId = process.env.REDDIT_CAPI_TEST_ID?.trim();
+  if (testId) {
+    event.test_id = testId;
+  }
+
   const body = {
     data: {
       events: [event],
