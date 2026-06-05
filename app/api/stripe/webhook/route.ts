@@ -4,6 +4,7 @@ import { getStripe, stripeWebhookSecret } from "@/lib/billing/stripe";
 import { supabaseAdmin } from "@/lib/supabase";
 import { tryAcquireLock } from "@/lib/cache";
 import { projectByStripeCustomer } from "@/lib/billing/project";
+import { fireRedditCapiEvent } from "@/lib/marketing/reddit-capi";
 import type Stripe from "stripe";
 
 // POST /api/stripe/webhook
@@ -133,6 +134,49 @@ export async function POST(req: NextRequest) {
         event.id,
         e
       );
+    }
+  }
+
+  // ---- 5b. Marketing: fire Reddit CAPI Purchase event ----
+  // Only on the checkout.session.completed event — the moment a user
+  // actually starts paying for Protection (after the 7-day trial they
+  // either let it convert or cancel; checkout.session.completed fires
+  // at the START of the trial when card is captured, which is the
+  // right conversion signal for ad optimization).
+  //
+  // Why server-side: the conversion attribution from Reddit Ads
+  // depends on getting hashed email + Reddit click id back to Reddit
+  // within their attribution window. The client-side pixel can miss
+  // this if the user closes the tab between Stripe success and
+  // landing on /app, or if their browser is blocking the pixel. CAPI
+  // fires from our server immediately when the webhook arrives, so
+  // attribution is preserved even when the client never re-loads.
+  //
+  // Best-effort: fireRedditCapiEvent is fire-and-forget and never
+  // throws. If Reddit's endpoint hiccups we still ack 200 to Stripe.
+  if (event.type === "checkout.session.completed") {
+    const session = event.data.object as Stripe.Checkout.Session;
+    const email =
+      session.customer_details?.email ??
+      session.customer_email ??
+      null;
+    const clerkUserId =
+      (session.metadata?.clerk_user_id as string | undefined) ??
+      (session.client_reference_id as string | undefined) ??
+      null;
+    const amountTotalCents = session.amount_total ?? 499;
+    const currency = (session.currency ?? "usd").toUpperCase();
+    if (email || clerkUserId) {
+      fireRedditCapiEvent({
+        eventType: "Purchase",
+        conversionId: session.id,
+        value: amountTotalCents / 100,
+        currency,
+        user: {
+          email,
+          externalId: clerkUserId,
+        },
+      });
     }
   }
 

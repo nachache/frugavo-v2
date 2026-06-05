@@ -27,6 +27,7 @@
 
 import { supabaseAdmin } from "@/lib/supabase";
 import { sendEmail } from "@/lib/notifications/send-email";
+import { fireRedditCapiEvent } from "@/lib/marketing/reddit-capi";
 
 function opsEmailRecipients(): string[] {
   return (process.env.OPS_NOTIFY_EMAILS ?? "")
@@ -118,6 +119,34 @@ export async function maybeNotifySignup(args: {
         result.error
       );
     }
+  }
+
+  // ── Channel 2: Reddit Conversions API ──────────────────────────
+  // Server-side SignUp event with hashed email + Clerk user id as the
+  // external_id. Mirrors the client-side rdt('track', 'SignUp') fired
+  // from /app/layout.tsx; Reddit dedups on conversion_id (the Clerk
+  // user id) so this complements rather than double-counts the pixel.
+  //
+  // Why this matters: without CAPI the Reddit dashboard reports
+  // match quality "N/A" on SignUp (no way to tie the event to a
+  // Reddit user), which means Reddit's algorithm can't optimize ad
+  // delivery against actual converters. Adding the hashed email here
+  // moves that match quality from N/A to ~7+ and lets the
+  // optimization engine tighten away from broad interest categories
+  // like r/CostcoCanada.
+  //
+  // Fire-and-forget — fireRedditCapiEvent never throws and never
+  // awaits. If Reddit's endpoint is down or the token is wrong, this
+  // logs a warning and the rest of the function continues.
+  if (args.email) {
+    fireRedditCapiEvent({
+      eventType: "SignUp",
+      conversionId: args.clerkUserId,
+      user: {
+        email: args.email,
+        externalId: args.clerkUserId,
+      },
+    });
   }
 
   // ── Channel 3: Slack webhook ───────────────────────────────────
