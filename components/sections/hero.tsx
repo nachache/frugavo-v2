@@ -9,7 +9,7 @@ import {
   type VariantKey,
 } from "@/lib/landing/constants";
 import { hero as legacyHero } from "@/lib/content";
-import { HeroIllustration } from "@/components/sections/hero-illustration";
+import { LiveDemoCard } from "@/components/sections/live-demo-card";
 import { PdfInterestCta } from "@/components/marketing/pdf-interest-cta";
 
 // Hero — revision pass (R1–R6).
@@ -263,7 +263,7 @@ export function Hero({ variant = "default", headlineOverride }: HeroProps) {
               },
             })}
           >
-            <HeroIllustration />
+            <LiveDemoCard />
           </motion.div>
         </div>
       </div>
